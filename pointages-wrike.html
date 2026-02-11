@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse RUN & Projets v 1.9</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    
+    <style>
+        body { background-color: #f8f9fa; padding-top: 30px; font-family: 'Segoe UI', system-ui, sans-serif; color: #343a40; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); transition: transform 0.2s; background: white; }
+        .card-header { background: white; border-bottom: 1px solid #f0f0f0; padding: 15px 20px; font-weight: 600; border-radius: 12px 12px 0 0 !important; color: #495057; }
+        
+        .upload-card { border: 2px dashed #dee2e6; border-radius: 12px; padding: 30px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: white; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .upload-card:hover { border-color: #0d6efd; background-color: #f8f9fa; }
+        .upload-card.uploaded { border-style: solid; border-color: #198754; background-color: #f0fff4; }
+        .upload-card.error { border-color: #dc3545; background-color: #fff5f5; }
+        
+        .upload-icon { font-size: 2.5rem; color: #6c757d; margin-bottom: 10px; }
+        .uploaded .upload-icon { color: #198754; }
+        
+        .nav-pills .nav-link { border-radius: 20px; padding: 8px 20px; font-weight: 600; color: #6c757d; margin-right: 10px; transition: all 0.3s; }
+        .nav-pills .nav-link.active-global { background-color: #6610f2 !important; color: white; }
+        .nav-pills .nav-link.active-run { background-color: #d63384 !important; color: white; }
+        .nav-pills .nav-link.active-project { background-color: #fd7e14 !important; color: white; }
+        .nav-pills .nav-link.active-user { background-color: #20c997 !important; color: white; }
+        .nav-pills .nav-link.active-settings { background-color: #495057 !important; color: white; }
+        
+        .filter-bar { background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .btn-preset { border: 1px solid #dee2e6; color: #6c757d; font-size: 0.75rem; padding: 4px 8px; }
+        .btn-preset:hover, .btn-preset.active { background-color: #e9ecef; color: #212529; border-color: #adb5bd; }
+        .filter-label { font-size: 0.75rem; font-weight: 600; color: #adb5bd; display: block; margin-bottom: 2px; }
+        
+        /* Ajustement taille police pour faire tenir 5 KPIs */
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: #212529; }
+        .stat-label { font-size: 0.7rem; color: #adb5bd; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .chart-container { position: relative; height: 400px; width: 100%; }
+
+        .user-list-item { padding: 10px 15px; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }
+        .user-list-item:hover { background-color: #f8f9fa; }
+        .user-list-item.disabled-row { background-color: #f8f9fa; color: #adb5bd; }
+        .user-list-item label { cursor: pointer; font-size: 0.95rem; }
+        .badge-team { font-size: 0.75rem; background-color: #e9ecef; color: #495057; padding: 4px 8px; border-radius: 4px; margin-left: 10px; }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake-animation { animation: shake 0.5s; }
+    </style>
+</head>
+<body>
+
+<div class="container pb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold m-0"><i class="bi bi-activity text-primary me-2"></i>Analyse RUN & Projets <span class="text-muted fs-6">v 1.9</span></h2>
+            <p class="text-muted small m-0">Tableau de bord de suivi consolidé</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-dark btn-sm" onclick="exportToPDF()" id="pdfBtn" style="display:none;">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Exporter PDF
+            </button>
+            <button class="btn btn-outline-danger btn-sm" onclick="location.reload()" id="resetBtn" style="display:none;">
+                <i class="bi bi-trash"></i> Réinitialiser
+            </button>
+        </div>
+    </div>
+    
+    <div id="importSection" class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="upload-card" id="dropRun" onclick="document.getElementById('fileRun').click()">
+                <i class="bi bi-lightning-fill upload-icon"></i>
+                <h5 class="fw-bold">Fichier RUN</h5>
+                <p class="text-muted small mb-0" id="nameRun">Doit contenir <strong>[RUN]</strong></p>
+                <input type="file" id="fileRun" accept=".csv, .xlsx, .xls" style="display:none">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="upload-card" id="dropProject" onclick="document.getElementById('fileProject').click()">
+                <i class="bi bi-folder-fill upload-icon"></i>
+                <h5 class="fw-bold">Fichier PROJET</h5>
+                <p class="text-muted small mb-0" id="nameProject">Doit contenir <strong>[PROJETS]</strong></p>
+                <input type="file" id="fileProject" accept=".csv, .xlsx, .xls" style="display:none">
+            </div>
+        </div>
+        
+        <div class="col-12 text-center" id="analyzeBtnContainer" style="display:none;">
+            <div id="missingFileAlert" class="alert alert-danger d-inline-block mb-3" style="display:none; text-align: left;">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Attention :</strong> Vous n'avez importé qu'un seul fichier.<br>
+                Êtes-vous sûr de ne pas vouloir importer le fichier manquant ?
+            </div>
+            <br>
+            <button id="btnLaunch" class="btn btn-lg btn-success px-5 rounded-pill shadow" onclick="handleStartClick()">
+                <i class="bi bi-play-fill"></i> Lancer l'analyse
+            </button>
+        </div>
+    </div>
+
+    <div id="dashboardSection" style="display:none;">
+        <ul class="nav nav-pills justify-content-center mb-4" id="viewTabs">
+            <li class="nav-item">
+                <button class="nav-link active active-global" onclick="switchView('global')">
+                    <i class="bi bi-globe"></i> Vue Globale
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" onclick="switchView('run')">
+                    <i class="bi bi-lightning"></i> Focus RUN
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" onclick="switchView('project')">
+                    <i class="bi bi-folder"></i> Focus Projet
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" onclick="switchView('user')">
+                    <i class="bi bi-person-badge"></i> Focus Collaborateur
+                </button>
+            </li>
+            <li class="nav-item ms-3 border-start ps-3">
+                <button class="nav-link" onclick="switchView('settings')">
+                    <i class="bi bi-gear-fill"></i> Paramètres
+                </button>
+            </li>
+        </ul>
+
+        <div id="settingsContainer" class="card mb-4 shadow-sm" style="display:none;">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0"><i class="bi bi-people-fill me-2 text-primary"></i>Gestion des Équipes</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="row g-0">
+                    <div class="col-md-4 border-end bg-light p-4">
+                        <label class="form-label fw-bold mb-2">Choisir une équipe à configurer</label>
+                        <select id="teamConfigSelect" class="form-select form-select-lg mb-4 shadow-sm" onchange="renderTeamManager()">
+                            <option value="SUPPLY CHAIN">SUPPLY CHAIN</option>
+                            <option value="P&Q">P&Q</option>
+                            <option value="INDUS IT">INDUS IT</option>
+                            <option value="R&D IS">R&D IS</option>
+                        </select>
+                        <div class="alert alert-primary border-0 shadow-sm">
+                            <h6 class="alert-heading fw-bold"><i class="bi bi-info-circle-fill"></i> Sauvegarde Automatique</h6>
+                            <p class="small mb-0">Cochez les collaborateurs pour les assigner à l'équipe sélectionnée.</p>
+                            <hr>
+                            <p class="small mb-0 text-muted">Vos configurations sont sauvegardées dans votre navigateur.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-8 p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold m-0">Collaborateurs détectés</h6>
+                            <div class="input-group w-50">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" id="userSearch" class="form-control" placeholder="Filtrer par nom..." onkeyup="renderTeamManager()">
+                            </div>
+                        </div>
+                        <div class="border rounded shadow-sm bg-white" style="height: 400px; overflow-y: auto;">
+                            <div id="userListContainer"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-bar" id="mainFilterBar">
+            <div class="row g-2 align-items-end">
+                <div id="colDate" class="col-md-3">
+                    <span class="filter-label">Période</span>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 py-1"><i class="bi bi-calendar-range"></i></span>
+                        <input type="text" id="dateRangePicker" class="form-control border-start-0 border-end-0 ps-0 py-1" placeholder="Sélectionner...">
+                        <span class="input-group-text bg-light text-secondary small fw-bold py-1" id="activePeriodLabel" style="min-width: 100px; justify-content: center; font-size: 0.75rem;">
+                            Chargement...
+                        </span>
+                    </div>
+                </div>
+                
+                <div id="colShortcuts" class="col-md-4">
+                    <span class="filter-label">Raccourcis</span>
+                    <div class="btn-group w-100">
+                        <button class="btn btn-preset active" onclick="setPreset('currentWeek')">Sem. cours</button>
+                        <button class="btn btn-preset" onclick="setPreset('lastWeek')">Sem. préc.</button>
+                        <button class="btn btn-preset" onclick="setPreset('currentMonth')">Ce Mois</button>
+                        <button class="btn btn-preset" onclick="setPreset('lastMonth')">Mois Préc.</button>
+                        <button class="btn btn-preset" onclick="setPreset('currentYear')">Année</button>
+                    </div>
+                </div>
+
+                <div id="colSelector" class="col-md-3" style="display:none;">
+                    <span class="filter-label text-success fw-bold"><i class="bi bi-person-lines-fill"></i> Collaborateur</span>
+                    <select id="userSelect" class="form-select form-select-sm border-success shadow-sm" onchange="updateDashboard()">
+                    </select>
+                </div>
+
+                <div id="colGranularity" class="col-md-2">
+                    <span class="filter-label">Granularité</span>
+                    <select id="granularitySelect" class="form-select form-select-sm border-0 bg-light">
+                        <option value="day">Jour</option>
+                        <option value="week" selected>Semaine</option>
+                        <option value="month">Mois</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="dashboardContent">
+            <div class="row g-2 mb-4">
+                <div class="col">
+                    <div class="card p-2 h-100 text-center">
+                        <div class="stat-value" id="kpiHoursGlobal">0h</div>
+                        <div class="stat-label">Total Global</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card p-2 h-100 text-center">
+                        <div class="stat-value" id="kpiHours">0h</div>
+                        <div class="stat-label">Total (Hors Abs)</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card p-2 h-100 text-center">
+                        <div class="stat-value" id="kpiDays">0</div>
+                        <div class="stat-label">Jours Travaillés</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card p-2 h-100 text-center">
+                        <div class="stat-value" id="kpiUsers">0</div>
+                        <div class="stat-label" id="kpiUserLabel">Collaborateurs</div>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="card p-2 h-100 text-center">
+                        <div class="stat-value" id="kpiTasks">0</div>
+                        <div class="stat-label">Tâches/Tickets</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-12" id="globalDistributionCard">
+                    <div class="card h-100">
+                        <div class="card-header" id="distribTitle">Répartition RUN vs Projet</div>
+                        <div class="card-body">
+                            <div class="chart-container"><canvas id="distributionChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">Temps saisis</div>
+                        <div class="card-body">
+                            <div class="chart-container"><canvas id="timeChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12" id="detailDistributionCard">
+                    <div class="card h-100">
+                        <div class="card-header" id="detailChartTitle">Répartition par Dossier</div>
+                        <div class="card-body">
+                            <div class="chart-container" style="height: 500px;"><canvas id="projectChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12" id="projectCategoryCard" style="display:none;">
+                    <div class="card h-100">
+                        <div class="card-header">Répartition Projets par Catégorie</div>
+                        <div class="card-body">
+                            <div class="chart-container" style="height: 500px;"><canvas id="projectCategoryChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12" id="userCategoryCard" style="display:none;">
+                    <div class="card h-100">
+                        <div class="card-header">Répartition par Catégorie</div>
+                        <div class="card-body">
+                            <div class="chart-container" style="height: 500px;"><canvas id="userCategoryChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12" id="userChartCard">
+                    <div class="card">
+                        <div class="card-header">Top Contributeurs</div>
+                        <div class="card-body">
+                            <div class="chart-container" style="height: 500px;"><canvas id="userChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- FONCTION FORMATAGE HEURES.MINUTES (7.45h) ---
+    function formatH_MM(val) {
+        let sign = val < 0 ? "-" : "";
+        val = Math.abs(val);
+        let h = Math.floor(val);
+        let m = Math.round((val - h) * 60);
+        if (m >= 60) { h++; m = 0; }
+        return sign + h + '.' + (m < 10 ? '0' : '') + m;
+    }
+
+    // --- CHART JS CONFIG ---
+    Chart.register(ChartDataLabels);
+    Chart.defaults.set('plugins.datalabels', {
+        color: '#000000', 
+        backgroundColor: 'rgba(255,255,255,0.5)',
+        borderRadius: 3,
+        font: { weight: 'bold', size: 13 }, 
+        // UTILISATION DU FORMAT H.MM
+        formatter: (value) => formatH_MM(value) + 'h',
+        anchor: 'end', align: 'end', offset: 0,
+        display: function(context) { return context.dataset.data[context.dataIndex] > 0; }
+    });
+
+    // --- STATE & PERSISTENCE ---
+    let store = { project: [], run: [], currentView: 'global' };
+    
+    // Chargement sécurisé du LocalStorage
+    let userTeamMap = {};
+    try {
+        const saved = localStorage.getItem('teamConfig');
+        if (saved) userTeamMap = JSON.parse(saved);
+    } catch(e) {
+        userTeamMap = {};
+    }
+
+    const TEAMS = ['SUPPLY CHAIN', 'P&Q', 'INDUS IT', 'R&D IS'];
+    let datePickerInst;
+    let charts = {};
+    let confirmMode = false;
+
+    // --- SETUP IMPORT ---
+    setupUpload('dropRun', 'fileRun', 'nameRun', 'run');
+    setupUpload('dropProject', 'fileProject', 'nameProject', 'project');
+
+    function setupUpload(areaId, fileId, nameId, type) {
+        const area = document.getElementById(areaId);
+        const input = document.getElementById(fileId);
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => area.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }));
+        area.addEventListener('drop', (e) => handleFile(e.dataTransfer.files[0], type, areaId, nameId));
+        input.addEventListener('change', function() { handleFile(this.files[0], type, areaId, nameId); });
+    }
+
+    function handleFile(file, type, areaId, nameId) {
+        if (!file) return;
+        const fileName = file.name.toUpperCase();
+        let errorMsg = "";
+        if (type === 'run' && !fileName.includes('[RUN]')) errorMsg = "ERREUR IMPORT :\nLe fichier pour la zone RUN doit contenir le tag [RUN].";
+        if (type === 'project' && !fileName.includes('[PROJETS]')) errorMsg = "ERREUR IMPORT :\nLe fichier pour la zone PROJET doit contenir le tag [PROJETS].";
+
+        if (errorMsg) {
+            alert(errorMsg); 
+            document.getElementById(areaId).classList.add('error', 'shake-animation');
+            document.getElementById(type === 'run' ? 'fileRun' : 'fileProject').value = ''; 
+            setTimeout(() => { document.getElementById(areaId).classList.remove('error', 'shake-animation'); }, 2000);
+            return; 
+        }
+
+        document.getElementById(areaId).classList.add('uploaded');
+        document.getElementById(nameId).innerHTML = `<i class="bi bi-check-circle-fill text-success"></i> ${file.name}`;
+        
+        const callback = (data) => {
+            store[type] = processRawData(data, type);
+            checkReady(); 
+        };
+
+        if (file.name.endsWith('.csv')) {
+            Papa.parse(file, { header: true, skipEmptyLines: true, complete: (res) => callback(res.data) });
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const wb = XLSX.read(new Uint8Array(e.target.result), {type: 'array'});
+                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {raw: false, defval:""});
+                callback(data);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    }
+
+    function checkReady() {
+        confirmMode = false;
+        document.getElementById('missingFileAlert').style.display = 'none'; 
+        const btn = document.getElementById('btnLaunch');
+        btn.innerHTML = '<i class="bi bi-play-fill"></i> Lancer l\'analyse';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-success');
+        if (store.project.length > 0 || store.run.length > 0) {
+            document.getElementById('analyzeBtnContainer').style.display = 'block';
+        }
+    }
+
+    function handleStartClick() {
+        const hasProject = store.project.length > 0;
+        const hasRun = store.run.length > 0;
+        if (hasProject && hasRun) { startAnalysis(); return; }
+        if (!confirmMode) {
+            document.getElementById('missingFileAlert').style.display = 'inline-block';
+            document.getElementById('btnLaunch').innerHTML = 'Confirmer et Lancer';
+            document.getElementById('btnLaunch').classList.add('btn-danger'); 
+            confirmMode = true; 
+        } else { startAnalysis(); }
+    }
+
+    // --- MOTEUR IMPORT (BASE 1.5 - INCHANGE) ---
+    function processRawData(data, sourceType) {
+        return data.filter(row => {
+            if (!row) return false;
+            // Détection "large" qui fonctionnait
+            const u = Object.keys(row).find(k => k && k.toLowerCase().includes("utilisateur"));
+            const t = Object.keys(row).find(k => k && k.toLowerCase().includes("temps passé"));
+            return u && row[u] && t;
+        }).map(row => {
+            const uKey = Object.keys(row).find(k => k.toLowerCase().includes("utilisateur"));
+            const pKey = Object.keys(row).find(k => k.toLowerCase().includes("projet") || k.toLowerCase().includes("dossier"));
+            const dKey = Object.keys(row).find(k => k.toLowerCase().includes("date"));
+            const tKey = Object.keys(row).find(k => k.toLowerCase().includes("temps passé"));
+            
+            let cKey = Object.keys(row).find(k => k.trim().toLowerCase() === "catégorie");
+            if (!cKey) {
+                cKey = Object.keys(row).find(k => {
+                    const lk = k.toLowerCase();
+                    return (lk.includes("activité") || lk.includes("tâche")) && !lk.includes("id") && !lk.includes("code");
+                });
+            }
+
+            // Safe Date Parsing
+            let dObj = new Date(row[dKey]);
+            if (isNaN(dObj.getTime())) { dObj = new Date(); }
+            dObj.setHours(12, 0, 0, 0); 
+
+            // -- DETECTION ABSENCE V2.6 --
+            let finalSource = sourceType;
+            const catVal = (cKey && row[cKey]) ? String(row[cKey]) : "";
+            const projVal = (pKey && row[pKey]) ? String(row[pKey]) : "";
+            
+            if (catVal.includes("IT&D_PM_Absences") || catVal.toLowerCase().includes("absence") || projVal.toLowerCase().includes("absence")) {
+                finalSource = 'absence';
+            }
+
+            return {
+                source: finalSource,
+                user: row[uKey],
+                project: (pKey && row[pKey]) ? row[pKey] : "Non spécifié",
+                category: (cKey && row[cKey]) ? row[cKey] : "Sans catégorie", 
+                dateObj: dObj, 
+                timestamp: dObj.getTime(),
+                hours: timeToDecimal(row[tKey])
+            };
+        });
+    }
+
+    function timeToDecimal(timeStr) {
+        if (timeStr == null || timeStr === "") return 0;
+        if (typeof timeStr === 'number') return timeStr * 24; 
+        
+        let str = String(timeStr).trim().replace(',', '.');
+        
+        // Format "1h 30m" ou "1h30"
+        if (str.toLowerCase().includes('h')) {
+            let parts = str.toLowerCase().split('h');
+            let h = parseFloat(parts[0]) || 0;
+            let m = 0;
+            if (parts.length > 1 && parts[1]) {
+                m = parseFloat(parts[1].replace('m', '')) || 0;
+            }
+            return h + (m/60);
+        }
+
+        // Format "1:30"
+        if (str.includes(':')) {
+            const parts = str.split(':');
+            if (parts.length >= 2) return parseInt(parts[0]) + (parseInt(parts[1])/60);
+        }
+        return parseFloat(str) || 0;
+    }
+
+    function startAnalysis() {
+        document.getElementById('importSection').style.display = 'none';
+        document.getElementById('dashboardSection').style.display = 'block';
+        document.getElementById('resetBtn').style.display = 'inline-block';
+        document.getElementById('pdfBtn').style.display = 'inline-block';
+        
+        populateUserSelect(); 
+
+        const today = new Date();
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+        document.getElementById('granularitySelect').value = 'week';
+
+        datePickerInst = flatpickr("#dateRangePicker", {
+            mode: "range", dateFormat: "d/m/Y", defaultDate: [startOfMonth, endOfMonth], locale: "fr",
+            onChange: () => updateDashboard()
+        });
+
+        document.getElementById('granularitySelect').addEventListener('change', updateDashboard);
+        updateDashboard();
+    }
+
+    // --- POPULATION LISTE UTILISATEUR AVEC EQUIPES ---
+    function populateUserSelect() {
+        const allData = [...store.project, ...store.run];
+        const uniqueUsers = [...new Set(allData.map(d => d.user))].sort();
+        const select = document.getElementById('userSelect');
+        select.innerHTML = '<option value="all">Tous les collaborateurs</option>';
+
+        const groupTeams = document.createElement('optgroup');
+        groupTeams.label = " -- ÉQUIPES -- ";
+        TEAMS.forEach(team => {
+            const opt = document.createElement('option');
+            opt.value = team;
+            opt.innerText = team;
+            groupTeams.appendChild(opt);
+        });
+        select.appendChild(groupTeams);
+
+        const groupUsers = document.createElement('optgroup');
+        groupUsers.label = " -- INDIVIDUEL -- ";
+        uniqueUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u;
+            opt.innerText = u;
+            groupUsers.appendChild(opt);
+        });
+        select.appendChild(groupUsers);
+    }
+
+    // --- LOGIQUE PARAMETRES ---
+    function renderTeamManager() {
+        const selectedTeam = document.getElementById('teamConfigSelect').value;
+        const searchQuery = document.getElementById('userSearch').value.toLowerCase();
+        const container = document.getElementById('userListContainer');
+        container.innerHTML = "";
+
+        const allData = [...store.project, ...store.run];
+        const uniqueUsers = [...new Set(allData.map(d => d.user))].sort();
+
+        if (uniqueUsers.length === 0) {
+            container.innerHTML = "<div class='p-3 text-muted text-center'>Aucun collaborateur trouvé.</div>";
+            return;
+        }
+
+        uniqueUsers.forEach(user => {
+            if (searchQuery && !user.toLowerCase().includes(searchQuery)) return;
+
+            const assignedTeam = userTeamMap[user];
+            const isAssignedHere = assignedTeam === selectedTeam;
+            const isAssignedElsewhere = assignedTeam && assignedTeam !== selectedTeam;
+
+            const div = document.createElement('div');
+            div.className = `user-list-item d-flex align-items-center ${isAssignedElsewhere ? 'disabled-row' : ''}`;
+            
+            let badge = "";
+            if (isAssignedElsewhere) badge = `<span class="badge-team">${assignedTeam}</span>`;
+
+            // ID safe for querySelector
+            const safeId = user.replace(/[^a-zA-Z0-9]/g, '');
+
+            div.innerHTML = `
+                <div class="form-check w-100">
+                    <input class="form-check-input" type="checkbox" id="chk_${safeId}" 
+                        ${isAssignedHere ? 'checked' : ''} 
+                        ${isAssignedElsewhere ? 'disabled' : ''}
+                        onchange="toggleUserTeam('${user.replace(/'/g, "\\'")}', '${selectedTeam}', this.checked)">
+                    <label class="form-check-label w-100 d-flex justify-content-between" for="chk_${safeId}">
+                        <span>${user}</span>
+                        ${badge}
+                    </label>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function toggleUserTeam(user, team, isChecked) {
+        if (isChecked) userTeamMap[user] = team;
+        else delete userTeamMap[user];
+        localStorage.setItem('teamConfig', JSON.stringify(userTeamMap));
+    }
+
+    function switchView(view) {
+        store.currentView = view;
+        document.querySelectorAll('.nav-link').forEach(l => {
+            l.classList.remove('active', 'active-run', 'active-global', 'active-project', 'active-user', 'active-settings');
+            if (l.getAttribute('onclick').includes(`'${view}'`)) {
+                l.classList.add('active');
+                if (view === 'run') l.classList.add('active-run');
+                if (view === 'global') l.classList.add('active-global');
+                if (view === 'project') l.classList.add('active-project');
+                if (view === 'user') l.classList.add('active-user');
+                if (view === 'settings') l.classList.add('active-settings');
+            }
+        });
+        
+        const elements = {
+            distCard: document.getElementById('globalDistributionCard'),
+            detailTitle: document.getElementById('detailChartTitle'),
+            projectCatCard: document.getElementById('projectCategoryCard'),
+            userCatCard: document.getElementById('userCategoryCard'),
+            shortcuts: document.getElementById('shortcutsContainer'),
+            colDate: document.getElementById('colDate'),
+            colShortcuts: document.getElementById('colShortcuts'),
+            colSelector: document.getElementById('colSelector'),
+            colGranularity: document.getElementById('colGranularity'),
+            userChartCard: document.getElementById('userChartCard'),
+            distribTitle: document.getElementById('distribTitle'),
+            settingsContainer: document.getElementById('settingsContainer'),
+            mainFilterBar: document.getElementById('mainFilterBar'),
+            dashboardContent: document.getElementById('dashboardContent')
+        };
+
+        // Reset
+        elements.distCard.style.display = 'none';
+        elements.projectCatCard.style.display = 'none';
+        elements.userCatCard.style.display = 'none';
+        elements.userChartCard.style.display = 'block';
+        
+        if (view === 'settings') {
+            elements.settingsContainer.style.display = 'block';
+            elements.mainFilterBar.style.display = 'none';
+            elements.dashboardContent.style.display = 'none';
+            renderTeamManager();
+            return; 
+        } else {
+            elements.settingsContainer.style.display = 'none';
+            elements.mainFilterBar.style.display = 'block';
+            elements.dashboardContent.style.display = 'block';
+        }
+
+        if (view === 'global') {
+            elements.colSelector.style.display = 'none';
+            elements.colDate.className = 'col-md-3';
+            elements.colShortcuts.className = 'col-md-6'; // Agrandit pour remplir
+            elements.colGranularity.className = 'col-md-3';
+            
+            elements.distCard.style.display = 'block'; 
+            elements.detailTitle.innerText = 'Répartition Globale (Projets & Dossiers)';
+            elements.distribTitle.innerText = 'Répartition RUN vs Projet';
+        } 
+        else {
+            // Vue RUN, PROJET ou USER : Affiche Selecteur, Compacte Raccourcis
+            elements.colSelector.style.display = 'block';
+            elements.colDate.className = 'col-md-3';
+            elements.colShortcuts.className = 'col-md-4'; // Réduit
+            elements.colSelector.className = 'col-md-3';
+            elements.colGranularity.className = 'col-md-2';
+
+            if (view === 'run') {
+                elements.detailTitle.innerText = 'Répartition par Catégorie';
+            } else if (view === 'project') {
+                elements.detailTitle.innerText = 'Détail des Projets';
+                elements.projectCatCard.style.display = 'block'; 
+            } else if (view === 'user') {
+                elements.distCard.style.display = 'block'; 
+                elements.userCatCard.style.display = 'block'; 
+                elements.distribTitle.innerText = 'Répartition (RUN vs Projet)';
+                elements.detailTitle.innerText = 'Top 10 Tâches/Projets';
+                
+                // Cache userChart si c'est un user unique
+                const val = document.getElementById('userSelect').value;
+                if (!TEAMS.includes(val) && val !== 'all') {
+                    elements.userChartCard.style.display = 'none'; 
+                }
+            }
+        }
+        updateDashboard();
+    }
+
+    function updateDashboard() {
+        const dates = datePickerInst.selectedDates;
+        if (dates.length < 2) return;
+        const start = dates[0].setHours(0,0,0,0);
+        const end = dates[1].setHours(23,59,59,999);
+        const granular = document.getElementById('granularitySelect').value;
+        const selectedVal = document.getElementById('userSelect').value;
+
+        updatePeriodLabel(start, end);
+
+        let dataset = [];
+        if (store.currentView === 'global' || store.currentView === 'user' || store.currentView === 'settings') dataset = [...store.project, ...store.run];
+        else dataset = store[store.currentView];
+
+        // LOGIQUE DIVISEUR POUR MOYENNE
+        let divisor = 1;
+        let suffix = 'h';
+        const rangeDurationMs = end - start;
+        const oneDayMs = 1000 * 60 * 60 * 24;
+        const totalDaysInRange = Math.max(1, Math.ceil(rangeDurationMs / oneDayMs));
+
+        if (granular === 'week') {
+            divisor = Math.max(1, totalDaysInRange / 7);
+            suffix = 'h/sem';
+        } else if (granular === 'month') {
+            divisor = Math.max(1, totalDaysInRange / 30.44);
+            suffix = 'h/mois';
+        } else if (granular === 'day') {
+            divisor = 1; 
+            suffix = 'h';
+        }
+
+        // FILTRAGE SUR TOUTES LES VUES SAUF GLOBAL
+        // (Si on est en Global, on ignore le selecteur car il est caché)
+        const isFilteredView = ['user', 'run', 'project'].includes(store.currentView);
+        
+        if (isFilteredView && selectedVal !== 'all') {
+            if (TEAMS.includes(selectedVal)) {
+                const teamMembers = Object.keys(userTeamMap).filter(u => userTeamMap[u] === selectedVal);
+                dataset = dataset.filter(d => teamMembers.includes(d.user));
+                // Update Title only for User view
+                if(store.currentView === 'user') document.getElementById('distribTitle').innerText = `Répartition Équipe : ${selectedVal}`;
+            } else {
+                dataset = dataset.filter(d => d.user === selectedVal);
+                if(store.currentView === 'user') document.getElementById('distribTitle').innerText = `Répartition Personnelle : ${selectedVal}`;
+            }
+        }
+
+        const filtered = dataset.filter(d => d.timestamp >= start && d.timestamp <= end);
+        let totalHours = 0;
+        let totalProdHours = 0; // NOUVEAU COMPTEUR (v1.9)
+        const users = {}, items = {}, projectCategories = {}, userCategories = {}, 
+              sources = { project: 0, run: 0, absence: 0 }, 
+              days = new Set(), timeline = {};
+
+        filtered.forEach(d => {
+            // -- LOGIQUE AGGREGATION --
+            // Le total Global inclut TOUT (y compris absence)
+            totalHours += d.hours;
+            
+            // Le total Productif exclut les absences
+            if (d.source !== 'absence') {
+                totalProdHours += d.hours;
+            }
+            
+            users[d.user] = (users[d.user] || 0) + d.hours;
+            
+            let itemKey = d.project;
+            if (store.currentView === 'run') itemKey = d.category;
+            if (store.currentView === 'user') itemKey = d.project !== "Non spécifié" ? d.project : d.category;
+
+            items[itemKey] = (items[itemKey] || 0) + d.hours;
+
+            if (store.currentView === 'project') projectCategories[d.category] = (projectCategories[d.category] || 0) + d.hours;
+            if (store.currentView === 'user') userCategories[d.category] = (userCategories[d.category] || 0) + d.hours;
+
+            // On ajoute au compteur de source adéquat (run, project ou absence)
+            if (sources[d.source] !== undefined) {
+                sources[d.source] += d.hours;
+            } else {
+                sources[d.source] = (sources[d.source] || 0) + d.hours; 
+            }
+            
+            days.add(d.timestamp);
+
+            let k;
+            const dt = d.dateObj;
+            
+            // KEY GENERATION (DATE LOCAL FIX)
+            if (granular === 'day') {
+                const y = dt.getFullYear();
+                const m = String(dt.getMonth()+1).padStart(2, '0');
+                const d = String(dt.getDate()).padStart(2, '0');
+                k = `${y}-${m}-${d}`;
+            }
+            else if (granular === 'month') {
+                const y = dt.getFullYear();
+                const m = String(dt.getMonth()+1).padStart(2, '0');
+                k = `${y}-${m}`;
+            }
+            else k = getMonday(dt).getTime();
+
+            if (!timeline[k]) timeline[k] = { total: 0, project: 0, run: 0, absence: 0 };
+            timeline[k].total += d.hours;
+            
+            // Sécurité pour la timeline
+            if (timeline[k][d.source] !== undefined) {
+                timeline[k][d.source] += d.hours;
+            } else {
+                 timeline[k][d.source] = d.hours;
+            }
+        });
+
+        // KPI FORMATTE H.MM
+        document.getElementById('kpiHoursGlobal').innerText = formatH_MM(totalHours); // GLOBAL
+        document.getElementById('kpiHours').innerText = formatH_MM(totalProdHours); // PRODUCTIF
+        document.getElementById('kpiDays').innerText = days.size;
+        
+        if (store.currentView === 'user') {
+            if (TEAMS.includes(selectedVal)) {
+               document.getElementById('kpiUserLabel').innerText = "Membres Actifs";
+               document.getElementById('kpiUsers').innerText = Object.keys(users).length;
+            } else {
+               document.getElementById('kpiUserLabel').innerText = "Projets/Catégories";
+               document.getElementById('kpiUsers').innerText = Object.keys(items).length;
+            }
+        } else {
+            document.getElementById('kpiUserLabel').innerText = "Collaborateurs";
+            document.getElementById('kpiUsers').innerText = Object.keys(users).length;
+        }
+        document.getElementById('kpiTasks').innerText = Object.keys(items).length;
+
+        // MISE A JOUR DU GRAPHIQUE CAMEMBERT (DISTRIBUTION)
+        if (store.currentView === 'global' || store.currentView === 'user') {
+            // On ajoute 'Absences' aux données et au schéma de couleurs (gris)
+            renderChart('distributionChart', 'doughnut', 'Source', 
+                { 'RUN': sources.run, 'Projets': sources.project, 'Absences': sources.absence }, 
+                ['#d63384', '#fd7e14', '#6c757d'], // Ajout du gris pour absence
+                divisor, suffix);
+        }
+
+        const sortedItems = Object.entries(items).sort((a,b) => b[1] - a[1]).slice(0, 15);
+        const itemLabels = sortedItems.map(i => i[0]);
+        const itemData = Object.fromEntries(sortedItems);
+        
+        let barColors;
+        if (store.currentView === 'run') {
+            barColors = itemLabels.map(l => {
+                const label = l ? l.toLowerCase() : "";
+                if (label.includes('absence') || label.includes('congé')) return '#6c757d'; 
+                return '#d63384'; 
+            });
+        } else if (store.currentView === 'user') {
+             barColors = '#20c997'; 
+        } else {
+            barColors = store.currentView === 'project' ? '#fd7e14' : '#6610f2';
+        }
+
+        renderChart('projectChart', 'bar', 'Heures', itemData, barColors, divisor, suffix);
+
+        if (store.currentView === 'project') {
+            const sortedProjCats = Object.entries(projectCategories).sort((a,b) => b[1] - a[1]);
+            const projCatData = Object.fromEntries(sortedProjCats);
+            renderChart('projectCategoryChart', 'bar', 'Heures', projCatData, '#20c997', divisor, suffix);
+        }
+        
+        if (store.currentView === 'user') {
+            const sortedUserCats = Object.entries(userCategories).sort((a,b) => b[1] - a[1]);
+            renderChart('userCategoryChart', 'bar', 'Heures', Object.fromEntries(sortedUserCats), '#20c997', divisor, suffix);
+        }
+
+        // Afficher Top Contributeurs sauf si User unique selectionné
+        const hideUserChart = (store.currentView === 'user' && selectedVal !== 'all' && !TEAMS.includes(selectedVal));
+        if (!hideUserChart) {
+            const sortedUsers = Object.entries(users).sort((a,b) => b[1] - a[1]);
+            renderChart('userChart', 'bar', 'Heures', Object.fromEntries(sortedUsers), '#6610f2', divisor, suffix);
+        }
+
+        const sortedKeys = Object.keys(timeline).sort();
+        const chartLabels = sortedKeys.map(k => {
+            if (granular === 'week') return formatWeekLabel(k);
+            if (granular === 'month') {
+                const [y, m] = k.split('-');
+                return capitalize(new Date(y, m-1).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}));
+            }
+            if (granular === 'day') {
+                const [y, m, d] = k.split('-');
+                return `${d}/${m}/${y}`;
+            }
+            return new Date(parseInt(k)).toLocaleDateString('fr-FR');
+        });
+
+        const timelineDataForChart = {};
+        sortedKeys.forEach((key, i) => {
+            timelineDataForChart[chartLabels[i]] = timeline[key];
+        });
+
+        renderTimeline('timeChart', timelineDataForChart, granular);
+    }
+
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('landscape', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(18);
+        pdf.setTextColor(40);
+        let title = "Rapport d'Analyse des Temps";
+        if (store.currentView === 'user') {
+            const selUser = document.getElementById('userSelect');
+            const userName = selUser.value;
+            if (TEAMS.includes(userName)) title = "Rapport Équipe : " + userName;
+            else if (userName !== 'all') title = "Rapport Individuel : " + selUser.options[selUser.selectedIndex].text;
+        }
+        pdf.text(title, 15, 15);
+        
+        pdf.setFontSize(11);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(100);
+        pdf.text("Période : " + document.getElementById('activePeriodLabel').innerText, 15, 22);
+        
+        const kpiY = 30;
+        pdf.setFillColor(245, 245, 245);
+        pdf.rect(15, kpiY, pageWidth - 30, 20, 'F');
+        
+        let userKpiLabel = "Collaborateurs";
+        const selectedVal = document.getElementById('userSelect').value;
+        if (store.currentView === 'user' && !TEAMS.includes(selectedVal)) {
+            userKpiLabel = "Projets/Cat";
+        }
+
+        const kpiValues = [
+            { l: "Total Heures", v: document.getElementById('kpiHours').innerText },
+            { l: "Jours Travaillés", v: document.getElementById('kpiDays').innerText },
+            { l: userKpiLabel, v: document.getElementById('kpiUsers').innerText },
+            { l: "Tâches", v: document.getElementById('kpiTasks').innerText }
+        ];
+        
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(0);
+        kpiValues.forEach((kpi, i) => {
+            const xPos = 15 + (i * ((pageWidth - 30) / 4)) + 10;
+            pdf.setFontSize(14);
+            pdf.text(kpi.v, xPos, kpiY + 8);
+            pdf.setFontSize(9);
+            pdf.setTextColor(100);
+            pdf.text(kpi.l.toUpperCase(), xPos, kpiY + 15);
+            pdf.setTextColor(0);
+        });
+
+        const addGraph = (chartKey, x, y, w, hMax, title) => {
+            if (!charts[chartKey]) return 0;
+            const cvs = charts[chartKey].canvas;
+            const ratio = cvs.height / cvs.width;
+            let h = w * ratio;
+            if (h > hMax) h = hMax;
+
+            if (title) {
+                pdf.setFontSize(12);
+                pdf.setTextColor(50);
+                pdf.text(title, x, y - 2);
+            }
+            pdf.addImage(charts[chartKey].toBase64Image(), 'PNG', x, y, w, h);
+            return h;
+        };
+
+        let currentY = 65;
+        addGraph('timeChart', 15, currentY, pageWidth - 30, 70, "Temps saisis");
+        currentY += 80;
+
+        if (store.currentView === 'global' || store.currentView === 'user') {
+            if (currentY + 60 > pageHeight) { pdf.addPage(); currentY = 20; }
+            const pieTitle = store.currentView === 'user' ? document.getElementById('distribTitle').innerText : "Répartition Globale";
+            addGraph('distributionChart', 15, currentY, pageWidth / 2, 60, pieTitle);
+        }
+
+        pdf.addPage();
+        currentY = 20;
+        
+        const userChartCard = document.getElementById('userChartCard');
+        if (userChartCard && userChartCard.style.display !== 'none') {
+            addGraph('userChart', 15, currentY, pageWidth - 30, 80, "Top Contributeurs");
+            currentY += 90;
+        }
+        
+        let detailTitle = "Détail Dossiers";
+        if (store.currentView === 'run') detailTitle = "Répartition par Catégorie";
+        if (store.currentView === 'user') detailTitle = "Top 10 Tâches/Projets";
+        
+        addGraph('projectChart', 15, currentY, pageWidth - 30, 80, detailTitle);
+        
+        if (store.currentView === 'project') {
+            pdf.addPage();
+            currentY = 20;
+            addGraph('projectCategoryChart', 15, currentY, pageWidth - 30, 80, "Répartition Projets par Catégorie");
+        }
+        
+        if (store.currentView === 'user') {
+            pdf.addPage();
+            currentY = 20;
+            addGraph('userCategoryChart', 15, currentY, pageWidth - 30, 80, "Répartition par Catégorie");
+        }
+
+        pdf.save(`Rapport_Analyse_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+    function getMonday(d) { d = new Date(d); var day = d.getDay(), diff = d.getDate() - day + (day == 0 ? -6 : 1); return new Date(d.setDate(diff)); }
+    function getWeekNumber(d) { d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7)); var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1)); return Math.ceil((((d - yearStart) / 86400000) + 1)/7); }
+    function formatWeekLabel(timestamp) { const monday = new Date(parseInt(timestamp)); const friday = new Date(monday); friday.setDate(monday.getDate() + 4); const weekNum = getWeekNumber(monday); const year = monday.getFullYear(); const optsShort = { day: '2-digit', month: '2-digit' }; return `S${weekNum} ${year} - du ${monday.toLocaleDateString('fr-FR', optsShort)} au ${friday.toLocaleDateString('fr-FR', optsShort)}`; }
+    function updatePeriodLabel(startDateMs, endDateMs) { const start = new Date(startDateMs); const end = new Date(endDateMs); const labelEl = document.getElementById('activePeriodLabel'); const opts = { month: 'long', year: 'numeric' }; if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) { labelEl.innerText = capitalize(start.toLocaleDateString('fr-FR', opts)); } else { labelEl.innerText = `${capitalize(start.toLocaleDateString('fr-FR', {month:'short'}))} - ${capitalize(end.toLocaleDateString('fr-FR', {month:'short', year:'numeric'}))}`; } }
+
+    function renderChart(id, type, label, dataObj, colors, divisor = 1, suffix = 'h') {
+        const ctx = document.getElementById(id).getContext('2d');
+        if (charts[id]) charts[id].destroy();
+        
+        const labels = Object.keys(dataObj);
+        const values = Object.values(dataObj).map(v => v / divisor);
+        
+        let bgColors = colors;
+        if (!Array.isArray(colors) && id === 'projectChart') {
+             bgColors = labels.map((_, i) => {
+                 let c = colors === '#d63384' ? [214, 51, 132] : (colors === '#fd7e14' ? [253, 126, 20] : [102, 16, 242]);
+                 return `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${Math.max(0.4, 1 - (i * 0.05))})`;
+             });
+        }
+
+        const isHorizontal = (id === 'projectChart' || id === 'userChart' || id === 'projectCategoryChart' || id === 'userCategoryChart');
+        charts[id] = new Chart(ctx, { type: type, data: { labels, datasets: [{ label, data: values, backgroundColor: bgColors, borderWidth: 1 }] }, 
+            options: { 
+                responsive: true, maintainAspectRatio: false, indexAxis: isHorizontal ? 'y' : 'x', 
+                plugins: { 
+                    legend: { 
+                        display: type === 'doughnut',
+                        position: 'right'
+                    }, 
+                    datalabels: { anchor: isHorizontal ? 'end' : 'end', align: isHorizontal ? 'end' : 'top', offset: 4, formatter: (v) => formatH_MM(v) + suffix } 
+                },
+                layout: { padding: { right: isHorizontal ? 45 : 0, top: isHorizontal ? 0 : 20 } },
+                scales: type === 'doughnut' ? { x: { display: false }, y: { display: false } } : { [isHorizontal ? 'x' : 'y']: { ticks: { callback: function(value) { return value + 'h'; } } } } 
+            } 
+        });
+    }
+
+    // --- TIMELINE AVEC ABSENCES ---
+    function renderTimeline(id, dataMap, granular) {
+        const ctx = document.getElementById(id).getContext('2d');
+        if (charts[id]) charts[id].destroy();
+        const labels = Object.keys(dataMap).sort();
+        const datasets = [];
+        // PAS DE DIVISEUR POUR TIMELINE
+        if (store.currentView === 'global' || store.currentView === 'user' || store.currentView === 'settings') { 
+            datasets.push({ label: 'RUN', data: labels.map(k => dataMap[k].run), backgroundColor: '#d63384', stack: 'Stack 0' }); 
+            datasets.push({ label: 'Projet', data: labels.map(k => dataMap[k].project), backgroundColor: '#fd7e14', stack: 'Stack 0' }); 
+            // AJOUT DU DATASET ABSENCE (GRIS)
+            datasets.push({ label: 'Absences', data: labels.map(k => dataMap[k].absence || 0), backgroundColor: '#6c757d', stack: 'Stack 0' });
+        } 
+        else { 
+            const color = store.currentView === 'run' ? '#d63384' : '#fd7e14'; 
+            datasets.push({ label: 'Heures', data: labels.map(k => dataMap[k].total), backgroundColor: color, borderColor: color, tension: 0.3, fill: true }); 
+        }
+        
+        charts[id] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, 
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: function(value) { return formatH_MM(value) + 'h'; } } } }, 
+                plugins: { 
+                    datalabels: { 
+                        display: function(context) { return context.dataset.data[context.dataIndex] > 0; },
+                        color: '#000', 
+                        font: { weight: 'bold', size: 13 },
+                        formatter: (v) => formatH_MM(v) + 'h',
+                        anchor: 'center', align: 'center'
+                    } 
+                } 
+            } 
+        });
+    }
+
+    function setPreset(type) {
+        const today = new Date();
+        let start, end;
+        if (type === 'currentMonth') { start = new Date(today.getFullYear(), today.getMonth(), 1); end = new Date(today.getFullYear(), today.getMonth() + 1, 0); } 
+        else if (type === 'lastMonth') { start = new Date(today.getFullYear(), today.getMonth() - 1, 1); end = new Date(today.getFullYear(), today.getMonth(), 0); } 
+        else if (type === 'currentYear') { start = new Date(today.getFullYear(), 0, 1); end = new Date(today.getFullYear(), 11, 31); } 
+        // NOUVEAUX RACCOURCIS SEMAINE
+        else if (type === 'currentWeek') { 
+            start = getMonday(new Date()); 
+            end = new Date(start); 
+            end.setDate(end.getDate() + 6);
+        }
+        else if (type === 'lastWeek') {
+            const t = new Date();
+            t.setDate(t.getDate() - 7);
+            start = getMonday(t);
+            end = new Date(start);
+            end.setDate(end.getDate() + 6);
+        }
+        else { const all = [...store.project, ...store.run]; const ts = all.map(d => d.timestamp); start = new Date(Math.min(...ts)); end = new Date(Math.max(...ts)); }
+        
+        document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+        // Met en surbrillance le bouton cliqué (event.target ne marche pas ici car appelé via JS parfois, on simplifie)
+        
+        datePickerInst.setDate([start, end], true);
+    }
+</script>
+
+</body>
+</html>
