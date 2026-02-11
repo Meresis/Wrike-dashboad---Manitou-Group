@@ -3,879 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wrike Pilotage v11.5 (Export PDF)</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+    <title>Dashboards Wrike | Manitou Group</title>
     <style>
-        :root { --primary: #0d6efd; --bg: #f0f2f5; --kpi-h: 150px; }
-        
-        body { 
-            background-color: var(--bg); font-family: 'Segoe UI', sans-serif; 
-            height: 100vh; overflow: hidden;
-            display: flex; flex-direction: column; align-items: center;
+        :root {
+            --primary-color: #e2001a; /* Rouge Manitou */
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
         }
 
-        .app-wrapper { 
-            width: 100%; max-width: 1700px; height: 100%; 
-            display: flex; flex-direction: column; padding: 20px; gap: 15px; 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
         }
 
-        .panel { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; }
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
 
-        /* Header */
-        .top-bar { padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-unit { font-weight: bold; width: 35px; }
-        .btn-primary { color: white !important; }
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+        }
 
-        /* Tabs */
-        .nav-tabs .nav-link { border: none; color: #6c757d; font-weight: 600; cursor: pointer; }
-        .nav-tabs .nav-link.active { color: var(--primary); border-bottom: 3px solid var(--primary); background: transparent; }
-        
-        /* KPIs */
-        .kpi-strip { display: flex; gap: 15px; height: var(--kpi-h); flex-shrink: 0; }
-        .kpi-box { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-bottom: 4px solid transparent; padding: 10px; }
-        .kpi-box.primary { border-color: #0d6efd; } .kpi-box.dark { border-color: #212529; }
-        .kpi-box.warning { border-color: #ffc107; } .kpi-box.success { border-color: #198754; } .kpi-box.danger { border-color: #dc3545; }
-        .kpi-box.info { border-color: #0dcaf0; }
-        .kpi-val { font-size: 1.8rem; font-weight: 800; line-height: 1; margin: 5px 0; color: #1e293b; }
-        .kpi-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
-        
-        /* Répartition Bar */
-        .progress-stacked { height: 12px; width: 100%; border-radius: 6px; background-color: #e9ecef; display: flex; overflow: hidden; margin-bottom: 8px; }
-        .progress-bar { display: flex; flex-direction: column; justify-content: center; color: #fff; text-align: center; white-space: nowrap; transition: width .6s ease; }
-        .kpi-legend { display: flex; justify-content: space-between; width: 100%; font-size: 0.75rem; font-weight: 700; }
-        .legend-item { display: flex; align-items: center; gap: 4px; }
-        .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
 
-        /* Content */
-        .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .tab-pane { height: 100%; display: flex; flex-direction: column; gap: 15px; }
-        .active-tab { display: flex !important; } 
-        .content-area { flex: 1; display: flex; gap: 15px; min-height: 0; }
-        .chart-panel { flex: 1.2; display: flex; flex-direction: column; padding: 20px; }
-        .chart-wrapper { flex: 1; position: relative; min-height: 0; width: 100%; }
-        .table-panel { flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-        .table-header { padding: 12px 20px; border-bottom: 1px solid #eee; background: #f8f9fa; font-weight: bold; text-align: center; display: flex; justify-content: space-between; align-items: center; }
-        .table-scroll { flex: 1; overflow-y: auto; }
-        
-        .table-custom th { text-align: center; font-size: 0.75rem; text-transform: uppercase; background: #fff; position: sticky; top: 0; z-index: 5; }
-        .table-custom td { vertical-align: middle; font-size: 0.85rem; }
-        
-        /* Opti & Team Table */
-        .sortable-th { cursor: pointer; user-select: none; position: sticky; top: 0; background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6; }
-        .sortable-th:hover { background-color: #e9ecef; }
-        .sort-icon { font-size: 0.7em; margin-left: 5px; color: #999; }
-        .active-sort .sort-icon { color: #0d6efd; }
-        
-        .heatmap-cell { font-weight: bold; color: white; border-radius: 4px; padding: 2px 6px; font-size: 0.8rem; }
-        .bg-ok { background-color: #198754; }
-        .bg-warn { background-color: #ffc107; color: #000; }
-        .bg-danger { background-color: #dc3545; }
-        .bg-empty { background-color: #e9ecef; color: #adb5bd; }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            width: 90%;
+            max-width: 1000px;
+        }
 
-        .text-avail-pos { color: #198754; font-weight: bold; }
-        .text-avail-neg { color: #dc3545; font-weight: bold; }
-        .row-past { background-color: #e9ecef !important; color: #adb5bd !important; }
-        .row-past td { background-color: #e9ecef !important; border-color: #dee2e6; color: #adb5bd !important; }
-        .row-past .fw-bold { font-weight: normal !important; }
-        .row-past .text-avail-pos, .row-past .text-avail-neg { color: inherit !important; opacity: 0.7; }
-        .row-past .badge { background-color: #ced4da !important; color: #868e96 !important; border: 1px solid #adb5bd; }
+        .card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            text-align: center;
+            text-decoration: none;
+            color: inherit;
+            transition: var(--transition);
+            border-top: 5px solid transparent;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
 
-        /* Smart Import UI */
-        #import-view { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 100; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .smart-dropzone { width: 800px; height: 300px; border: 3px dashed #cbd5e1; border-radius: 20px; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s; position: relative; }
-        .smart-dropzone:hover { border-color: var(--primary); background-color: #f8fbff; transform: scale(1.01); }
-        .smart-dropzone.dragover { border-color: #198754; background-color: #d1e7dd; }
-        .status-indicators { display: flex; gap: 20px; margin-top: 30px; width: 800px; justify-content: center; }
-        .status-badge { padding: 10px 20px; border-radius: 30px; background: #e9ecef; color: #adb5bd; font-weight: bold; display: flex; align-items: center; gap: 10px; transition: all 0.3s; }
-        .status-badge.active { background: #198754; color: white; box-shadow: 0 4px 10px rgba(25, 135, 84, 0.3); }
-        .btn-go { margin-top: 30px; padding: 12px 40px; font-weight: bold; font-size: 1.2rem; border-radius: 30px; }
-        .d-none { display: none !important; }
-        
-        /* Modale Config */
-        .modal-content { border-radius: 15px; border:none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); min-width: 600px; }
-        .modal-header { background: #f8f9fa; border-bottom: 1px solid #e9ecef; border-radius: 15px 15px 0 0; }
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            border-top: 5px solid var(--primary-color);
+        }
 
-        /* Classes pour l'export PDF */
-        .hide-on-print { } /* Sera géré dynamiquement par JS lors de la capture */
+        .card i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .card h2 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: #2c3e50;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 0.5rem;
+        }
+
+        footer {
+            margin-top: 4rem;
+            font-size: 0.8rem;
+            color: #999;
+        }
     </style>
 </head>
 <body>
 
-<div id="import-view">
-    <div class="text-center mb-5">
-        <h1 class="fw-bold text-dark display-5">Wrike Pilotage <span class="text-primary">v11.5</span></h1>
-        <p class="text-muted lead">Chargez vos 3 fichiers Excel en une seule fois</p>
-    </div>
-    
-    <div class="smart-dropzone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-        <div class="mb-3" style="font-size: 4rem;">📂</div>
-        <h4 class="fw-bold text-secondary">Glissez vos fichiers ici</h4>
-        <p class="text-muted small">ou cliquez pour parcourir</p>
-        <div id="loading-spinner" class="spinner-border text-primary d-none" role="status"></div>
-        <input type="file" id="fileInput" multiple hidden onchange="handleSmartUpload(this.files)">
-    </div>
+    <header>
+        <h1>Wrike Dashboards</h1>
+        <p>Sélectionnez le rapport que vous souhaitez consulter</p>
+    </header>
 
-    <div class="status-indicators">
-        <div class="status-badge" id="badge-workload"><span>📊</span> Workload</div>
-        <div class="status-badge" id="badge-run"><span>🛠️</span> Liste RUN</div>
-        <div class="status-badge" id="badge-proj"><span>🚀</span> Liste PROJETS</div>
-    </div>
+    <div class="container">
+        <a href="workload-wrike.html" class="card">
+            <i>📊</i>
+            <h2>Workload</h2>
+            <p>Visualiser la charge de travail globale des équipes.</p>
+        </a>
 
-    <button id="btn-launch" class="btn btn-primary btn-go disabled" onclick="launchDashboard()">ACCÉDER AU DASHBOARD</button>
-    <div class="mt-3 text-center">
-        <button id="btn-restore" class="btn btn-sm btn-outline-secondary d-none" onclick="restoreData()">♻️ Restaurer la session précédente</button>
-    </div>
-    <div id="log" class="mt-3 text-danger fw-bold text-center"></div>
-</div>
+        <a href="dragonfly-2025.html" class="card">
+            <i>🐉</i>
+            <h2>Dragonfly 2025</h2>
+            <p>Suivi de l'avancement du projet Dragonfly.</p>
+        </a>
 
-<div id="dashboard-view" class="app-wrapper d-none">
-    <div class="panel top-bar">
-        <div class="d-flex align-items-center gap-3 w-100">
-            <h5 class="fw-bold m-0 text-primary">Wrike Dashboard <span class="text-secondary small ms-1" style="font-size:0.7em">v11.5</span></h5>
-            <div class="vr mx-2"></div>
-            <div class="row g-2 w-100 align-items-center">
-                <div class="col-md-4">
-                    <div class="btn-group btn-group-sm w-100 shadow-sm hide-on-print">
-                        <button class="btn btn-outline-primary fw-bold" onclick="setPeriod('today')">Aujourd'hui</button>
-                        <button class="btn btn-outline-secondary" onclick="setPeriod('week')">Semaine</button>
-                        <button class="btn btn-outline-secondary" onclick="setPeriod('month')">Mois</button>
-                        <button class="btn btn-outline-secondary" onclick="setPeriod('year')">Année</button>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="input-group input-group-sm">
-                        <input type="date" id="dStart" class="form-control fw-bold text-center" onchange="runEngine()">
-                        <span class="input-group-text px-1">➝</span>
-                        <input type="date" id="dEnd" class="form-control fw-bold text-center" onchange="runEngine()">
-                    </div>
-                </div>
-                <div class="col-md-3 d-flex gap-1">
-                    <select id="selCollab" class="form-select form-select-sm fw-bold" onchange="runEngine()">
-                        <option value="ALL">Vue d'Equipe</option>
-                    </select>
-                    <button class="btn btn-sm btn-outline-dark hide-on-print" onclick="openConfig()" title="Configurer Capacités">⚙️</button>
-                </div>
-                <div class="col-md-2 text-end d-flex gap-2 justify-content-end align-items-center hide-on-print">
-                    <button class="btn btn-sm btn-outline-success" onclick="exportPDF()" title="Exporter en PDF (A4 Paysage)">📄 PDF</button>
-                    <div class="btn-group btn-group-sm shadow-sm" role="group">
-                        <button type="button" class="btn btn-primary btn-unit" id="btn-unit-h" onclick="setUnit('h')" title="Affichage en Heures">H</button>
-                        <button type="button" class="btn btn-outline-primary btn-unit" id="btn-unit-j" onclick="setUnit('j')" title="Affichage en Jours">J</button>
-                    </div>
-                    <button class="btn btn-sm btn-outline-danger" onclick="clearData()" title="Effacer et Quitter">Exit</button>
-                </div>
-            </div>
-        </div>
+        <a href="pointages-wrike.html" class="card">
+            <i>⏱️</i>
+            <h2>Pointages</h2>
+            <p>Analyse des temps passés et des saisies Wrike.</p>
+        </a>
     </div>
 
-    <ul class="nav nav-tabs ps-3 border-bottom-0 hide-on-print" id="mainTabs">
-        <li class="nav-item"><button class="nav-link active" id="tab-overview" onclick="switchTab('overview')">Synthèse</button></li>
-        <li class="nav-item"><button class="nav-link d-none" id="tab-opti" onclick="switchTab('opti')">✨ Optimisation de Charge</button></li>
-    </ul>
+    <footer>
+        &copy; 2026 Manitou Group - Gestion de projet
+    </footer>
 
-    <div class="tab-content" id="tabContent">
-        <div id="view-overview" class="tab-pane active-tab">
-            <div class="kpi-strip">
-                <div class="panel kpi-box primary">
-                    <div class="kpi-label">Charge</div><div class="kpi-val text-primary" id="k-load">0 h</div><div class="kpi-sub">Planifié</div>
-                </div>
-                <div class="panel kpi-box dark">
-                    <div class="kpi-label">Capacité</div><div class="kpi-val" id="k-capa">0 h</div><div class="kpi-sub">Théorique</div>
-                </div>
-                <div class="panel kpi-box success" id="box-dispo">
-                    <div class="kpi-label">Disponibilité</div><div class="kpi-val text-success" id="k-dispo">0 h</div><div class="kpi-sub">Marge</div>
-                </div>
-                <div class="panel kpi-box info" style="flex:2;">
-                    <div class="kpi-label mb-3">Répartition de la Charge</div>
-                    <div class="progress-stacked">
-                        <div class="progress-bar" id="pb-run" style="width: 0%; background-color: #0d6efd;" title="Run"></div>
-                        <div class="progress-bar" id="pb-proj" style="width: 0%; background-color: #f59e0b;" title="Projets"></div>
-                        <div class="progress-bar" id="pb-other" style="width: 0%; background-color: #ced4da;" title="Autres"></div>
-                    </div>
-                    <div class="kpi-legend mt-1">
-                        <div class="legend-item" style="color: #0d6efd;"><span class="legend-dot" style="background:#0d6efd"></span><span>RUN:</span><span id="val-run">0h (0%)</span></div>
-                        <div class="legend-item" style="color: #f59e0b;"><span class="legend-dot" style="background:#f59e0b"></span><span>PROJ:</span><span id="val-proj">0h (0%)</span></div>
-                        <div class="legend-item" style="color: #6c757d;"><span class="legend-dot" style="background:#ced4da"></span><span>AUTRE:</span><span id="val-other">0h (0%)</span></div>
-                    </div>
-                </div>
-            </div>
-            <div class="content-area">
-                <div class="panel chart-panel">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="fw-bold text-muted m-0">Analyse Temporelle</h6>
-                    </div>
-                    <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
-                </div>
-                <div class="panel table-panel">
-                    <div class="table-header">
-                        <span id="top-tasks-title">Synthèse Collaborateurs</span>
-                        <div class="d-flex gap-2">
-                            <span class="badge bg-secondary d-none" id="filter-badge" style="cursor:pointer" onclick="resetChartFilter()">Filtre actif ✖</span>
-                            <span class="badge bg-primary" id="badge-table-unit">Heures</span>
-                        </div>
-                    </div>
-                    <div class="table-scroll">
-                        <div id="heatmap-container" class="d-none">
-                            <table class="table table-sm table-bordered text-center mb-0" style="font-size:0.8rem;">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="sortable-th" onclick="sortTeamTable('user')">Collaborateur <span class="sort-icon">⇅</span></th>
-                                        <th class="sortable-th" onclick="sortTeamTable('load')">Charge <span class="sort-icon">⇅</span></th>
-                                        <th class="sortable-th" onclick="sortTeamTable('capa')">Capacité <span class="sort-icon">⇅</span></th>
-                                        <th class="sortable-th" onclick="sortTeamTable('dispo')">Dispo <span class="sort-icon">⇅</span></th>
-                                        <th class="sortable-th" onclick="sortTeamTable('occ')">% <span class="sort-icon">⇅</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="heatmap-body"></tbody>
-                            </table>
-                        </div>
-                        <table class="table table-hover table-striped table-sm mb-0 table-custom" id="top-proj"><tbody></tbody></table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="view-opti" class="tab-pane d-none">
-            <div class="panel h-100 d-flex flex-column">
-                <div class="table-header bg-white border-bottom">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center gap-3">
-                            <h6 class="m-0 fw-bold text-primary">🔍 Vue Annuelle : <span id="opti-user-name" class="text-dark"></span></h6>
-                            <div class="form-check form-switch ms-3">
-                                <input class="form-check-input" type="checkbox" id="chk-hide-past" onchange="renderOptiTableInternal()">
-                                <label class="form-check-label small" for="chk-hide-past">Masquer passé</label>
-                            </div>
-                        </div>
-                        <div class="btn-group btn-group-sm hide-on-print">
-                            <button class="btn btn-outline-primary active" onclick="updateOptiMode('week')" id="btn-opti-week">Par Semaine</button>
-                            <button class="btn btn-outline-secondary" onclick="updateOptiMode('month')" id="btn-opti-month">Par Mois</button>
-                        </div>
-                    </div>
-                </div>
-                <div class="table-scroll p-0">
-                    <table class="table table-bordered table-hover mb-0 text-center align-middle" id="opti-table">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="sortable-th active-sort" onclick="sortOptiTable('label')">Période <span class="sort-icon">▲</span></th>
-                                <th class="sortable-th" onclick="sortOptiTable('workingDays')">Jours <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortOptiTable('capa')">Capacité <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortOptiTable('load')">Charge <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortOptiTable('dispo')">Disponibilité <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortOptiTable('occ')">Occupation <span class="sort-icon">⇅</span></th>
-                                <th class="sortable-th" onclick="sortOptiTable('statusVal')">Statut <span class="sort-icon">⇅</span></th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="configModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold">⚙️ Configuration des Capacités</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="small text-muted">Définissez la capacité hebdomadaire (base : 40h = 100%).</p>
-                <div class="d-flex justify-content-between px-2 mb-2 small fw-bold text-muted">
-                    <span>Collaborateur</span>
-                    <div class="d-flex gap-4">
-                        <span style="width:120px; text-align:center;">Heures / sem</span>
-                        <span style="width:120px; text-align:center;">Pourcentage</span>
-                    </div>
-                </div>
-                <div id="config-list" class="d-flex flex-column gap-2" style="max-height: 400px; overflow-y: auto;"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" onclick="saveConfig()">Enregistrer</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    // --- DATA ---
-    let WORKLOAD_RAW=[], REF_RUN=new Set(), REF_PROJ=new Set(), DATA=[]; 
-    let USER_CAPA = JSON.parse(localStorage.getItem('wrike_user_capa') || '{}');
-    let DATA_MIN_DATE=null, DATA_MAX_DATE=null;
-    let filesLoaded={workload:false,run:false,proj:false};
-    
-    // --- SETTINGS ---
-    let DISPLAY_UNIT = 'h'; 
-    let optiSortCol = 'label'; 
-    let optiSortAsc = true; 
-    let optiMode = 'week';
-    let currentOptiData = [];
-    let teamSortCol = 'user';
-    let teamSortAsc = true;
-    let currentTeamData = [];
-    let activeDateFilter = null; 
-
-    // --- INIT & PERSISTENCE ---
-    window.onload = function() {
-        if(localStorage.getItem('wrike_data_workload')) {
-            document.getElementById('btn-restore').classList.remove('d-none');
-        }
-    };
-
-    function restoreData() {
-        try {
-            WORKLOAD_RAW = JSON.parse(localStorage.getItem('wrike_data_workload'));
-            const runArr = JSON.parse(localStorage.getItem('wrike_data_run') || '[]');
-            const projArr = JSON.parse(localStorage.getItem('wrike_data_proj') || '[]');
-            USER_CAPA = JSON.parse(localStorage.getItem('wrike_user_capa') || '{}');
-            REF_RUN = new Set(runArr);
-            REF_PROJ = new Set(projArr);
-            filesLoaded.workload = true;
-            processData();
-            document.getElementById('import-view').classList.add('d-none');
-            document.getElementById('dashboard-view').classList.remove('d-none');
-            initFilters();
-        } catch(e) {
-            alert("Erreur de restauration: " + e.message);
-            clearData();
-        }
-    }
-
-    function saveData() {
-        localStorage.setItem('wrike_data_workload', JSON.stringify(WORKLOAD_RAW));
-        localStorage.setItem('wrike_data_run', JSON.stringify(Array.from(REF_RUN)));
-        localStorage.setItem('wrike_data_proj', JSON.stringify(Array.from(REF_PROJ)));
-    }
-
-    function clearData() {
-        localStorage.removeItem('wrike_data_workload');
-        localStorage.removeItem('wrike_data_run');
-        localStorage.removeItem('wrike_data_proj');
-        location.reload();
-    }
-
-    // --- PDF EXPORT FUNCTION ---
-    async function exportPDF() {
-        const { jsPDF } = window.jspdf;
-        const dashboard = document.getElementById('dashboard-view');
-        
-        // 1. UI Preparation: Hide buttons
-        const btnToHide = document.querySelectorAll('.hide-on-print');
-        btnToHide.forEach(b => b.classList.add('d-none'));
-        
-        // 2. Capture (Scale 2 for better quality)
-        const canvas = await html2canvas(dashboard, { scale: 2, useCORS: true });
-        
-        // 3. Generate PDF (Landscape A4)
-        const pdf = new jsPDF('l', 'mm', 'a4');
-        const imgData = canvas.toDataURL('image/png');
-        
-        const pdfWidth = 297;
-        const pdfHeight = 210;
-        const imgWidth = canvas.width;
-        const imgHeight = canvas.height;
-        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-        
-        const imgX = (pdfWidth - imgWidth * ratio) / 2;
-        const imgY = 5; // Top margin
-
-        pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
-        
-        // 4. Filename with context
-        const who = document.getElementById('selCollab').value;
-        const dateStr = new Date().toISOString().split('T')[0];
-        pdf.save(`Wrike_Report_${who}_${dateStr}.pdf`);
-
-        // 5. Restore UI
-        btnToHide.forEach(b => b.classList.remove('d-none'));
-    }
-
-    // --- CONFIGURATION SYNC ---
-    function syncCapa(idx, source) {
-        const hInput = document.getElementById(`h-${idx}`);
-        const pInput = document.getElementById(`p-${idx}`);
-        if (source === 'h') {
-            const h = parseFloat(hInput.value) || 0;
-            pInput.value = Math.round((h / 40) * 100); 
-        } else {
-            const p = parseFloat(pInput.value) || 0;
-            hInput.value = ((p / 100) * 40).toFixed(1); 
-        }
-    }
-
-    function openConfig() {
-        const users = new Set(DATA.map(d=>d.assignee));
-        const list = document.getElementById('config-list');
-        list.innerHTML = '';
-        const sortedUsers = Array.from(users).sort();
-        sortedUsers.forEach((u, idx) => {
-            if(u === 'Inconnu') return;
-            const hVal = USER_CAPA[u] !== undefined ? USER_CAPA[u] : 40;
-            const pVal = Math.round((hVal / 40) * 100);
-            list.innerHTML += `
-                <div class="d-flex justify-content-between align-items-center border p-2 rounded bg-light">
-                    <span class="fw-bold text-truncate" style="flex:1" title="${u}">${u}</span>
-                    <div class="d-flex gap-2">
-                        <div class="input-group input-group-sm" style="width: 120px;">
-                            <input type="number" step="0.5" class="form-control text-center fw-bold inp-capa-h" id="h-${idx}" data-user="${u}" value="${hVal}" oninput="syncCapa(${idx}, 'h')">
-                            <span class="input-group-text">h</span>
-                        </div>
-                        <div class="input-group input-group-sm" style="width: 120px;">
-                            <input type="number" step="1" class="form-control text-center fw-bold text-primary" id="p-${idx}" value="${pVal}" oninput="syncCapa(${idx}, 'p')">
-                            <span class="input-group-text">%</span>
-                        </div>
-                    </div>
-                </div>`;
-        });
-        new bootstrap.Modal(document.getElementById('configModal')).show();
-    }
-
-    function saveConfig() {
-        document.querySelectorAll('.inp-capa-h').forEach(inp => {
-            const u = inp.getAttribute('data-user');
-            const v = parseFloat(inp.value);
-            if(!isNaN(v)) USER_CAPA[u] = v;
-        });
-        localStorage.setItem('wrike_user_capa', JSON.stringify(USER_CAPA));
-        const modalEl = document.getElementById('configModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        modal.hide();
-        runEngine(); 
-    }
-
-    function getCapa(user) {
-        const weekly = (USER_CAPA[user] !== undefined) ? USER_CAPA[user] : 40;
-        return weekly / 5;
-    }
-
-    // --- IMPORT LOGIC ---
-    const dropZone = document.getElementById('dropZone');
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
-    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleSmartUpload(e.dataTransfer.files); });
-
-    function triggerFile(id) { document.getElementById(id).click(); }
-    function handleFile(input, type) { if(input.files[0]) handleSmartUpload(input.files); }
-
-    function handleSmartUpload(files) {
-        if(files.length === 0) return;
-        document.getElementById('loading-spinner').classList.remove('d-none');
-        const promises = Array.from(files).map(file => readFileAsync(file));
-        Promise.all(promises).then(results => {
-            results.forEach(res => identifyAndAssign(res));
-            document.getElementById('loading-spinner').classList.add('d-none');
-            checkCompleteness();
-        });
-    }
-
-    function readFileAsync(file) {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const wb = XLSX.read(e.target.result, {type:'array', cellDates:false});
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
-                resolve({ name: file.name.toLowerCase(), data: json });
-            };
-            reader.readAsArrayBuffer(file);
-        });
-    }
-
-    function identifyAndAssign(fileObj) {
-        const json = fileObj.data;
-        const name = fileObj.name;
-        let identified = false;
-        const headersIdx = json.findIndex(row => row.some(cell => String(cell).match(/Allocated effort|Effort alloué/i)));
-        if (headersIdx !== -1) { WORKLOAD_RAW = json; filesLoaded.workload = true; document.getElementById('badge-workload').classList.add('active'); identified = true; }
-        if (!identified && (name.includes('run') || name.includes('maintenance'))) { extractRefProjects(json, REF_RUN); filesLoaded.run = true; document.getElementById('badge-run').classList.add('active'); identified = true; }
-        if (!identified && (name.includes('proj'))) { extractRefProjects(json, REF_PROJ); filesLoaded.proj = true; document.getElementById('badge-proj').classList.add('active'); identified = true; }
-        if(!identified) {
-            let isList = false;
-            for(let i=0; i<Math.min(20, json.length); i++) if(json[i].map(x=>String(x).toLowerCase()).includes('projet ou dossier')) isList=true;
-            if(isList) {
-                if(!filesLoaded.run) { extractRefProjects(json, REF_RUN); filesLoaded.run = true; document.getElementById('badge-run').classList.add('active'); }
-                else if(!filesLoaded.proj) { extractRefProjects(json, REF_PROJ); filesLoaded.proj = true; document.getElementById('badge-proj').classList.add('active'); }
-            }
-        }
-    }
-
-    function checkCompleteness() { if(filesLoaded.workload) { document.getElementById('btn-launch').classList.remove('disabled'); document.getElementById('log').innerText = ""; } }
-
-    function extractRefProjects(rows, targetSet) {
-        let hIdx=-1; 
-        for(let i=0; i<Math.min(20, rows.length); i++) { if(rows[i].map(x=>String(x).toLowerCase()).includes('projet ou dossier')) { hIdx=i; break; } }
-        if(hIdx===-1) for(let i=0; i<Math.min(20, rows.length); i++) if(rows[i].map(x=>String(x).toLowerCase()).includes('nom')) hIdx=i;
-        if(hIdx===-1) return;
-        const headers = rows[hIdx].map(x=>String(x).trim().toLowerCase());
-        let idx = headers.indexOf('projet ou dossier');
-        if(idx === -1) idx = headers.indexOf('nom');
-        for(let i=hIdx+1; i<rows.length; i++) { const v=String(rows[i][idx]).trim(); if(v) targetSet.add(v.toUpperCase()); }
-    }
-
-    function launchDashboard() { saveData(); processData(); document.getElementById('import-view').classList.add('d-none'); document.getElementById('dashboard-view').classList.remove('d-none'); initFilters(); }
-
-    function processData() {
-        const rows=WORKLOAD_RAW;
-        let hIdx=-1; for(let i=0; i<Math.min(30, rows.length); i++) if(rows[i].some(x=>String(x).includes('Allocated effort'))) hIdx=i;
-        const headers=rows[hIdx].map(x=>String(x).trim());
-        let dateCols=[];
-        const regEffort = /(?:Allocated effort|Effort alloué).*?(\d{1,2}.*?\d{4})/i;
-        headers.forEach((h, idx) => {
-            let m=h.match(regEffort);
-            if(m) { const d=parseDate(m[1]); if(d) { dateCols.push({idx, date:d}); if(!DATA_MIN_DATE || d<DATA_MIN_DATE) DATA_MIN_DATE=d; if(!DATA_MAX_DATE || d>DATA_MAX_DATE) DATA_MAX_DATE=d; } }
-        });
-        const cAss=headers.findIndex(h=>h.toLowerCase().includes('assignee'));
-        const cProj=headers.findIndex(h=>h.toLowerCase().includes('project name'));
-        const cType=headers.findIndex(h=>h.toLowerCase()==='type');
-        DATA=[];
-        for(let i=hIdx+1; i<rows.length; i++) {
-            const r=rows[i];
-            if(cType>-1 && String(r[cType]).toLowerCase().includes('total')) continue;
-            const assignee=String(r[cAss]||'Inconnu').trim();
-            const proj = cProj > -1 ? String(r[cProj]||'Sans projet').trim() : 'Sans projet';
-            const pUp=proj.toUpperCase();
-            let cat='AUTRES';
-            if(REF_RUN.has(pUp)) cat='RUN'; else if(REF_PROJ.has(pUp)) cat='PROJETS'; else if(/^#\s*\d{5}/.test(proj)) cat='RUN';
-            let vals=[];
-            dateCols.forEach(col => { let v=parseFloat(String(r[col.idx]).replace(',','.'))||0; if(v!==0) vals.push({d:col.date, v:v}); });
-            if(vals.length>0) DATA.push({ assignee, project:proj, category:cat, values:vals });
-        }
-    }
-
-    function parseDate(s) {
-        const clean=s.replace('.','').toLowerCase().split(' ');
-        if(clean.length<3) return null;
-        const d=parseInt(clean[0]), y=parseInt(clean[clean.length-1]), mStr=clean[1];
-        const months={'jan':0,'janv':0,'feb':1,'fev':1,'févr':1,'mar':2,'mars':2,'apr':3,'avr':3,'avril':3,'may':4,'mai':4,'jun':5,'juin':5,'jul':6,'juil':6,'aug':7,'aout':7,'aug':7,'août':7,'sep':8,'sept':8,'oct':9,'nov':10,'dec':11,'déc':11};
-        if(months[mStr]!==undefined) return new Date(y, months[mStr], d, 12, 0, 0); 
-        return null;
-    }
-
-    function initFilters() {
-        const sel=document.getElementById('selCollab');
-        const s=new Set(DATA.map(d=>d.assignee));
-        sel.innerHTML = '<option value="ALL">Vue d\'Equipe</option>';
-        Array.from(s).sort().forEach(x=>{ if(x && x!=='Inconnu') sel.innerHTML+=`<option value="${x}">${x}</option>`; });
-        setPeriod('week');
-    }
-
-    function setPeriod(mode) {
-        document.querySelectorAll('.btn-group .btn').forEach(b=>{ b.classList.remove('active','btn-outline-primary'); b.classList.add('btn-outline-secondary'); });
-        if(event) { event.target.classList.replace('btn-outline-secondary','active'); event.target.classList.add('btn-outline-primary'); }
-        const now=new Date();
-        let target=(DATA_MIN_DATE && now<DATA_MIN_DATE)?new Date(DATA_MIN_DATE):now;
-        let s=new Date(target), e=new Date(target);
-        if(mode==='week') { const d=target.getDay()||7; s.setDate(target.getDate()-d+1); e.setDate(s.getDate()+6); }
-        else if(mode==='month') { s.setDate(1); e=new Date(s.getFullYear(),s.getMonth()+1,0); }
-        else if(mode==='year') { s=new Date(s.getFullYear(),0,1); e=new Date(s.getFullYear(),11,31); }
-        document.getElementById('dStart').value=s.toISOString().split('T')[0];
-        document.getElementById('dEnd').value=e.toISOString().split('T')[0];
-        runEngine();
-    }
-
-    function setUnit(u) {
-        DISPLAY_UNIT = u;
-        document.getElementById('btn-unit-h').className = u==='h' ? 'btn btn-primary btn-unit' : 'btn btn-outline-primary btn-unit';
-        document.getElementById('btn-unit-j').className = u==='j' ? 'btn btn-primary btn-unit' : 'btn btn-outline-primary btn-unit';
-        document.getElementById('badge-table-unit').innerText = u==='h' ? 'Heures' : 'Jours';
-        runEngine();
-    }
-
-    function fmtVal(v) {
-        if(DISPLAY_UNIT === 'j') return (v/8).toFixed(1) + " j";
-        return v.toFixed(1) + " h";
-    }
-
-    function runEngine() {
-        const start=new Date(document.getElementById('dStart').value+"T12:00:00");
-        const end=new Date(document.getElementById('dEnd').value+"T12:00:00");
-        const who=document.getElementById('selCollab').value;
-
-        const tabOpti=document.getElementById('tab-opti');
-        const heatContainer=document.getElementById('heatmap-container');
-        const topProjTable=document.getElementById('top-proj');
-        const titleSpan=document.getElementById('top-tasks-title');
-
-        if(who!=='ALL') {
-            tabOpti.classList.remove('d-none');
-            document.getElementById('opti-user-name').innerText=who;
-            heatContainer.classList.add('d-none');
-            topProjTable.classList.remove('d-none');
-            titleSpan.innerText = "Top Tâches";
-            if(document.getElementById('view-opti').classList.contains('active-tab')) prepareOptiData(optiMode);
-        } else {
-            tabOpti.classList.add('d-none');
-            if(activeDateFilter) {
-                heatContainer.classList.add('d-none');
-                topProjTable.classList.remove('d-none');
-                titleSpan.innerText = "Top Tâches";
-            } else {
-                heatContainer.classList.remove('d-none');
-                topProjTable.classList.add('d-none'); 
-                titleSpan.innerText = "Synthèse Collaborateurs";
-            }
-            if(document.getElementById('view-opti').classList.contains('active-tab')) switchTab('overview');
-        }
-
-        let workingDays=0;
-        let d=new Date(start);
-        while(d<=end) { if(d.getDay()!==0 && d.getDay()!==6) workingDays++; d.setDate(d.getDate()+1); }
-        
-        let totLoad=0, totCapa=0;
-        let daily={}, cats={'RUN':0,'PROJETS':0,'AUTRES':0}, projs={};
-        const tStart=start.getTime(), tEnd=end.getTime();
-
-        let heatmapData = {}; 
-
-        DATA.forEach(r => {
-            const user = r.assignee;
-            if(who!=='ALL' && user!==who) return;
-            if(!heatmapData[user]) heatmapData[user] = { load:0, capa: getCapa(user) * workingDays };
-
-            r.values.forEach(v => {
-                const t=v.d.getTime();
-                if(t<tStart || t>tEnd) return;
-                if(activeDateFilter && t !== activeDateFilter) return;
-
-                totLoad+=v.v;
-                cats[r.category]+=v.v;
-                let dateKey = v.d.toLocaleDateString('fr-FR');
-                if(!daily[dateKey]) daily[dateKey] = { RUN:0, PROJETS:0, AUTRES:0 };
-                daily[dateKey][r.category] += v.v;
-                
-                projs[r.project]=(projs[r.project]||0)+v.v;
-                
-                if(who==='ALL' && !activeDateFilter) heatmapData[user].load += v.v;
-            });
-        });
-
-        if(who !== 'ALL') {
-            totCapa = workingDays * getCapa(who);
-        } else {
-            Object.keys(heatmapData).forEach(u => totCapa += heatmapData[u].capa);
-        }
-
-        if(who==='ALL' && !activeDateFilter) {
-            currentTeamData = [];
-            Object.entries(heatmapData).forEach(([u, d]) => {
-                if(u !== 'Inconnu' && d.capa > 0) {
-                    currentTeamData.push({ user: u, load: d.load, capa: d.capa, dispo: d.capa-d.load, occ: (d.load/d.capa*100) });
-                }
-            });
-            renderTeamTable();
-        } 
-        else if (who!=='ALL' || activeDateFilter) {
-            const tb=document.querySelector('#top-proj tbody'); tb.innerHTML='';
-            Object.entries(projs).sort((a,b)=>b[1]-a[1]).slice(0,50).forEach(([n,v]) => {
-                let cat='AUTRES', bg='bg-secondary';
-                const up=n.toUpperCase();
-                if(REF_RUN.has(up)) { cat='RUN'; bg='bg-primary'; }
-                else if(REF_PROJ.has(up)) { cat='PROJETS'; bg='bg-warning text-dark'; }
-                else if(/^#\s*\d{5}/.test(n)) { cat='RUN'; bg='bg-primary'; }
-                tb.innerHTML+=`<tr><td class="text-start text-truncate" style="max-width:200px" title="${n}"><span class="badge ${bg} me-2" style="font-size:0.6em">${cat}</span>${n}</td><td class="text-end fw-bold">${fmtVal(v)}</td></tr>`;
-            });
-        }
-
-        document.getElementById('k-load').innerText = fmtVal(totLoad);
-        document.getElementById('k-capa').innerText = fmtVal(totCapa);
-        const dispo=totCapa-totLoad;
-        const boxD=document.getElementById('box-dispo'), txtD=document.getElementById('k-dispo');
-        txtD.innerText=(dispo>0?"+":"")+fmtVal(dispo);
-        boxD.className=dispo>=0?'panel kpi-box success':'panel kpi-box danger';
-        txtD.className=dispo>=0?'kpi-val text-success':'kpi-val text-danger';
-
-        const pR = totLoad > 0 ? (cats.RUN / totLoad * 100) : 0;
-        const pP = totLoad > 0 ? (cats.PROJETS / totLoad * 100) : 0;
-        const pO = totLoad > 0 ? (cats.AUTRES / totLoad * 100) : 0;
-        document.getElementById('pb-run').style.width = pR + "%";
-        document.getElementById('pb-proj').style.width = pP + "%";
-        document.getElementById('pb-other').style.width = pO + "%";
-        document.getElementById('val-run').innerText = fmtVal(cats.RUN) + " (" + pR.toFixed(0) + "%)";
-        document.getElementById('val-proj').innerText = fmtVal(cats.PROJETS) + " (" + pP.toFixed(0) + "%)";
-        document.getElementById('val-other').innerText = fmtVal(cats.AUTRES) + " (" + pO.toFixed(0) + "%)";
-
-        if(!activeDateFilter) renderChart(daily);
-    }
-
-    function sortTeamTable(col) {
-        if(teamSortCol === col) teamSortAsc = !teamSortAsc; else { teamSortCol = col; teamSortAsc = true; }
-        renderTeamTable();
-    }
-
-    function renderTeamTable() {
-        const hb = document.getElementById('heatmap-body');
-        hb.innerHTML = '';
-        document.querySelectorAll('#heatmap-container .sortable-th').forEach(th => {
-            th.classList.remove('active-sort');
-            th.querySelector('.sort-icon').innerText = '⇅';
-        });
-        const activeTh = document.querySelector(`#heatmap-container .sortable-th[onclick="sortTeamTable('${teamSortCol}')"]`);
-        if(activeTh) {
-            activeTh.classList.add('active-sort');
-            activeTh.querySelector('.sort-icon').innerText = teamSortAsc ? '▲' : '▼';
-        }
-        currentTeamData.sort((a,b) => {
-            let va = a[teamSortCol], vb = b[teamSortCol];
-            if(teamSortCol === 'user') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
-            if(va < vb) return teamSortAsc ? -1 : 1; if(va > vb) return teamSortAsc ? 1 : -1; return 0;
-        });
-        currentTeamData.forEach(d => {
-            const occ = d.occ;
-            let bg = "bg-ok"; if(occ < 87.5) bg = "bg-warn"; if(occ > 100) bg = "bg-danger";
-            hb.innerHTML += `<tr><td class="text-start ps-3 fw-bold">${d.user}</td><td>${fmtVal(d.load)}</td><td class="text-muted small">${fmtVal(d.capa)}</td><td class="${d.dispo>=0?'text-success':'text-danger'} fw-bold">${(d.dispo>0?"+":"")}${fmtVal(d.dispo)}</td><td><span class="heatmap-cell ${bg}">${occ.toFixed(0)}%</span></td></tr>`;
-        });
-    }
-
-    function resetChartFilter() {
-        activeDateFilter = null;
-        document.getElementById('filter-badge').classList.add('d-none');
-        document.getElementById('top-tasks-title').innerText = "Synthèse Collaborateurs";
-        runEngine();
-    }
-
-    function chartClickHandler(evt, elements) {
-        if (elements.length > 0) {
-            const index = elements[0].index;
-            const label = chart.data.labels[index];
-            const dateStr = label.split(' ')[1]; 
-            const [d, m, y] = dateStr.split('/').map(Number);
-            activeDateFilter = new Date(y, m-1, d).getTime();
-            document.getElementById('filter-badge').classList.remove('d-none');
-            document.getElementById('top-tasks-title').innerText = "Top Tâches (" + dateStr + ")";
-            runEngine();
-        }
-    }
-
-    let chart;
-    function renderChart(data) {
-        const ctx = document.getElementById('mainChart').getContext('2d');
-        if(chart) chart.destroy();
-        const sortedKeys = Object.keys(data).sort((a,b) => {
-            const [d1,m1,y1]=a.split('/').map(Number); const [d2,m2,y2]=b.split('/').map(Number);
-            return new Date(y1,m1-1,d1)-new Date(y2,m2-1,d2);
-        });
-        const formattedLabels = sortedKeys.map(k => {
-            const [d,m,y] = k.split('/').map(Number);
-            const dateObj = new Date(y, m-1, d);
-            let dayName = dateObj.toLocaleDateString('fr-FR', { weekday: 'short' });
-            dayName = dayName.replace('.', '');
-            return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)}. ${k}`;
-        });
-        const dataRun = sortedKeys.map(k => DISPLAY_UNIT==='h' ? data[k].RUN : data[k].RUN/8);
-        const dataProj = sortedKeys.map(k => DISPLAY_UNIT==='h' ? data[k].PROJETS : data[k].PROJETS/8);
-        const dataOther = sortedKeys.map(k => DISPLAY_UNIT==='h' ? data[k].AUTRES : data[k].AUTRES/8);
-        const limitVal = DISPLAY_UNIT === 'h' ? 8 : 1;
-        const limitData = new Array(sortedKeys.length).fill(limitVal);
-
-        chart = new Chart(ctx, {
-            type: 'bar',
-            data: { 
-                labels: formattedLabels, 
-                datasets: [
-                    { type: 'line', label: 'Capacité Max', data: limitData, borderColor: '#dc3545', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false, order: 0, stack: 'limit' },
-                    { label: 'RUN', data: dataRun, backgroundColor: '#0d6efd', stack: 'Stack 0', order: 1 },
-                    { label: 'PROJETS', data: dataProj, backgroundColor: '#f59e0b', stack: 'Stack 0', order: 1 },
-                    { label: 'AUTRES', data: dataOther, backgroundColor: '#ced4da', stack: 'Stack 0', order: 1 }
-                ] 
-            },
-            options: { maintainAspectRatio:false, onClick: chartClickHandler, plugins:{legend:{display: true }, tooltip:{mode:'index', intersect:false}}, scales: { x: { stacked: true }, y: { stacked: true } } }
-        });
-    }
-
-    function updateOptiMode(mode) { optiMode = mode; document.getElementById('btn-opti-week').className=mode==='week'?'btn btn-outline-primary active':'btn btn-outline-secondary'; document.getElementById('btn-opti-month').className=mode==='month'?'btn btn-outline-primary active':'btn btn-outline-secondary'; prepareOptiData(mode); }
-
-    function prepareOptiData(mode) {
-        const who=document.getElementById('selCollab').value;
-        if(who==='ALL') return;
-        const selectedStart = new Date(document.getElementById('dStart').value);
-        const year = selectedStart.getFullYear();
-        const start = new Date(year, 0, 1);
-        const end = new Date(year, 11, 31);
-        const now = new Date();
-        let periods = {}; let d = new Date(start);
-        while(d <= end) {
-            let key="", label=""; let periodEnd = new Date(d);
-            if(mode==='week') {
-                const tempD=new Date(d); const dayNum=tempD.getUTCDay()||7; tempD.setUTCDate(tempD.getUTCDate()+4-dayNum);
-                const yearStart=new Date(Date.UTC(tempD.getUTCFullYear(),0,1));
-                const weekNo=Math.ceil((((tempD-yearStart)/86400000)+1)/7);
-                const isoYear=tempD.getUTCFullYear();
-                key=`${isoYear}-W${weekNo.toString().padStart(2,'0')}`;
-                const monday=new Date(d); const cDay=monday.getDay()||7; if(cDay!==1) monday.setDate(monday.getDate()-cDay+1);
-                const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
-                periodEnd = sunday;
-                const fmt = date => date.getDate().toString().padStart(2,'0') + '/' + (date.getMonth()+1).toString().padStart(2,'0');
-                label=`Sem. ${weekNo} (${fmt(monday)} - ${fmt(sunday)})`;
-            } else {
-                key=`${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
-                label=d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
-                periodEnd = new Date(d.getFullYear(), d.getMonth()+1, 0);
-            }
-            if(!periods[key]) periods[key] = { key:key, label:label, load:0, workingDays:0, capa:0, dispo:0, occ:0, statusVal:0, isPast: periodEnd < now };
-            if(d.getDay()!==0 && d.getDay()!==6) periods[key].workingDays++;
-            d.setDate(d.getDate()+1);
-        }
-        const tStart=start.getTime(), tEnd=end.getTime();
-        DATA.forEach(r => {
-            if(r.assignee!==who) return;
-            r.values.forEach(v => {
-                if(v.d.getTime()<tStart || v.d.getTime()>tEnd) return;
-                let key="";
-                if(mode==='week') {
-                    const tempD=new Date(v.d); const dayNum=tempD.getUTCDay()||7; tempD.setUTCDate(tempD.getUTCDate()+4-dayNum);
-                    const yearStart=new Date(Date.UTC(tempD.getUTCFullYear(),0,1));
-                    const weekNo=Math.ceil((((tempD-yearStart)/86400000)+1)/7);
-                    key=`${tempD.getUTCFullYear()}-W${weekNo.toString().padStart(2,'0')}`;
-                } else { key=`${v.d.getFullYear()}-${(v.d.getMonth()+1).toString().padStart(2,'0')}`; }
-                if(periods[key]) periods[key].load+=v.v;
-            });
-        });
-        const userCapa = getCapa(who); 
-        currentOptiData = Object.values(periods).map(p => {
-            p.capa = p.workingDays * userCapa; p.dispo = p.capa - p.load; p.occ = p.capa>0 ? (p.load/p.capa*100) : 0;
-            if(p.isPast) p.statusVal = 4; else if(p.dispo < 0) p.statusVal = 1; else if(p.occ < 87.5) p.statusVal = 3; else p.statusVal = 2;
-            return p;
-        });
-        renderOptiTableInternal();
-    }
-
-    function sortOptiTable(col) { if(optiSortCol === col) optiSortAsc = !optiSortAsc; else { optiSortCol = col; optiSortAsc = true; } renderOptiTableInternal(); }
-
-    function renderOptiTableInternal() {
-        document.querySelectorAll('.opti-th').forEach(th => { th.classList.remove('active-sort'); th.querySelector('.sort-icon').innerText = '⇅'; });
-        const activeTh = document.querySelector(`.opti-th[onclick="sortOptiTable('${optiSortCol}')"]`);
-        if(activeTh) { activeTh.classList.add('active-sort'); activeTh.querySelector('.sort-icon').innerText = optiSortAsc ? '▲' : '▼'; }
-        const hidePast = document.getElementById('chk-hide-past').checked;
-        currentOptiData.sort((a,b) => {
-            let va = a[optiSortCol], vb = b[optiSortCol]; if(optiSortCol === 'label') { va=a.key; vb=b.key; } if(va < vb) return optiSortAsc ? -1 : 1; if(va > vb) return optiSortAsc ? 1 : -1; return 0;
-        });
-        const tbody = document.querySelector('#opti-table tbody'); tbody.innerHTML = '';
-        currentOptiData.forEach(p => {
-            if(hidePast && p.isPast) return;
-            let rowClass = p.isPast ? "row-past" : ""; let statusBadge = "";
-            if(p.dispo < 0) { if(!p.isPast) rowClass = "opti-row-danger"; statusBadge = '<span class="badge bg-danger">Surcharge</span>'; }
-            else if (p.occ < 87.5) { if(!p.isPast) rowClass = "opti-row-success"; statusBadge = '<span class="badge bg-info text-dark">Dispo</span>'; }
-            else { statusBadge = '<span class="badge bg-success">OK</span>'; }
-            if(p.isPast) statusBadge = '<span class="badge bg-secondary">Passé</span>';
-            tbody.innerHTML += `<tr class="${rowClass}"><td class="fw-bold text-capitalize text-start ps-4">${p.label}</td><td>${p.workingDays} j</td><td>${fmtVal(p.capa)}</td><td class="fw-bold">${fmtVal(p.load)}</td><td class="${p.dispo>=0?'text-avail-pos':'text-avail-neg'}">${(p.dispo>0?"+":"")}${fmtVal(p.dispo)}</td><td>${p.occ.toFixed(0)}%</td><td>${statusBadge}</td></tr>`;
-        });
-    }
-
-    function switchTab(t) {
-        document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
-        document.querySelectorAll('.tab-pane').forEach(p=>{p.classList.remove('active-tab'); p.classList.add('d-none')});
-        document.getElementById('tab-'+t).classList.add('active');
-        document.getElementById('view-'+t).classList.remove('d-none');
-        document.getElementById('view-'+t).classList.add('active-tab');
-        if(t==='opti') document.getElementById('btn-opti-week').click();
-    }
-</script>
 </body>
 </html>
