@@ -1,1455 +1,399 @@
 <!DOCTYPE html>
-
 <html lang="fr">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Wrike Pilotage v9.1 (Loading UI)</title>
-
+    <title>Workload Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-
         :root { --primary: #0d6efd; --bg: #f0f2f5; --kpi-h: 150px; }
-
-        
-
-        body { 
-
-            background-color: var(--bg); font-family: 'Segoe UI', sans-serif; 
-
-            height: 100vh; overflow: hidden;
-
-            display: flex; flex-direction: column; align-items: center;
-
-        }
-
-
-
-        .app-wrapper { 
-
-            width: 100%; max-width: 1700px; height: 100%; 
-
-            display: flex; flex-direction: column; padding: 20px; gap: 15px; 
-
-        }
-
-
-
+        body { background-color: var(--bg); font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+        .app-wrapper { width: 100%; max-width: 1700px; height: 100%; display: flex; flex-direction: column; padding: 20px; gap: 15px; }
         .panel { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; }
-
-
-
-        /* Header */
-
         .top-bar { padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-
-        
-
         .btn-unit { font-weight: bold; width: 35px; }
-
-        .btn-primary { color: white !important; }
-
-
-
-        /* Tabs */
-
         .nav-tabs .nav-link { border: none; color: #6c757d; font-weight: 600; cursor: pointer; }
-
         .nav-tabs .nav-link.active { color: var(--primary); border-bottom: 3px solid var(--primary); background: transparent; }
-
-        .nav-tabs .nav-link:hover { color: var(--primary); }
-
-
-
-        /* KPIs */
-
         .kpi-strip { display: flex; gap: 15px; height: var(--kpi-h); flex-shrink: 0; }
-
         .kpi-box { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-bottom: 4px solid transparent; padding: 10px; }
-
         .kpi-box.primary { border-color: #0d6efd; } .kpi-box.dark { border-color: #212529; }
-
-        .kpi-box.warning { border-color: #ffc107; } .kpi-box.success { border-color: #198754; } .kpi-box.danger { border-color: #dc3545; }
-
+        .kpi-box.success { border-color: #198754; } .kpi-box.danger { border-color: #dc3545; }
         .kpi-box.info { border-color: #0dcaf0; }
-
-        
-
         .kpi-val { font-size: 1.8rem; font-weight: 800; line-height: 1; margin: 5px 0; color: #1e293b; }
-
         .kpi-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
-
-        
-
-        /* Répartition Bar */
-
         .progress-stacked { height: 12px; width: 100%; border-radius: 6px; background-color: #e9ecef; display: flex; overflow: hidden; margin-bottom: 8px; }
-
         .progress-bar { display: flex; flex-direction: column; justify-content: center; color: #fff; text-align: center; white-space: nowrap; transition: width .6s ease; }
-
-        
-
         .kpi-legend { display: flex; justify-content: space-between; width: 100%; font-size: 0.75rem; font-weight: 700; }
-
         .legend-item { display: flex; align-items: center; gap: 4px; }
-
         .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-
-
-
-        /* Content */
-
         .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
         .tab-pane { height: 100%; display: flex; flex-direction: column; gap: 15px; }
-
         .active-tab { display: flex !important; } 
-
-
-
         .content-area { flex: 1; display: flex; gap: 15px; min-height: 0; }
-
         .chart-panel { flex: 1.2; display: flex; flex-direction: column; padding: 20px; }
-
         .chart-wrapper { flex: 1; position: relative; min-height: 0; width: 100%; }
-
         .table-panel { flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-
-        .table-header { padding: 12px 20px; border-bottom: 1px solid #eee; background: #f8f9fa; font-weight: bold; text-align: center; }
-
+        .table-header { padding: 12px 20px; border-bottom: 1px solid #eee; background: #f8f9fa; font-weight: bold; text-align: center; display: flex; justify-content: space-between; align-items: center; }
         .table-scroll { flex: 1; overflow-y: auto; }
-
-        
-
-        .table-custom th { text-align: center; font-size: 0.75rem; text-transform: uppercase; background: #fff; position: sticky; top: 0; }
-
+        .table-custom th { text-align: center; font-size: 0.75rem; text-transform: uppercase; background: #fff; position: sticky; top: 0; z-index: 5; }
         .table-custom td { vertical-align: middle; font-size: 0.85rem; }
-
-        
-
-        /* Opti Table */
-
-        .opti-th { cursor: pointer; user-select: none; position: sticky; top: 0; background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6; }
-
-        .opti-th:hover { background-color: #e9ecef; }
-
+        .sortable-th { cursor: pointer; user-select: none; position: sticky; top: 0; background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6; }
+        .sortable-th:hover { background-color: #e9ecef; }
         .sort-icon { font-size: 0.7em; margin-left: 5px; color: #999; }
-
-        .opti-th.active-sort .sort-icon { color: #0d6efd; }
-
-
-
+        .active-sort .sort-icon { color: #0d6efd; }
+        .heatmap-cell { font-weight: bold; color: white; border-radius: 4px; padding: 2px 6px; font-size: 0.8rem; }
+        .bg-ok { background-color: #198754; }
+        .bg-warn { background-color: #ffc107; color: #000; }
+        .bg-danger { background-color: #dc3545; }
         .text-avail-pos { color: #198754; font-weight: bold; }
-
         .text-avail-neg { color: #dc3545; font-weight: bold; }
-
         .row-past { background-color: #e9ecef !important; color: #adb5bd !important; }
-
-        .row-past td { background-color: #e9ecef !important; border-color: #dee2e6; color: #adb5bd !important; }
-
-        .row-past .fw-bold { font-weight: normal !important; }
-
-        .row-past .text-avail-pos, .row-past .text-avail-neg { color: inherit !important; opacity: 0.7; }
-
-        .row-past .badge { background-color: #ced4da !important; color: #868e96 !important; border: 1px solid #adb5bd; }
-
-
-
-        /* Import Screen & Loading */
-
         #import-view { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 100; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; }
-
-        .import-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; width: 900px; }
-
-        .upload-card { 
-
-            border: 2px dashed #cbd5e1; padding: 30px 20px; text-align: center; 
-
-            background: white; border-radius: 12px; cursor: pointer; height: 220px; 
-
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-
-            transition: 0.2s; position: relative; overflow: hidden;
-
-        }
-
-        .upload-card:hover { border-color: var(--primary); transform: translateY(-3px); }
-
-        .upload-card.done { border-color: #198754; background: #d1e7dd; color: #0f5132; border-style: solid; }
-
-        .upload-card.loading { border-color: #ffc107; background: #fff3cd; color: #856404; border-style: solid; cursor: wait; }
-
-        
-
-        .btn-go { grid-column: span 3; padding: 15px; font-weight: bold; font-size: 1.2rem; }
-
+        .smart-dropzone { width: 800px; height: 300px; border: 3px dashed #cbd5e1; border-radius: 20px; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s; position: relative; }
+        .smart-dropzone:hover { border-color: var(--primary); background-color: #f8fbff; transform: scale(1.01); }
+        .status-indicators { display: flex; gap: 20px; margin-top: 30px; width: 800px; justify-content: center; }
+        .status-badge { padding: 10px 20px; border-radius: 30px; background: #e9ecef; color: #adb5bd; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .status-badge.active { background: #198754; color: white; }
+        .btn-go { margin-top: 30px; padding: 12px 40px; font-weight: bold; font-size: 1.2rem; border-radius: 30px; }
         .d-none { display: none !important; }
-
-        
-
-        /* Spinner */
-
-        .spinner-border { width: 3rem; height: 3rem; border-width: 0.25em; }
-
     </style>
-
 </head>
-
 <body>
 
-
-
 <div id="import-view">
-
-    <h2 class="fw-bold mb-4 text-dark">Wrike Pilotage <span class="text-primary">v9.1</span></h2>
-
-    <p class="text-muted mb-4">Croisement: "Project name" (Workload) ⨉ "Projet ou dossier" (Listes)</p>
-
+    <div class="text-center mb-5">
+        <h1 class="fw-bold text-dark display-5">Workload <span class="text-primary">Management</span></h1>
+        <p class="text-muted lead">Chargez vos 3 fichiers Excel simultanément</p>
+    </div>
     
-
-    <div class="import-grid">
-
-        <div class="upload-card" id="card-workload" onclick="triggerFile('fileWorkload')">
-
-            <div id="icon-workload" class="fs-1 mb-2">📊</div>
-
-            <div id="spin-workload" class="spinner-border text-warning mb-2 d-none" role="status"></div>
-
-            
-
-            <h6 class="fw-bold">1. Workload</h6>
-
-            <div class="small text-muted" id="txt-workload">Matrice des charges</div>
-
-            <input type="file" id="fileWorkload" hidden onchange="handleFile(this, 'workload')">
-
-        </div>
-
-
-
-        <div class="upload-card" id="card-run" onclick="triggerFile('fileRun')">
-
-            <div id="icon-run" class="fs-1 mb-2">🛠️</div>
-
-            <div id="spin-run" class="spinner-border text-warning mb-2 d-none" role="status"></div>
-
-            
-
-            <h6 class="fw-bold">2. Liste RUN</h6>
-
-            <div class="small text-muted" id="txt-run">Référentiel RUN</div>
-
-            <input type="file" id="fileRun" hidden onchange="handleFile(this, 'run')">
-
-        </div>
-
-
-
-        <div class="upload-card" id="card-proj" onclick="triggerFile('fileProj')">
-
-            <div id="icon-proj" class="fs-1 mb-2">🚀</div>
-
-            <div id="spin-proj" class="spinner-border text-warning mb-2 d-none" role="status"></div>
-
-            
-
-            <h6 class="fw-bold">3. Liste PROJETS</h6>
-
-            <div class="small text-muted" id="txt-proj">Référentiel PROJETS</div>
-
-            <input type="file" id="fileProj" hidden onchange="handleFile(this, 'proj')">
-
-        </div>
-
-
-
-        <button id="btn-launch" class="btn btn-primary btn-go disabled" onclick="launchDashboard()">LANCER LE CROISEMENT</button>
-
+    <div class="smart-dropzone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="mb-3" style="font-size: 4rem;">📂</div>
+        <h4 class="fw-bold text-secondary">Glissez vos fichiers ici</h4>
+        <input type="file" id="fileInput" multiple hidden onchange="handleSmartUpload(this.files)">
+        <div id="loading-spinner" class="spinner-border text-primary d-none" role="status"></div>
     </div>
 
-    <div id="log" class="mt-3 text-danger font-monospace fw-bold"></div>
+    <div class="status-indicators">
+        <div class="status-badge" id="badge-workload"><span>📊</span> Workload</div>
+        <div class="status-badge" id="badge-run"><span>🛠️</span> Liste RUN</div>
+        <div class="status-badge" id="badge-proj"><span>🚀</span> Liste PROJETS</div>
+    </div>
 
+    <button id="btn-launch" class="btn btn-primary btn-go disabled" onclick="launchDashboard()">ACCÉDER AU DASHBOARD</button>
 </div>
-
-
 
 <div id="dashboard-view" class="app-wrapper d-none">
-
     <div class="panel top-bar">
-
         <div class="d-flex align-items-center gap-3 w-100">
-
-            <h5 class="fw-bold m-0 text-primary">Wrike Dashboard</h5>
-
+            <h5 class="fw-bold m-0 text-primary">Workload Management</h5>
             <div class="vr mx-2"></div>
-
             <div class="row g-2 w-100 align-items-center">
-
-                <div class="col-md-5">
-
-                    <div class="btn-group btn-group-sm w-100 shadow-sm">
-
+                <div class="col-md-4">
+                    <div class="btn-group btn-group-sm w-100 shadow-sm hide-on-print">
                         <button class="btn btn-outline-primary fw-bold" onclick="setPeriod('today')">Aujourd'hui</button>
-
                         <button class="btn btn-outline-secondary" onclick="setPeriod('week')">Semaine</button>
-
                         <button class="btn btn-outline-secondary" onclick="setPeriod('month')">Mois</button>
-
                         <button class="btn btn-outline-secondary" onclick="setPeriod('year')">Année</button>
-
                     </div>
-
                 </div>
-
-                <div class="col-md-2">
-
-                    <div class="input-group input-group-sm">
-
-                        <input type="date" id="dStart" class="form-control fw-bold text-center" onchange="runEngine()">
-
-                        <span class="input-group-text px-1">➝</span>
-
-                        <input type="date" id="dEnd" class="form-control fw-bold text-center" onchange="runEngine()">
-
-                    </div>
-
-                </div>
-
                 <div class="col-md-3">
-
-                    <select id="selCollab" class="form-select form-select-sm fw-bold" onchange="runEngine()">
-
-                        <option value="ALL">Vue d'Equipe</option>
-
-                    </select>
-
-                </div>
-
-                <div class="col-md-2 text-end d-flex gap-2 justify-content-end align-items-center">
-
-                    <div class="btn-group btn-group-sm shadow-sm" role="group">
-
-                        <button type="button" class="btn btn-primary btn-unit" id="btn-unit-h" onclick="setUnit('h')" title="Affichage en Heures">H</button>
-
-                        <button type="button" class="btn btn-outline-primary btn-unit" id="btn-unit-j" onclick="setUnit('j')" title="Affichage en Jours (8h)">J</button>
-
+                    <div class="input-group input-group-sm">
+                        <input type="date" id="dStart" class="form-control fw-bold text-center" onchange="runEngine()">
+                        <span class="input-group-text">➝</span>
+                        <input type="date" id="dEnd" class="form-control fw-bold text-center" onchange="runEngine()">
                     </div>
-
-                    <button class="btn btn-sm btn-outline-danger" onclick="location.reload()" title="Réinitialiser">Reset</button>
-
                 </div>
-
+                <div class="col-md-3 d-flex gap-1">
+                    <select id="selCollab" class="form-select form-select-sm fw-bold" onchange="runEngine()">
+                        <option value="ALL">Vue d'Equipe</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-dark hide-on-print" onclick="openConfig()">⚙️</button>
+                </div>
+                <div class="col-md-2 text-end d-flex gap-2 justify-content-end align-items-center hide-on-print">
+                    <button class="btn btn-sm btn-outline-success" onclick="exportPDF()">📄 PDF</button>
+                    <div class="btn-group btn-group-sm shadow-sm">
+                        <button type="button" class="btn btn-primary btn-unit" id="btn-unit-h" onclick="setUnit('h')">H</button>
+                        <button type="button" class="btn btn-outline-primary btn-unit" id="btn-unit-j" onclick="setUnit('j')">J</button>
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="clearData()">Exit</button>
+                </div>
             </div>
-
         </div>
-
     </div>
 
-
-
-    <ul class="nav nav-tabs ps-3 border-bottom-0" id="mainTabs">
-
-        <li class="nav-item"><button class="nav-link active" id="tab-overview" onclick="switchTab('overview')">Synthèse</button></li>
-
-        <li class="nav-item"><button class="nav-link d-none" id="tab-opti" onclick="switchTab('opti')">✨ Optimisation de Charge</button></li>
-
+    <ul class="nav nav-tabs ps-3 border-bottom-0 hide-on-print">
+        <li class="nav-item"><button class="nav-link active" onclick="switchTab('overview')">Synthèse</button></li>
+        <li class="nav-item"><button class="nav-link d-none" id="tab-opti" onclick="switchTab('opti')">✨ Optimisation</button></li>
     </ul>
 
-
-
-    <div class="tab-content" id="tabContent">
-
+    <div class="tab-content">
         <div id="view-overview" class="tab-pane active-tab">
-
             <div class="kpi-strip">
-
                 <div class="panel kpi-box primary">
-
-                    <div class="kpi-label">Charge</div><div class="kpi-val text-primary" id="k-load">0 h</div><div class="kpi-sub">Planifié</div>
-
+                    <div class="kpi-label">Charge</div><div class="kpi-val text-primary" id="k-load">0 h</div>
                 </div>
-
                 <div class="panel kpi-box dark">
-
-                    <div class="kpi-label">Capacité (8h)</div><div class="kpi-val" id="k-capa">0 h</div><div class="kpi-sub">Théorique</div>
-
+                    <div class="kpi-label">Capacité</div><div class="kpi-val" id="k-capa">0 h</div>
                 </div>
-
                 <div class="panel kpi-box success" id="box-dispo">
-
-                    <div class="kpi-label">Disponibilité</div><div class="kpi-val text-success" id="k-dispo">0 h</div><div class="kpi-sub">Marge</div>
-
+                    <div class="kpi-label">Disponibilité</div><div class="kpi-val text-success" id="k-dispo">0 h</div>
                 </div>
-
                 <div class="panel kpi-box info" style="flex:2;">
-
-                    <div class="kpi-label mb-3">Répartition de la Charge</div>
-
+                    <div class="kpi-label mb-2">Répartition</div>
                     <div class="progress-stacked">
-
-                        <div class="progress-bar" id="pb-run" style="width: 0%; background-color: #0d6efd;" title="Run"></div>
-
-                        <div class="progress-bar" id="pb-proj" style="width: 0%; background-color: #f59e0b;" title="Projets"></div>
-
-                        <div class="progress-bar" id="pb-other" style="width: 0%; background-color: #ced4da;" title="Autres"></div>
-
+                        <div class="progress-bar" id="pb-run" style="background-color: #0d6efd;"></div>
+                        <div class="progress-bar" id="pb-proj" style="background-color: #f59e0b;"></div>
+                        <div class="progress-bar" id="pb-other" style="background-color: #ced4da;"></div>
                     </div>
-
                     <div class="kpi-legend mt-1">
-
-                        <div class="legend-item" style="color: #0d6efd;"><span class="legend-dot" style="background:#0d6efd"></span><span>RUN:</span><span id="val-run">0h (0%)</span></div>
-
-                        <div class="legend-item" style="color: #f59e0b;"><span class="legend-dot" style="background:#f59e0b"></span><span>PROJ:</span><span id="val-proj">0h (0%)</span></div>
-
-                        <div class="legend-item" style="color: #6c757d;"><span class="legend-dot" style="background:#ced4da"></span><span>AUTRE:</span><span id="val-other">0h (0%)</span></div>
-
+                        <div class="legend-item" style="color: #0d6efd;"><span>RUN:</span><span id="val-run">0h</span></div>
+                        <div class="legend-item" style="color: #f59e0b;"><span>PROJ:</span><span id="val-proj">0h</span></div>
+                        <div class="legend-item" style="color: #6c757d;"><span>AUTRE:</span><span id="val-other">0h</span></div>
                     </div>
-
                 </div>
-
             </div>
-
             <div class="content-area">
-
                 <div class="panel chart-panel">
-
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-
-                        <h6 class="fw-bold text-muted m-0">Analyse Temporelle</h6>
-
-                        <div class="btn-group btn-group-sm">
-
-                            <button class="btn btn-outline-secondary active" onclick="toggleChart('time')" id="view-time">Temps</button>
-
-                            <button class="btn btn-outline-secondary" onclick="toggleChart('cat')" id="view-cat">Répartition</button>
-
-                        </div>
-
-                    </div>
-
                     <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
-
                 </div>
-
                 <div class="panel table-panel">
-
-                    <div class="table-header d-flex justify-content-between"><span>Top Tâches</span><span class="badge bg-primary" id="badge-table-unit">Heures</span></div>
-
+                    <div class="table-header">
+                        <span id="top-tasks-title">Synthèse Collaborateurs</span>
+                    </div>
                     <div class="table-scroll">
-
+                        <div id="heatmap-container" class="d-none">
+                            <table class="table table-sm table-bordered text-center mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="sortable-th" onclick="sortTeamTable('user')">Collab ⇅</th>
+                                        <th class="sortable-th" onclick="sortTeamTable('load')">Charge ⇅</th>
+                                        <th class="sortable-th" onclick="sortTeamTable('dispo')">Dispo ⇅</th>
+                                        <th class="sortable-th" onclick="sortTeamTable('occ')">% ⇅</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="heatmap-body"></tbody>
+                            </table>
+                        </div>
                         <table class="table table-hover table-striped table-sm mb-0 table-custom" id="top-proj"><tbody></tbody></table>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
-
-
-        <div id="view-opti" class="tab-pane d-none">
-
-            <div class="panel h-100 d-flex flex-column">
-
-                <div class="table-header bg-white border-bottom">
-
-                    <div class="d-flex justify-content-between align-items-center">
-
-                        <div class="d-flex align-items-center gap-3">
-
-                            <h6 class="m-0 fw-bold text-primary">🔍 Vue Annuelle : <span id="opti-user-name" class="text-dark"></span></h6>
-
-                            <div class="form-check form-switch ms-3">
-
-                                <input class="form-check-input" type="checkbox" id="chk-hide-past" onchange="renderOptiTableInternal()">
-
-                                <label class="form-check-label small" for="chk-hide-past">Masquer passé</label>
-
-                            </div>
-
-                        </div>
-
-                        <div class="btn-group btn-group-sm">
-
-                            <button class="btn btn-outline-primary active" onclick="updateOptiMode('week')" id="btn-opti-week">Par Semaine</button>
-
-                            <button class="btn btn-outline-secondary" onclick="updateOptiMode('month')" id="btn-opti-month">Par Mois</button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="table-scroll p-0">
-
-                    <table class="table table-bordered table-hover mb-0 text-center align-middle" id="opti-table">
-
-                        <thead class="table-light">
-
-                            <tr>
-
-                                <th class="opti-th active-sort" onclick="sortOptiTable('label')">Période <span class="sort-icon">▲</span></th>
-
-                                <th class="opti-th" onclick="sortOptiTable('workingDays')">Jours <span class="sort-icon">⇅</span></th>
-
-                                <th class="opti-th" onclick="sortOptiTable('capa')">Capacité <span class="sort-icon">⇅</span></th>
-
-                                <th class="opti-th" onclick="sortOptiTable('load')">Charge <span class="sort-icon">⇅</span></th>
-
-                                <th class="opti-th" onclick="sortOptiTable('dispo')">Disponibilité <span class="sort-icon">⇅</span></th>
-
-                                <th class="opti-th" onclick="sortOptiTable('occ')">Occupation <span class="sort-icon">⇅</span></th>
-
-                                <th class="opti-th" onclick="sortOptiTable('statusVal')">Statut <span class="sort-icon">⇅</span></th>
-
-                            </tr>
-
-                        </thead>
-
-                        <tbody></tbody>
-
-                    </table>
-
-                </div>
-
-            </div>
-
-        </div>
-
     </div>
-
 </div>
 
-
-
 <script>
-
-    // --- DATA ---
-
-    let WORKLOAD_RAW=[], REF_RUN=new Set(), REF_PROJ=new Set(), DATA=[]; 
-
-    let DATA_MIN_DATE=null, DATA_MAX_DATE=null, CHART_VIEW='time';
-
+    let WORKLOAD_RAW=[], REF_RUN=new Set(), REF_PROJ=new Set(), DATA=[];
+    let USER_CAPA = JSON.parse(localStorage.getItem('wrike_user_capa') || '{}');
     let filesLoaded={workload:false,run:false,proj:false};
-
-    
-
-    // --- SETTINGS ---
-
-    let DISPLAY_UNIT = 'h'; 
-
-    let optiSortCol = 'label'; 
-
-    let optiSortAsc = true; 
-
-    let optiMode = 'week';
-
-    let currentOptiData = []; 
-
-
-
-    function triggerFile(id) { document.getElementById(id).click(); }
-
-
-
-    function handleFile(input, type) {
-
-        if(!input.files[0]) return;
-
-        
-
-        // 1. UI Loading State
-
-        const card = document.getElementById('card-' + type);
-
-        const icon = document.getElementById('icon-' + type);
-
-        const spin = document.getElementById('spin-' + type);
-
-        const txt  = document.getElementById('txt-' + type);
-
-        
-
-        card.classList.add('loading');
-
-        icon.classList.add('d-none');
-
-        spin.classList.remove('d-none');
-
-        txt.innerText = "Lecture en cours...";
-
-
-
-        // 2. Async Timeout to let UI render the spinner
-
-        setTimeout(() => {
-
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-
-                try {
-
-                    const wb = XLSX.read(e.target.result, {type:'array', cellDates:false});
-
-                    const sheet = wb.Sheets[wb.SheetNames[0]];
-
-                    const json = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
-
-                    
-
-                    if(type==='workload') { 
-
-                        WORKLOAD_RAW=json; 
-
-                        filesLoaded.workload=true; 
-
-                    } else if(type==='run') { 
-
-                        extractRefProjects(json, REF_RUN); 
-
-                        filesLoaded.run=true; 
-
-                    } else if(type==='proj') { 
-
-                        extractRefProjects(json, REF_PROJ); 
-
-                        filesLoaded.proj=true; 
-
-                    }
-
-
-
-                    // 3. UI Done State
-
-                    card.classList.remove('loading');
-
-                    card.classList.add('done');
-
-                    spin.classList.add('d-none');
-
-                    icon.classList.remove('d-none');
-
-                    icon.innerHTML = "✅"; // Change icon to checkmark
-
-                    txt.innerText = "Fichier chargé";
-
-
-
-                    if(filesLoaded.workload) document.getElementById('btn-launch').classList.remove('disabled');
-
-
-
-                } catch(err) { 
-
-                    alert("Erreur: "+err.message);
-
-                    card.classList.remove('loading');
-
-                    spin.classList.add('d-none');
-
-                    icon.classList.remove('d-none');
-
-                    txt.innerText = "Erreur !";
-
-                }
-
-            };
-
-            reader.readAsArrayBuffer(input.files[0]);
-
-        }, 50); // 50ms delay
-
+    let DISPLAY_UNIT = 'h';
+    let teamSortCol = 'user', teamSortAsc = true;
+    let currentTeamData = [];
+
+    // --- IMPORT SYSTEM ---
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleSmartUpload(e.dataTransfer.files); });
+
+    function handleSmartUpload(files) {
+        if(files.length === 0) return;
+        document.getElementById('loading-spinner').classList.remove('d-none');
+        const promises = Array.from(files).map(file => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const wb = XLSX.read(e.target.result, {type:'array'});
+                    const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1});
+                    resolve({ name: file.name.toLowerCase(), data: json });
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        });
+        Promise.all(promises).then(results => {
+            results.forEach(res => identifyAndAssign(res));
+            document.getElementById('loading-spinner').classList.add('d-none');
+            if(filesLoaded.workload) document.getElementById('btn-launch').classList.remove('disabled');
+        });
     }
 
-
+    function identifyAndAssign(fileObj) {
+        const json = fileObj.data;
+        const name = fileObj.name;
+        let isWorkload = json.slice(0, 20).some(row => row.some(cell => /Allocated effort|Effort alloué/i.test(String(cell))));
+        if (isWorkload) {
+            WORKLOAD_RAW = json;
+            filesLoaded.workload = true;
+            document.getElementById('badge-workload').classList.add('active');
+        } else if (name.includes('run')) {
+            extractRefProjects(json, REF_RUN);
+            filesLoaded.run = true;
+            document.getElementById('badge-run').classList.add('active');
+        } else if (name.includes('proj')) {
+            extractRefProjects(json, REF_PROJ);
+            filesLoaded.proj = true;
+            document.getElementById('badge-proj').classList.add('active');
+        }
+    }
 
     function extractRefProjects(rows, targetSet) {
-
-        let hIdx=-1; 
-
-        for(let i=0; i<Math.min(20, rows.length); i++) {
-
-            if(rows[i].map(x=>String(x).toLowerCase()).includes('projet ou dossier')) { hIdx=i; break; }
-
+        let hIdx = rows.findIndex(row => row.some(c => /projet ou dossier|nom/i.test(String(c))));
+        if(hIdx === -1) return;
+        const colIdx = rows[hIdx].findIndex(c => /projet ou dossier|nom/i.test(String(c)));
+        for(let i=hIdx+1; i<rows.length; i++) {
+            const val = String(rows[i][colIdx] || '').trim();
+            if(val) targetSet.add(val.toUpperCase());
         }
-
-        if(hIdx===-1) {
-
-            for(let i=0; i<Math.min(20, rows.length); i++) if(rows[i].map(x=>String(x).toLowerCase()).includes('nom')) hIdx=i;
-
-        }
-
-        if(hIdx===-1) return;
-
-
-
-        const headers = rows[hIdx].map(x=>String(x).trim().toLowerCase());
-
-        let idx = headers.indexOf('projet ou dossier');
-
-        if(idx === -1) idx = headers.indexOf('nom');
-
-
-
-        for(let i=hIdx+1; i<rows.length; i++) { 
-
-            const v=String(rows[i][idx]).trim(); 
-
-            if(v) targetSet.add(v.toUpperCase()); 
-
-        }
-
     }
 
-
-
+    // --- DASHBOARD LOGIC ---
     function launchDashboard() {
-
         processData();
-
         document.getElementById('import-view').classList.add('d-none');
-
         document.getElementById('dashboard-view').classList.remove('d-none');
-
         initFilters();
-
     }
-
-
 
     function processData() {
-
-        const rows=WORKLOAD_RAW;
-
-        let hIdx=-1; for(let i=0; i<Math.min(30, rows.length); i++) if(rows[i].some(x=>String(x).includes('Allocated effort'))) hIdx=i;
-
-        if(hIdx===-1) throw new Error("Format Workload incorrect");
-
-
-
-        const headers=rows[hIdx].map(x=>String(x).trim());
-
-        let dateCols=[];
-
-        const regEffort = /(?:Allocated effort|Effort alloué).*?(\d{1,2}.*?\d{4})/i;
-
-
-
+        const rows = WORKLOAD_RAW;
+        let hIdx = rows.findIndex(row => row.some(cell => /Allocated effort|Effort alloué/i.test(String(cell))));
+        const headers = rows[hIdx].map(h => String(h).trim());
+        let dateCols = [];
         headers.forEach((h, idx) => {
-
-            let m=h.match(regEffort);
-
+            let m = h.match(/(\d{1,2}.*?\d{4})/);
             if(m) {
-
-                const d=parseDate(m[1]);
-
-                if(d) {
-
-                    dateCols.push({idx, date:d});
-
-                    if(!DATA_MIN_DATE || d<DATA_MIN_DATE) DATA_MIN_DATE=d;
-
-                    if(!DATA_MAX_DATE || d>DATA_MAX_DATE) DATA_MAX_DATE=d;
-
+                // Simplification du parsing date pour robustesse
+                const parts = m[1].split(/[\s.]+/);
+                if(parts.length >= 3) {
+                    const months={'jan':0,'janv':0,'feb':1,'fev':1,'févr':1,'mar':2,'mars':2,'apr':3,'avr':3,'may':4,'mai':4,'jun':5,'juin':5,'jul':6,'juil':6,'aug':7,'aout':7,'sep':8,'oct':9,'nov':10,'dec':11,'déc':11};
+                    const d = new Date(parseInt(parts[2]), months[parts[1].toLowerCase().substring(0,3)], parseInt(parts[0]));
+                    dateCols.push({idx, date: d});
                 }
-
             }
-
         });
 
-
-
-        const cAss=headers.findIndex(h=>h.toLowerCase().includes('assignee'));
-
-        const cProj=headers.findIndex(h=>h.toLowerCase().includes('project name'));
-
-        const cType=headers.findIndex(h=>h.toLowerCase()==='type');
-
-
-
-        DATA=[];
-
+        const cAss = headers.findIndex(h => /assignee/i.test(h));
+        const cProj = headers.findIndex(h => /project name/i.test(h));
+        DATA = [];
         for(let i=hIdx+1; i<rows.length; i++) {
-
-            const r=rows[i];
-
-            if(cType>-1 && String(r[cType]).toLowerCase().includes('total')) continue;
-
-
-
-            const assignee=String(r[cAss]||'Inconnu').trim();
-
-            const proj = cProj > -1 ? String(r[cProj]||'Sans projet').trim() : 'Sans projet';
-
-            const pUp=proj.toUpperCase();
-
+            const r = rows[i];
+            const assignee = String(r[cAss] || 'Inconnu').trim();
+            const proj = String(r[cProj] || 'Sans Projet').trim();
+            let cat = 'AUTRES';
+            if(REF_RUN.has(proj.toUpperCase())) cat = 'RUN';
+            else if(REF_PROJ.has(proj.toUpperCase())) cat = 'PROJETS';
             
-
-            let cat='AUTRES';
-
-            if(REF_RUN.has(pUp)) cat='RUN'; 
-
-            else if(REF_PROJ.has(pUp)) cat='PROJETS'; 
-
-            else if(/^#\s*\d{5}/.test(proj)) cat='RUN';
-
-
-
-            let vals=[];
-
+            let vals = [];
             dateCols.forEach(col => {
-
-                let v=parseFloat(String(r[col.idx]).replace(',','.'))||0;
-
-                if(v!==0) vals.push({d:col.date, v:v});
-
+                let v = parseFloat(String(r[col.idx]).replace(',','.')) || 0;
+                if(v !== 0) vals.push({d: col.date, v: v});
             });
-
-            if(vals.length>0) DATA.push({ assignee, project:proj, category:cat, values:vals });
-
+            if(vals.length > 0) DATA.push({ assignee, project: proj, category: cat, values: vals });
         }
-
     }
-
-
-
-    function parseDate(s) {
-
-        const clean=s.replace('.','').toLowerCase().split(' ');
-
-        if(clean.length<3) return null;
-
-        const d=parseInt(clean[0]), y=parseInt(clean[clean.length-1]), mStr=clean[1];
-
-        const months={'jan':0,'janv':0,'feb':1,'fev':1,'févr':1,'mar':2,'mars':2,'apr':3,'avr':3,'avril':3,'may':4,'mai':4,'jun':5,'juin':5,'jul':6,'juil':6,'aug':7,'aout':7,'aug':7,'août':7,'sep':8,'sept':8,'oct':9,'nov':10,'dec':11,'déc':11};
-
-        if(months[mStr]!==undefined) return new Date(y, months[mStr], d, 12, 0, 0); 
-
-        return null;
-
-    }
-
-
 
     function initFilters() {
-
-        const sel=document.getElementById('selCollab');
-
-        const s=new Set(DATA.map(d=>d.assignee));
-
-        Array.from(s).sort().forEach(x=>{ if(x && x!=='Inconnu') sel.innerHTML+=`<option value="${x}">${x}</option>`; });
-
+        const sel = document.getElementById('selCollab');
+        const s = new Set(DATA.map(d => d.assignee));
+        sel.innerHTML = '<option value="ALL">Vue d\'Equipe</option>';
+        Array.from(s).sort().forEach(u => sel.innerHTML += `<option value="${u}">${u}</option>`);
         setPeriod('week');
-
     }
-
-
 
     function setPeriod(mode) {
-
-        document.querySelectorAll('.btn-group .btn').forEach(b=>{ b.classList.remove('active','btn-outline-primary'); b.classList.add('btn-outline-secondary'); });
-
-        if(event) { event.target.classList.replace('btn-outline-secondary','active'); event.target.classList.add('btn-outline-primary'); }
-
-
-
-        const now=new Date();
-
-        let target=(DATA_MIN_DATE && now<DATA_MIN_DATE)?new Date(DATA_MIN_DATE):now;
-
-        let s=new Date(target), e=new Date(target);
-
-
-
-        if(mode==='week') { const d=target.getDay()||7; s.setDate(target.getDate()-d+1); e.setDate(s.getDate()+6); }
-
-        else if(mode==='month') { s.setDate(1); e=new Date(s.getFullYear(),s.getMonth()+1,0); }
-
-        else if(mode==='year') { s=new Date(s.getFullYear(),0,1); e=new Date(s.getFullYear(),11,31); }
-
-
-
-        document.getElementById('dStart').value=s.toISOString().split('T')[0];
-
-        document.getElementById('dEnd').value=e.toISOString().split('T')[0];
-
-        runEngine();
-
-    }
-
-
-
-    function setUnit(u) {
-
-        DISPLAY_UNIT = u;
-
-        document.getElementById('btn-unit-h').className = u==='h' ? 'btn btn-primary btn-unit' : 'btn btn-outline-primary btn-unit';
-
-        document.getElementById('btn-unit-j').className = u==='j' ? 'btn btn-primary btn-unit' : 'btn btn-outline-primary btn-unit';
-
-        document.getElementById('badge-table-unit').innerText = u==='h' ? 'Heures' : 'Jours';
-
-        runEngine();
-
-    }
-
-
-
-    function fmtVal(v) {
-
-        if(DISPLAY_UNIT === 'j') return (v/8).toFixed(1) + " j";
-
-        return v.toFixed(1) + " h";
-
-    }
-
-
-
-    function runEngine() {
-
-        const start=new Date(document.getElementById('dStart').value+"T12:00:00");
-
-        const end=new Date(document.getElementById('dEnd').value+"T12:00:00");
-
-        const who=document.getElementById('selCollab').value;
-
-
-
-        const tabOpti=document.getElementById('tab-opti');
-
-        if(who!=='ALL') {
-
-            tabOpti.classList.remove('d-none');
-
-            document.getElementById('opti-user-name').innerText=who;
-
-            if(document.getElementById('view-opti').classList.contains('active-tab')) prepareOptiData(optiMode);
-
-        } else {
-
-            tabOpti.classList.add('d-none');
-
-            if(document.getElementById('view-opti').classList.contains('active-tab')) switchTab('overview');
-
-        }
-
-
-
-        let totLoad=0, workingDays=0;
-
-        let d=new Date(start);
-
-        while(d<=end) { if(d.getDay()!==0 && d.getDay()!==6) workingDays++; d.setDate(d.getDate()+1); }
-
-        
-
-        let nbPeople=(who!=='ALL')?1:new Set(DATA.filter(r=>r.assignee!=='Inconnu').map(r=>r.assignee)).size;
-
-        let totCapa=workingDays*8*nbPeople;
-
-
-
-        let daily={}, cats={'RUN':0,'PROJETS':0,'AUTRES':0}, projs={};
-
-        const tStart=start.getTime(), tEnd=end.getTime();
-
-
-
-        DATA.forEach(r => {
-
-            if(who!=='ALL' && r.assignee!==who) return;
-
-            r.values.forEach(v => {
-
-                const t=v.d.getTime();
-
-                if(t<tStart || t>tEnd) return;
-
-                totLoad+=v.v;
-
-                cats[r.category]+=v.v;
-
-                daily[v.d.toLocaleDateString('fr-FR')]=(daily[v.d.toLocaleDateString('fr-FR')]||0)+v.v;
-
-                projs[r.project]=(projs[r.project]||0)+v.v;
-
-            });
-
-        });
-
-
-
-        document.getElementById('k-load').innerText = fmtVal(totLoad);
-
-        document.getElementById('k-capa').innerText = fmtVal(totCapa);
-
-        const dispo=totCapa-totLoad;
-
-        const boxD=document.getElementById('box-dispo'), txtD=document.getElementById('k-dispo');
-
-        txtD.innerText=(dispo>0?"+":"")+fmtVal(dispo);
-
-        boxD.className=dispo>=0?'panel kpi-box success':'panel kpi-box danger';
-
-        txtD.className=dispo>=0?'kpi-val text-success':'kpi-val text-danger';
-
-
-
-        const pR = totLoad > 0 ? (cats.RUN / totLoad * 100) : 0;
-
-        const pP = totLoad > 0 ? (cats.PROJETS / totLoad * 100) : 0;
-
-        const pO = totLoad > 0 ? (cats.AUTRES / totLoad * 100) : 0;
-
-        
-
-        document.getElementById('pb-run').style.width = pR + "%";
-
-        document.getElementById('pb-proj').style.width = pP + "%";
-
-        document.getElementById('pb-other').style.width = pO + "%";
-
-        
-
-        document.getElementById('val-run').innerText = fmtVal(cats.RUN) + " (" + pR.toFixed(0) + "%)";
-
-        document.getElementById('val-proj').innerText = fmtVal(cats.PROJETS) + " (" + pP.toFixed(0) + "%)";
-
-        document.getElementById('val-other').innerText = fmtVal(cats.AUTRES) + " (" + pO.toFixed(0) + "%)";
-
-
-
-        if(CHART_VIEW==='time') renderChart(daily,'bar'); else renderChart(cats,'doughnut');
-
-        
-
-        const tb=document.querySelector('#top-proj tbody'); tb.innerHTML='';
-
-        Object.entries(projs).sort((a,b)=>b[1]-a[1]).slice(0,50).forEach(([n,v]) => {
-
-            let cat='AUTRES', bg='bg-secondary';
-
-            const up=n.toUpperCase();
-
-            if(REF_RUN.has(up)) { cat='RUN'; bg='bg-primary'; }
-
-            else if(REF_PROJ.has(up)) { cat='PROJETS'; bg='bg-warning text-dark'; }
-
-            else if(/^#\s*\d{5}/.test(n)) { cat='RUN'; bg='bg-primary'; }
-
-            
-
-            tb.innerHTML+=`<tr>
-
-                <td class="text-start text-truncate" style="max-width:200px" title="${n}"><span class="badge ${bg} me-2" style="font-size:0.6em">${cat}</span>${n}</td>
-
-                <td class="text-end fw-bold">${fmtVal(v)}</td>
-
-            </tr>`;
-
-        });
-
-    }
-
-
-
-    // --- OPTI LOGIC ---
-
-    function updateOptiMode(mode) {
-
-        optiMode = mode;
-
-        document.getElementById('btn-opti-week').className=mode==='week'?'btn btn-outline-primary active':'btn btn-outline-secondary';
-
-        document.getElementById('btn-opti-month').className=mode==='month'?'btn btn-outline-primary active':'btn btn-outline-secondary';
-
-        prepareOptiData(mode);
-
-    }
-
-
-
-    function prepareOptiData(mode) {
-
-        const who=document.getElementById('selCollab').value;
-
-        if(who==='ALL') return;
-
-
-
-        const selectedStart = new Date(document.getElementById('dStart').value);
-
-        const year = selectedStart.getFullYear();
-
-        const start = new Date(year, 0, 1);
-
-        const end = new Date(year, 11, 31);
-
         const now = new Date();
-
-
-
-        let periods = {}; 
-
-        let d = new Date(start);
-
-        
-
-        while(d <= end) {
-
-            let key="", label="";
-
-            let periodEnd = new Date(d);
-
-
-
-            if(mode==='week') {
-
-                const tempD=new Date(d); const dayNum=tempD.getUTCDay()||7;
-
-                tempD.setUTCDate(tempD.getUTCDate()+4-dayNum);
-
-                const yearStart=new Date(Date.UTC(tempD.getUTCFullYear(),0,1));
-
-                const weekNo=Math.ceil((((tempD-yearStart)/86400000)+1)/7);
-
-                const isoYear=tempD.getUTCFullYear();
-
-                key=`${isoYear}-W${weekNo.toString().padStart(2,'0')}`;
-
-                
-
-                const monday=new Date(d); 
-
-                const cDay=monday.getDay()||7; 
-
-                if(cDay!==1) monday.setDate(monday.getDate()-cDay+1);
-
-                
-
-                const sunday = new Date(monday); 
-
-                sunday.setDate(sunday.getDate()+6);
-
-                periodEnd = sunday;
-
-
-
-                const fmt = date => date.getDate().toString().padStart(2,'0') + '/' + (date.getMonth()+1).toString().padStart(2,'0');
-
-                label=`Sem. ${weekNo} (${fmt(monday)} - ${fmt(sunday)})`;
-
-            } else {
-
-                key=`${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}`;
-
-                label=d.toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
-
-                periodEnd = new Date(d.getFullYear(), d.getMonth()+1, 0);
-
-            }
-
-
-
-            if(!periods[key]) periods[key] = { 
-
-                key:key, label:label, load:0, workingDays:0, 
-
-                capa:0, dispo:0, occ:0, statusVal:0,
-
-                isPast: periodEnd < now 
-
-            };
-
-            
-
-            if(d.getDay()!==0 && d.getDay()!==6) periods[key].workingDays++;
-
-            d.setDate(d.getDate()+1);
-
-        }
-
-
-
-        const tStart=start.getTime(), tEnd=end.getTime();
-
-        DATA.forEach(r => {
-
-            if(r.assignee!==who) return;
-
-            r.values.forEach(v => {
-
-                if(v.d.getTime()<tStart || v.d.getTime()>tEnd) return;
-
-                let key="";
-
-                if(mode==='week') {
-
-                    const tempD=new Date(v.d); const dayNum=tempD.getUTCDay()||7;
-
-                    tempD.setUTCDate(tempD.getUTCDate()+4-dayNum);
-
-                    const yearStart=new Date(Date.UTC(tempD.getUTCFullYear(),0,1));
-
-                    const weekNo=Math.ceil((((tempD-yearStart)/86400000)+1)/7);
-
-                    key=`${tempD.getUTCFullYear()}-W${weekNo.toString().padStart(2,'0')}`;
-
-                } else {
-
-                    key=`${v.d.getFullYear()}-${(v.d.getMonth()+1).toString().padStart(2,'0')}`;
-
-                }
-
-                if(periods[key]) periods[key].load+=v.v;
-
-            });
-
-        });
-
-
-
-        currentOptiData = Object.values(periods).map(p => {
-
-            p.capa = p.workingDays * 8;
-
-            p.dispo = p.capa - p.load;
-
-            p.occ = p.capa>0 ? (p.load/p.capa*100) : 0;
-
-            
-
-            if(p.isPast) p.statusVal = 4;
-
-            else if(p.dispo < 0) p.statusVal = 1;
-
-            else if(p.occ < 80) p.statusVal = 3;
-
-            else p.statusVal = 2;
-
-
-
-            return p;
-
-        });
-
-
-
-        renderOptiTableInternal();
-
+        let s = new Date(now), e = new Date(now);
+        if(mode === 'week') { s.setDate(now.getDate() - (now.getDay()||7) + 1); e.setDate(s.getDate() + 6); }
+        else if(mode === 'month') { s.setDate(1); e = new Date(s.getFullYear(), s.getMonth()+1, 0); }
+        document.getElementById('dStart').value = s.toISOString().split('T')[0];
+        document.getElementById('dEnd').value = e.toISOString().split('T')[0];
+        runEngine();
     }
-
-
-
-    function sortOptiTable(col) {
-
-        if(optiSortCol === col) optiSortAsc = !optiSortAsc;
-
-        else { optiSortCol = col; optiSortAsc = true; }
-
-        renderOptiTableInternal();
-
-    }
-
-
-
-    function renderOptiTableInternal() {
-
-        document.querySelectorAll('.opti-th').forEach(th => {
-
-            th.classList.remove('active-sort');
-
-            th.querySelector('.sort-icon').innerText = '⇅';
-
-        });
-
-        const activeTh = document.querySelector(`.opti-th[onclick="sortOptiTable('${optiSortCol}')"]`);
-
-        if(activeTh) {
-
-            activeTh.classList.add('active-sort');
-
-            activeTh.querySelector('.sort-icon').innerText = optiSortAsc ? '▲' : '▼';
-
-        }
-
-
-
-        const hidePast = document.getElementById('chk-hide-past').checked;
-
-
-
-        currentOptiData.sort((a,b) => {
-
-            let va = a[optiSortCol], vb = b[optiSortCol];
-
-            if(optiSortCol === 'label') { va=a.key; vb=b.key; }
-
-            if(va < vb) return optiSortAsc ? -1 : 1;
-
-            if(va > vb) return optiSortAsc ? 1 : -1;
-
-            return 0;
-
-        });
-
-
-
-        const tbody = document.querySelector('#opti-table tbody');
-
-        tbody.innerHTML = '';
-
-        currentOptiData.forEach(p => {
-
-            if(hidePast && p.isPast) return;
-
-
-
-            let rowClass = p.isPast ? "row-past" : ""; 
-
-            let statusBadge = "";
-
-            
-
-            if(p.dispo < 0) { 
-
-                if(!p.isPast) rowClass = "opti-row-danger";
-
-                statusBadge = '<span class="badge bg-danger">Surcharge</span>'; 
-
-            }
-
-            else if (p.occ < 80) { 
-
-                if(!p.isPast) rowClass = "opti-row-success";
-
-                statusBadge = '<span class="badge bg-info text-dark">Dispo</span>'; 
-
-            }
-
-            else { 
-
-                statusBadge = '<span class="badge bg-success">OK</span>'; 
-
-            }
-
-
-
-            if(p.isPast) statusBadge = '<span class="badge bg-secondary">Passé</span>';
-
-
-
-            tbody.innerHTML += `<tr class="${rowClass}">
-
-                <td class="fw-bold text-capitalize text-start ps-4">${p.label}</td>
-
-                <td>${p.workingDays} j</td>
-
-                <td>${fmtVal(p.capa)}</td>
-
-                <td class="fw-bold">${fmtVal(p.load)}</td>
-
-                <td class="${p.dispo>=0?'text-avail-pos':'text-avail-neg'}">${(p.dispo>0?"+":"")}${fmtVal(p.dispo)}</td>
-
-                <td>${p.occ.toFixed(0)}%</td>
-
-                <td>${statusBadge}</td>
-
-            </tr>`;
-
-        });
-
-    }
-
-
-
-    function switchTab(t) {
-
-        document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
-
-        document.querySelectorAll('.tab-pane').forEach(p=>{p.classList.remove('active-tab'); p.classList.add('d-none')});
-
-        document.getElementById('tab-'+t).classList.add('active');
-
-        document.getElementById('view-'+t).classList.remove('d-none');
-
-        document.getElementById('view-'+t).classList.add('active-tab');
-
-        if(t==='opti') {
-
-            document.getElementById('btn-opti-week').click(); 
-
-        }
-
-    }
-
-
 
     let chart;
-
-    function renderChart(data, type) {
-
-        const ctx = document.getElementById('mainChart').getContext('2d');
-
-        if(chart) chart.destroy();
-
+    function runEngine() {
+        const start = new Date(document.getElementById('dStart').value);
+        const end = new Date(document.getElementById('dEnd').value);
+        const who = document.getElementById('selCollab').value;
         
+        let totLoad = 0, cats = {RUN:0, PROJETS:0, AUTRES:0}, projs = {}, daily = {};
+        let team = {};
 
-        let labels=[], vals=[], colors=[];
-
-        if(type==='bar') {
-
-            labels = Object.keys(data).sort((a,b) => {
-
-                const [d1,m1,y1]=a.split('/').map(Number); const [d2,m2,y2]=b.split('/').map(Number);
-
-                return new Date(y1,m1-1,d1)-new Date(y2,m2-1,d2);
-
+        DATA.forEach(r => {
+            if(who !== 'ALL' && r.assignee !== who) return;
+            if(!team[r.assignee]) team[r.assignee] = { load:0, capa: 40 };
+            
+            r.values.forEach(v => {
+                if(v.d >= start && v.d <= end) {
+                    totLoad += v.v;
+                    cats[r.category] += v.v;
+                    projs[r.project] = (projs[r.project] || 0) + v.v;
+                    const dk = v.d.toLocaleDateString();
+                    if(!daily[dk]) daily[dk] = {RUN:0, PROJETS:0, AUTRES:0};
+                    daily[dk][r.category] += v.v;
+                    team[r.assignee].load += v.v;
+                }
             });
-
-            vals = labels.map(k => DISPLAY_UNIT==='h' ? data[k] : data[k]/8);
-
-            colors = '#0d6efd';
-
-        } else {
-
-            labels = ['RUN','PROJETS','AUTRES'];
-
-            vals = [data.RUN, data.PROJETS, data.AUTRES].map(v => DISPLAY_UNIT==='h' ? v : v/8);
-
-            colors = ['#0d6efd','#f59e0b','#ced4da'];
-
-        }
-
-
-
-        chart = new Chart(ctx, {
-
-            type: type,
-
-            data: { labels:labels, datasets:[{ data:vals, backgroundColor:colors, borderRadius:4 }] },
-
-            options: { maintainAspectRatio:false, plugins:{legend:{display:type!=='bar'}} }
-
         });
 
+        // UI Updates
+        document.getElementById('k-load').innerText = totLoad.toFixed(1) + ' h';
+        document.getElementById('val-run').innerText = cats.RUN.toFixed(1) + ' h';
+        document.getElementById('val-proj').innerText = cats.PROJETS.toFixed(1) + ' h';
+        document.getElementById('val-other').innerText = cats.AUTRES.toFixed(1) + ' h';
+        
+        const tot = Math.max(totLoad, 1);
+        document.getElementById('pb-run').style.width = (cats.RUN/tot*100) + '%';
+        document.getElementById('pb-proj').style.width = (cats.PROJETS/tot*100) + '%';
+        document.getElementById('pb-other').style.width = (cats.AUTRES/tot*100) + '%';
+
+        renderChart(daily);
+        
+        // Heatmap simple
+        const hb = document.getElementById('heatmap-body');
+        hb.innerHTML = '';
+        if(who === 'ALL') {
+            document.getElementById('heatmap-container').classList.remove('d-none');
+            Object.entries(team).forEach(([u, d]) => {
+                const occ = (d.load/40*100).toFixed(0);
+                hb.innerHTML += `<tr><td>${u}</td><td>${d.load.toFixed(1)}h</td><td>${(40-d.load).toFixed(1)}h</td><td>${occ}%</td></tr>`;
+            });
+        }
     }
 
+    function renderChart(daily) {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        if(chart) chart.destroy();
+        const labels = Object.keys(daily).sort();
+        chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    { label: 'RUN', data: labels.map(l => daily[l].RUN), backgroundColor: '#0d6efd' },
+                    { label: 'PROJETS', data: labels.map(l => daily[l].PROJETS), backgroundColor: '#f59e0b' }
+                ]
+            },
+            options: { maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+        });
+    }
+
+    async function exportPDF() {
+        const canvas = await html2canvas(document.getElementById('dashboard-view'));
+        const pdf = new jspdf.jsPDF('l', 'mm', 'a4');
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 10, 277, 190);
+        pdf.save('Workload_Report.pdf');
+    }
+
+    function clearData() { location.reload(); }
+    function setUnit(u) { DISPLAY_UNIT = u; runEngine(); }
+    function switchTab(t) { /* Navigation simple */ }
 </script>
-
 </body>
-
 </html>
