@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time Tracking Manager - Wrike v 1.28</title>
+    <title>Time Tracking Manager - Wrike v 1.29</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -19,40 +19,96 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     
     <style>
-        /* --- VARIABLES GLOBALES POUR LE MENU --- */
+        /* --- VARIABLES GLOBALES (Pour le menu) --- */
         :root {
-            --primary-color: #e2001a; /* Rouge Manitou utilisé par le script */
-            --sidebar-bg: #2c3e50;    /* Couleur de fond du menu (modifiable) */
+            --primary-color: #e2001a; /* Rouge Manitou */
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --sidebar-bg: #2c3e50;
+            --sidebar-width: 250px;
             --sidebar-hover: rgba(255, 255, 255, 0.1);
         }
 
-        body { background-color: #f8f9fa; padding-top: 30px; font-family: 'Segoe UI', system-ui, sans-serif; color: #343a40; }
-        
-        /* --- STYLE DU PLACEHOLDER MENU (SIDEBAR) --- */
-        #menu-placeholder {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100vh;
-            width: 250px;
+        body { 
+            background-color: var(--bg-color); 
+            padding-top: 30px; 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            color: var(--text-color); 
+        }
+
+        /* --- STYLE DU MENU LATERAL (Structure importée via fetch) --- */
+        .sidebar {
+            width: var(--sidebar-width);
             background-color: var(--sidebar-bg);
-            z-index: 1030; /* Au-dessus du contenu */
-            overflow-y: auto;
+            color: white;
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            padding-top: 0;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            z-index: 1030;
+        }
+
+        .sidebar-brand {
+            background-color: #1a252f; /* Un peu plus foncé pour le header */
+            padding: 1.5rem;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #ecf0f1;
+            margin-bottom: 1rem;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #bdc3c7;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left: 4px solid transparent;
+        }
+
+        .nav-links a:hover {
+            background-color: var(--sidebar-hover);
+            color: white;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .nav-links a.active {
+            background-color: var(--sidebar-hover);
+            color: white;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .nav-links i {
+            width: 24px;
+            text-align: center;
+            font-style: normal;
         }
 
         /* --- AJUSTEMENT DU CONTENU PRINCIPAL --- */
-        /* On décale le conteneur Bootstrap vers la droite pour laisser la place au menu */
         .container.pb-5 {
-            margin-left: 250px; /* Largeur du menu */
-            max-width: calc(100% - 250px); /* Le reste de la largeur */
+            margin-left: var(--sidebar-width); /* Décalage */
+            max-width: calc(100% - var(--sidebar-width));
             padding-left: 2rem;
             padding-right: 2rem;
+            transition: margin-left 0.3s ease;
         }
 
-        /* Responsive Mobile : Menu en haut ou masqué */
+        /* Responsive Mobile */
         @media (max-width: 768px) {
-            #menu-placeholder {
+            .sidebar {
                 position: relative;
                 width: 100%;
                 height: auto;
@@ -63,7 +119,7 @@
             }
         }
 
-        /* --- STYLES EXISTANTS --- */
+        /* --- STYLES EXISTANTS APPLICATION --- */
         .card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); transition: transform 0.2s; background: white; }
         .card-header { background: white; border-bottom: 1px solid #f0f0f0; padding: 15px 20px; font-weight: 600; border-radius: 12px 12px 0 0 !important; color: #495057; }
         
@@ -106,13 +162,13 @@
         .heatmap-table td { padding: 4px; text-align: center; border-radius: 4px; min-width: 60px; }
         .heatmap-header-date { font-size: 0.75rem; color: #6c757d; font-weight: 600; padding: 5px; line-height: 1.2; }
         
-        .cell-ok { background-color: #d1e7dd; color: #0f5132; } 
-        .cell-incomplete { background-color: #fff3cd; color: #664d03; } 
-        .cell-missing { background-color: #ffd8a8; color: #944900; font-weight: bold; } 
-        .cell-overload { background-color: #f8d7da; color: #842029; font-weight: bold; } 
+        .cell-ok { background-color: #d1e7dd; color: #0f5132; } /* Vert >= Objectif */
+        .cell-incomplete { background-color: #fff3cd; color: #664d03; } /* Jaune < Objectif */
+        .cell-missing { background-color: #ffd8a8; color: #944900; font-weight: bold; } /* Orange 0h */
+        .cell-overload { background-color: #f8d7da; color: #842029; font-weight: bold; } /* Rouge > Objectif */
         
-        .cell-weekend { background-color: #e9ecef; color: #adb5bd; } 
-        .cell-absence { background-color: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; } 
+        .cell-weekend { background-color: #e9ecef; color: #adb5bd; } /* Gris WE */
+        .cell-absence { background-color: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; } /* Bleu Absence */
 
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
@@ -137,7 +193,7 @@
 <div class="container pb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold m-0"><i class="bi bi-activity text-primary me-2"></i>Time Tracking Manager - Wrike <span class="text-muted fs-6">v 1.28</span></h2>
+            <h2 class="fw-bold m-0"><i class="bi bi-activity text-primary me-2"></i>Time Tracking Manager - Wrike <span class="text-muted fs-6">v 1.29</span></h2>
             <p class="text-muted small m-0">Tableau de bord & Audit</p>
         </div>
         <div class="d-flex gap-2">
@@ -1396,12 +1452,16 @@
         .then(response => response.text())
         .then(data => {
             document.getElementById('menu-placeholder').innerHTML = data;
+            
+            // Logique de surbrillance
             const currentPage = window.location.pathname.split("/").pop() || 'index.html';
             const links = document.querySelectorAll('.nav-links a');
+            
             links.forEach(link => {
                 const linkPage = link.getAttribute('href');
                 if (linkPage === currentPage) {
                     link.classList.add('active');
+                    // On applique manuellement le style "active" au cas où le CSS externe ne soit pas chargé
                     link.style.backgroundColor = 'var(--sidebar-hover)';
                     link.style.color = '#fff';
                     link.style.borderLeft = '4px solid var(--primary-color)';
