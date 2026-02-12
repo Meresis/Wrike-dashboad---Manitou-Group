@@ -3,491 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyse Dragonfly v2.6</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <title>Time Tracking Manager</title>
 
     <style>
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
-        th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; background-color: #f8fafc; padding: 12px 16px; text-align: left; }
-        td { padding: 8px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.9rem; vertical-align: middle; }
-        .macro-header { background-color: #312e81; color: white; }
-        
-        .modal { transition: opacity 0.25s ease; }
-        body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
+        /* --- VARIABLES CSS (Configuration globale) --- */
+        :root {
+            --sidebar-width: 250px;
+            --sidebar-bg: #1e293b;       /* Bleu nuit */
+            --sidebar-text: #f8fafc;     /* Blanc cassé */
+            --active-color: #4f46e5;     /* Indigo pour l'état actif */
+            --hover-color: #334155;      /* Gris foncé pour le survol */
+            --main-bg: #f1f5f9;          /* Gris très clair pour le fond de page */
+        }
 
-        .reservoir-container { background: #f1f5f9; border-radius: 1rem; position: relative; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
-        .reservoir-liquid { background: linear-gradient(to top, #64748b, #94a3b8); width: 100%; position: absolute; bottom: 0; left: 0; transition: height 1s ease-in-out; border-top: 2px solid #475569; z-index: 10; }
-        .reservoir-project { background: linear-gradient(to bottom, #dcfce7, #bbf7d0); position: absolute; top: 0; left: 0; width: 100%; height: 100%; transition: height 1s ease-in-out; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 20px; z-index: 1; }
-        
-        .tab-active { border-bottom: 2px solid #4f46e5; color: #4f46e5; background-color: #eef2ff; }
-        .tab-inactive { border-bottom: 2px solid transparent; color: #64748b; }
-        .tab-inactive:hover { color: #374151; border-color: #cbd5e1; }
+        /* --- RESET & BODY --- */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--main-bg);
+            /* C'est ici qu'on gère le décalage pour ne pas être caché par le menu */
+            margin-left: var(--sidebar-width); 
+            min-height: 100vh;
+        }
+
+        /* --- STYLE DU MENU LATERAL (Injecté dynamiquement) --- */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            z-index: 1000; /* Toujours au-dessus */
+        }
+
+        .sidebar-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 40px;
+            color: #fff;
+            padding: 0 20px;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--sidebar-text);
+            padding: 15px 25px;
+            font-size: 1rem;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links a i {
+            font-style: normal;
+            width: 25px;
+            text-align: center;
+        }
+
+        /* Effet au survol */
+        .nav-links a:hover {
+            background-color: var(--hover-color);
+        }
+
+        /* --- ETAT ACTIF (Géré par JS) --- */
+        .nav-links a.active {
+            background-color: var(--active-color);
+            border-right: 4px solid #fff; /* Petit indicateur visuel */
+            font-weight: bold;
+        }
+
+        /* --- CONTENU PRINCIPAL --- */
+        .container {
+            padding: 40px; /* Espace interne du contenu */
+            max-width: 1200px;
+            margin: 0 auto;
+        }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen pb-20">
+<body>
 
-    <div class="max-w-7xl mx-auto px-6 py-10">
-        
-        <header class="flex justify-between items-center mb-8">
-            <div class="flex items-center gap-3">
-                <h1 class="text-3xl font-extrabold text-indigo-900 tracking-tight">Analyse Dragonfly</h1>
-                <span class="text-xs font-mono font-bold text-white bg-indigo-600 px-2 py-1 rounded shadow">v2.6</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <button onclick="toggleModal()" class="flex items-center gap-2 bg-white text-slate-700 px-4 py-2 rounded-lg shadow border border-slate-300 hover:bg-slate-50 transition-colors font-semibold">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
-                    Paramètres
-                </button>
-                <div id="statusBadge" class="hidden px-4 py-2 bg-green-100 text-green-700 font-bold rounded-lg text-sm border border-green-200">Fichier chargé ✔</div>
-            </div>
-        </header>
+    <div id="menu-placeholder"></div>
 
-        <div id="uploadZone" class="bg-white border-2 border-dashed border-indigo-200 rounded-2xl p-10 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer relative shadow-sm">
-            <input type="file" id="fileInput" accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-            <div class="space-y-2 pointer-events-none">
-                <p class="text-lg font-medium text-slate-700">Cliquez pour importer votre Excel</p>
-                <p class="text-xs text-slate-400 mt-2">Sauvegarde automatique active.</p>
-            </div>
+    <div class="container">
+        <h1>Bienvenue sur Time Tracking Manager</h1>
+        <p>Le menu à gauche est chargé dynamiquement via JavaScript.</p>
         </div>
-
-        <div id="dashboard" class="hidden mt-8 space-y-6">
-            
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-6 items-end">
-                <div class="flex-1 w-full">
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Collaborateur</label>
-                    <select id="userSelect" class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
-                        <option value="">Chargement...</option>
-                    </select>
-                </div>
-                <div class="w-full sm:w-48">
-                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Année Source</label>
-                    <select id="yearSelect" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="2025" selected>2025</option>
-                        <option value="2024">2024</option>
-                        <option value="2026">2026</option>
-                    </select>
-                </div>
-                <div class="bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100 text-center min-w-[120px]">
-                    <p class="text-xs text-indigo-400 uppercase font-bold">Jours Saisis</p>
-                    <p class="text-xl font-extrabold text-indigo-700" id="detectedDaysCount">-</p>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-1 flex">
-                <button onclick="switchTab('tab1')" id="btn-tab1" class="tab-active flex-1 py-3 px-4 rounded-md font-bold text-sm flex items-center justify-center gap-2 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" /></svg>
-                    1. Affectation
-                </button>
-                <button onclick="switchTab('tab2')" id="btn-tab2" class="tab-inactive flex-1 py-3 px-4 rounded-md font-medium text-sm flex items-center justify-center gap-2 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
-                    2. Analyse
-                </button>
-                <button onclick="switchTab('tab3')" id="btn-tab3" class="tab-inactive flex-1 py-3 px-4 rounded-md font-medium text-sm flex items-center justify-center gap-2 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" /></svg>
-                    3. Projections 2026
-                </button>
-            </div>
-
-            <div id="tab1" class="fade-in space-y-6">
-                <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50">
-                        <h3 class="text-lg font-bold text-slate-800">Affectation des Tâches</h3>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead>
-                                <tr>
-                                    <th class="w-1/3">Tâche</th>
-                                    <th class="w-1/3 bg-indigo-50 text-indigo-900">Catégorie</th>
-                                    <th class="text-right">Heures Totales</th>
-                                    <th class="text-right bg-amber-50 text-amber-800">Moy. Jour</th>
-                                </tr>
-                            </thead>
-                            <tbody id="statsTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative">
-                    <h3 class="text-lg font-bold text-slate-700 mb-2 border-b pb-2">📊 Répartition des Temps (Trié)</h3>
-                    <div style="height: 300px;"><canvas id="distributionChart"></canvas></div>
-                </div>
-            </div>
-
-            <div id="tab2" class="hidden fade-in space-y-8">
-                <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 flex flex-col md:flex-row gap-8 items-center">
-                    <div class="h-48 w-32 reservoir-container border-2 border-slate-300 relative">
-                        <div id="reservoirProject" class="reservoir-project"><span class="text-green-800 font-bold text-xs uppercase tracking-wider mb-1">Capacité</span><span class="text-green-900 font-extrabold text-sm uppercase">Projet</span></div>
-                        <div id="reservoirLiquid" class="reservoir-liquid" style="height: 0%;"></div>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-bold text-slate-800 mb-2 uppercase tracking-wide">Moyenne Annuelle (Base 8h)</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="bg-green-50 border border-green-200 p-4 rounded-xl flex items-center justify-between"><div><p class="text-xs font-bold text-green-700 uppercase">Capacité Projet</p><p class="text-3xl font-extrabold text-green-600 mt-1" id="kpiProjectCapacity">0.00 h</p><p class="text-xs text-green-600">/ jour (Dispo)</p></div></div>
-                            <div class="bg-slate-100 border border-slate-200 p-4 rounded-xl flex items-center justify-between opacity-80"><div><p class="text-xs font-bold text-slate-500 uppercase">Charge Run Totale</p><p class="text-2xl font-bold text-slate-600 mt-1" id="kpiRunLoad">0.00 h</p><p class="text-xs text-slate-500">MCO + Support + Gestion...</p></div></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative">
-                    <h3 class="text-lg font-bold text-slate-700 mb-2 border-b pb-2">📅 Saisonnalité</h3>
-                    <div style="height: 300px;"><canvas id="trendChart"></canvas></div>
-                </div>
-                <div class="bg-white rounded-xl shadow-lg border border-indigo-900 overflow-hidden">
-                    <div class="p-6 border-b border-indigo-100 bg-indigo-50"><h3 class="text-lg font-bold text-indigo-900">Consolidation Macro</h3></div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full"><thead><tr><th class="macro-header w-1/3">Catégorie</th><th class="macro-header text-right">Total</th><th class="macro-header text-right bg-indigo-800">Moy. Jour</th></tr></thead><tbody id="macroTableBody"></tbody></table>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab3" class="hidden fade-in space-y-6">
-                <div class="bg-gradient-to-r from-indigo-900 to-indigo-700 text-white p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center">
-                    <div>
-                        <h2 class="text-2xl font-bold mb-1">🎯 Planification 2026</h2>
-                        <p class="text-indigo-200 text-sm">Basé sur une année type de 218 jours ouvrés.</p>
-                    </div>
-                    <div class="mt-4 md:mt-0 text-right bg-white/10 p-3 rounded-lg border border-white/20">
-                        <p class="text-xs font-bold uppercase tracking-wider text-indigo-200">Capacité Projet Totale</p>
-                        <p class="text-3xl font-extrabold text-white" id="totalYearlyCapacity">- JH</p>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 gap-4" id="projectionContainer"></div>
-            </div>
-
-        </div>
-    </div>
-
-    <div id="settingsModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
-            <div class="modal-content py-4 text-left px-6">
-                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
-                    <p class="text-2xl font-bold text-indigo-900">Paramètres</p>
-                    <div onclick="toggleModal()" class="modal-close cursor-pointer z-50"><svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18"><path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path></svg></div>
-                </div>
-                
-                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6 mt-4">
-                    <div class="flex gap-2">
-                        <button onclick="exportConfig()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded text-sm">Exporter</button>
-                        <label class="flex-1 bg-white border border-blue-300 hover:bg-blue-50 text-blue-700 font-bold py-2 px-2 rounded text-sm cursor-pointer text-center">Importer...<input type="file" id="configInput" accept=".json" class="hidden" onchange="importConfig(this)"></label>
-                    </div>
-                </div>
-
-                <div class="my-5 border-t pt-4">
-                    <h4 class="font-bold text-gray-700 mb-2">Grandes Catégories</h4>
-                    <div class="flex gap-2 mb-4"><input type="text" id="newCatInput" placeholder="Nouvelle..." class="border p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-indigo-500"><button onclick="addCategory()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">+</button></div>
-                    <ul id="categoriesList" class="bg-gray-50 rounded border border-gray-200 max-h-60 overflow-y-auto p-2 space-y-2"></ul>
-                </div>
-
-                <div class="mt-6 pt-4 border-t border-gray-200 flex justify-between items-center">
-                    <button onclick="resetToDefaults()" class="text-xs text-red-500 hover:text-red-700 underline font-semibold">Rétablir les catégories par défaut</button>
-                    <button onclick="toggleModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Fermer</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script>
-        Chart.register(ChartDataLabels);
-
-        // CONFIG v2.6
-        const STORAGE_VERSION = 'v2.6';
-        const LS_CATS_KEY = `dragonfly_cats_${STORAGE_VERSION}`; 
-        const LS_MAP_KEY = `dragonfly_mapping_${STORAGE_VERSION}`;
-        
-        // --- NOUVELLE LISTE PAR DEFAUT ---
-        const DEFAULTS = [
-            "MCO", 
-            "SUPPORT", 
-            "GESTION OPERATIONNELLE", 
-            "PROJETS",
-            "MANAGEMENT",
-            "FORMATION / TRANSFERT",
-            "CONGES / ABSENCES",
-            "REUNIONS"
-        ];
-        
-        const STANDARD_DAY_HOURS = 8.0;
-        const STANDARD_YEAR_DAYS = 218;
-
-        let MACRO_CATS = JSON.parse(localStorage.getItem(LS_CATS_KEY)) || [...DEFAULTS];
-        let categoryMapping = JSON.parse(localStorage.getItem(LS_MAP_KEY)) || {};
-
-        let rawData = [];
-        let currentStats = {};
-        let detectedDays = 1;
-        let chartInstance = null;
-        let trendChartInstance = null;
-        let distributionChartInstance = null;
-
-        const COLORS = ['#4f46e5', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6'];
-
-        // --- EXPORT/IMPORT ---
-        function exportConfig() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({version: STORAGE_VERSION, categories: MACRO_CATS, mapping: categoryMapping}));
-            const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", "dragonfly_config.json"); document.body.appendChild(dl); dl.click(); dl.remove();
-        }
-        function importConfig(input) {
-            const file = input.files[0]; if(!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if(imported.categories && imported.mapping) {
-                        MACRO_CATS = imported.categories; categoryMapping = imported.mapping;
-                        localStorage.setItem(LS_CATS_KEY, JSON.stringify(MACRO_CATS)); localStorage.setItem(LS_MAP_KEY, JSON.stringify(categoryMapping));
-                        alert("Configuration importée !"); renderSettingsList();
-                        if(Object.keys(currentStats).length > 0) { renderDetailTable(); renderMacroTable(); renderDistributionChart(); }
+        document.addEventListener("DOMContentLoaded", function() {
+            // 2. Chargement du fichier menu.html
+            fetch('menu.html')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Erreur lors du chargement du menu");
                     }
-                } catch(err) { alert("Erreur fichier."); }
-            }; reader.readAsText(file); input.value = '';
-        }
+                    return response.text();
+                })
+                .then(html => {
+                    // Injection du HTML dans le placeholder
+                    document.getElementById('menu-placeholder').innerHTML = html;
 
-        // --- TABS ---
-        function switchTab(tabId) {
-            ['tab1', 'tab2', 'tab3'].forEach(id => document.getElementById(id).classList.add('hidden'));
-            ['btn-tab1', 'btn-tab2', 'btn-tab3'].forEach(id => document.getElementById(id).className = "tab-inactive flex-1 py-3 px-4 rounded-md font-medium text-sm flex items-center justify-center gap-2 transition-all cursor-pointer");
-            document.getElementById(tabId).classList.remove('hidden');
-            document.getElementById('btn-'+tabId).className = "tab-active flex-1 py-3 px-4 rounded-md font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer";
-        }
-
-        // --- INIT ---
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            const file = e.target.files[0]; if(!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                if(rawData.length > 0) initUI();
-            }; reader.readAsArrayBuffer(file);
+                    // 3. Gestion de l'état ACTIF (Active State)
+                    setActiveLink();
+                })
+                .catch(error => console.error('Erreur:', error));
         });
 
-        function initUI() {
-            document.getElementById('uploadZone').classList.add('hidden');
-            document.getElementById('statusBadge').classList.remove('hidden');
-            document.getElementById('dashboard').classList.remove('hidden');
-            const users = [...new Set(rawData.map(r => r['Nom']).filter(n => n))].sort();
-            const select = document.getElementById('userSelect');
-            select.innerHTML = '<option value="">-- Sélectionner --</option>';
-            users.forEach(u => select.add(new Option(u, u)));
-            select.addEventListener('change', updateAnalysis);
-            document.getElementById('yearSelect').addEventListener('change', updateAnalysis);
-        }
+        function setActiveLink() {
+            // Récupère le nom de la page actuelle (ex: "index.html" ou "workload-wrike.html")
+            // Si le chemin est vide (racine), on considère que c'est index.html
+            let currentPage = window.location.pathname.split("/").pop();
+            if (currentPage === "") currentPage = "index.html";
 
-        function updateAnalysis() {
-            const user = document.getElementById('userSelect').value;
-            const year = document.getElementById('yearSelect').value;
-            if(!user) return;
+            // Sélectionne tous les liens du menu injecté
+            const links = document.querySelectorAll('.nav-links a');
 
-            const filtered = rawData.filter(row => {
-                const d = row['Date']; let y = null;
-                if(typeof d === 'number') y = XLSX.SSF.parse_date_code(d).y; else if(typeof d === 'string') y = d.substring(0, 4);
-                return row['Nom'] === user && y == year;
-            });
+            links.forEach(link => {
+                // Récupère la valeur href du lien (ex: "workload-wrike.html")
+                const linkHref = link.getAttribute('href');
 
-            const uniqueDays = new Set(); currentStats = {};
-            filtered.forEach(row => {
-                if(row['Date']) uniqueDays.add(row['Date']);
-                const act = row['Activité'] || "Non catégorisé";
-                let h = parseFloat(String(row['temps en heure']).replace(',', '.')) || 0;
-                if(!currentStats[act]) currentStats[act] = 0; currentStats[act] += h;
-            });
-            detectedDays = uniqueDays.size > 0 ? uniqueDays.size : 1;
-            document.getElementById('detectedDaysCount').innerText = uniqueDays.size;
-
-            renderDetailTable(); renderMacroTable(); renderDistributionChart();
-        }
-
-        function renderDetailTable() {
-            const user = document.getElementById('userSelect').value;
-            const tbody = document.getElementById('statsTableBody');
-            tbody.innerHTML = '';
-            const activities = Object.keys(currentStats).sort((a,b) => currentStats[b] - currentStats[a]);
-            activities.forEach(act => {
-                const total = currentStats[act];
-                const savedCat = (categoryMapping[user] && categoryMapping[user][act]) ? categoryMapping[user][act] : "";
-                let optionsHtml = `<option value="">-- Choisir --</option>`;
-                MACRO_CATS.forEach(cat => { optionsHtml += `<option value="${cat}" ${cat === savedCat ? 'selected' : ''}>${cat}</option>`; });
-                const safeUser = user.replace(/'/g, "\\'"); const safeAct = act.replace(/'/g, "\\'");
-                tbody.innerHTML += `<tr><td class="font-bold text-slate-700">${act}</td><td class="bg-indigo-50"><select onchange="saveMapping('${safeUser}', '${safeAct}', this.value)" class="w-full text-xs font-bold p-1 rounded border border-indigo-200 focus:border-indigo-500 outline-none text-indigo-900 bg-white">${optionsHtml}</select></td><td class="text-right text-indigo-600 font-medium">${total.toFixed(2)}</td><td class="text-right font-bold text-amber-700 bg-amber-50">${(total/detectedDays).toFixed(2)}</td></tr>`;
-            });
-        }
-
-        window.saveMapping = function(user, activity, category) {
-            if(!categoryMapping[user]) categoryMapping[user] = {};
-            categoryMapping[user][activity] = category;
-            localStorage.setItem(LS_MAP_KEY, JSON.stringify(categoryMapping));
-            renderMacroTable();
-            renderDistributionChart(); 
-        };
-
-        // --- GRAPHIQUE TAB 1 (Trié) ---
-        function renderDistributionChart() {
-            const user = document.getElementById('userSelect').value;
-            if(!user) return;
-            const totals = {}; MACRO_CATS.forEach(c => totals[c] = 0); let unassigned = 0;
-            Object.entries(currentStats).forEach(([act, hours]) => {
-                const cat = (categoryMapping[user] && categoryMapping[user][act]) ? categoryMapping[user][act] : null;
-                if(cat && MACRO_CATS.includes(cat)) totals[cat] += hours; else unassigned += hours;
-            });
-
-            let labels = [...MACRO_CATS];
-            if(unassigned > 0) labels.push("Non affecté");
-            
-            let dataArr = labels.map(l => ({ label: l, value: l === "Non affecté" ? unassigned : totals[l] }));
-            
-            // SORTING
-            dataArr.sort((a, b) => b.value - a.value);
-            
-            const sortedLabels = dataArr.map(d => d.label);
-            const sortedData = dataArr.map(d => d.value);
-            const bgColors = sortedLabels.map((l, i) => l === "Non affecté" ? '#cbd5e1' : COLORS[i % COLORS.length]);
-
-            const ctx = document.getElementById('distributionChart').getContext('2d');
-            if(distributionChartInstance) distributionChartInstance.destroy();
-
-            distributionChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: { labels: sortedLabels, datasets: [{ label: 'Heures', data: sortedData, backgroundColor: bgColors, borderRadius: 6 }] },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'end', formatter: (val) => Math.round(val) + 'h', font: { weight: 'bold' }, color: '#475569' } },
-                    scales: { 
-                        y: { beginAtZero: true, grid: { display: true, borderDash: [2, 2] } }, 
-                        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 45 } } 
-                    }
+                // Si le href correspond à la page actuelle, on ajoute la classe CSS
+                if (linkHref === currentPage) {
+                    link.classList.add('active');
                 }
             });
         }
-
-        // --- PROJECTIONS (TAB 3) ---
-        function generateProjections(seasonality) {
-            const container = document.getElementById('projectionContainer');
-            container.innerHTML = '';
-            const months = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
-            const keys = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-
-            // Calcul Total Année
-            let yearlyTotalProjectDays = 0;
-
-            keys.forEach((k, idx) => {
-                const data = seasonality[k];
-                const total = data.total;
-                
-                if(total < 1) {
-                    container.innerHTML += `<div class="bg-gray-50 rounded-lg border border-gray-200 p-4 opacity-50 flex items-center gap-4"><div class="w-32 font-bold text-gray-400">${months[idx]}</div><div class="text-sm text-gray-400 italic">Pas de données historiques</div></div>`;
-                    return;
-                }
-
-                const ratioRunTotal = (data.mco + data.support + data.gestion + data.autre) / total;
-                const hRun = ratioRunTotal * STANDARD_DAY_HOURS;
-                const hProj = Math.max(0, STANDARD_DAY_HOURS - hRun);
-                
-                // Calcul JH Mensuel (approx 21 jours standards par mois pour projection simplifiée)
-                const daysInMonth = 21; 
-                const jhProjMonth = (hProj * daysInMonth) / 8; // On repasse en JH (8h = 1JH)
-                yearlyTotalProjectDays += jhProjMonth;
-
-                const hMCO = (data.mco/total)*STANDARD_DAY_HOURS; const hSup = (data.support/total)*STANDARD_DAY_HOURS; const hGest = (data.gestion/total)*STANDARD_DAY_HOURS; const hAutre = (data.autre/total)*STANDARD_DAY_HOURS;
-
-                let statusColor = "bg-green-50 border-green-500"; let statusText = "🟢 Capacité OK";
-                if(hRun > 4) { statusColor = "bg-red-50 border-red-500"; statusText = "🔴 Saturé Run"; }
-                else if(hRun > 2) { statusColor = "bg-orange-50 border-orange-400"; statusText = "🟠 Charge Moyenne"; }
-
-                let alerts = [];
-                if(hSup > 1.5) alerts.push("⚠️ Support"); if(hGest > 1.5) alerts.push("⚠️ Réunions"); if(hMCO > 2) alerts.push("⚠️ MCO");
-                let alertHtml = alerts.length > 0 ? `<div class="mt-2 text-xs font-bold text-red-600">${alerts.join(' ')}</div>` : '';
-
-                const html = `
-                <div class="bg-white rounded-lg shadow border-l-4 ${statusColor.split(' ')[1]} p-4 flex flex-col md:flex-row items-stretch gap-4 transition hover:shadow-md">
-                    <div class="w-full md:w-40 flex flex-col justify-center border-r border-gray-100 pr-4">
-                        <p class="text-xl font-bold text-slate-700 uppercase">${months[idx]}</p>
-                        <p class="text-sm text-slate-500 font-medium mt-1">${statusText}</p>
-                        ${alertHtml}
-                    </div>
-                    <div class="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-                        <div class="bg-blue-50 p-2 rounded border border-blue-100 flex flex-col justify-center"><span class="text-blue-800 font-bold uppercase mb-1">MCO</span><span class="text-lg font-bold text-blue-900">${hMCO.toFixed(1)}h</span></div>
-                        <div class="bg-orange-50 p-2 rounded border border-orange-100 flex flex-col justify-center"><span class="text-orange-800 font-bold uppercase mb-1">Support</span><span class="text-lg font-bold text-orange-900">${hSup.toFixed(1)}h</span></div>
-                        <div class="bg-purple-50 p-2 rounded border border-purple-100 flex flex-col justify-center"><span class="text-purple-800 font-bold uppercase mb-1">Gestion</span><span class="text-lg font-bold text-purple-900">${hGest.toFixed(1)}h</span></div>
-                        <div class="bg-gray-100 p-2 rounded border border-gray-200 flex flex-col justify-center"><span class="text-gray-600 font-bold uppercase mb-1">Autre</span><span class="text-lg font-bold text-gray-800">${hAutre.toFixed(1)}h</span></div>
-                    </div>
-                    <div class="w-full md:w-48 bg-green-50 rounded-lg border border-green-200 p-3 flex flex-col justify-center items-center text-center">
-                        <p class="text-xs font-bold text-green-700 uppercase tracking-wider">Capacité Projet</p>
-                        <p class="text-2xl font-extrabold text-green-600">${hProj.toFixed(1)} h/j</p>
-                        <p class="text-xs text-green-800 bg-green-200 px-2 py-1 rounded mt-1 font-bold">~ ${jhProjMonth.toFixed(1)} JH</p>
-                    </div>
-                </div>`;
-                container.innerHTML += html;
-            });
-
-            // Affichage Total Annuel
-            document.getElementById('totalYearlyCapacity').innerText = yearlyTotalProjectDays.toFixed(1) + " JH";
-        }
-
-        function renderMacroTable() {
-            const user = document.getElementById('userSelect').value; const year = document.getElementById('yearSelect').value;
-            const tbody = document.getElementById('macroTableBody'); tbody.innerHTML = '';
-            const macroStats = {}; MACRO_CATS.forEach(c => macroStats[c] = 0); let unassigned = 0;
-            const seasonality = {}; for(let i=1; i<=12; i++) { const k = i.toString().padStart(2, '0'); seasonality[k] = { total: 0, projet: 0, mco: 0, support: 0, gestion: 0, autre: 0 }; }
-
-            const filtered = rawData.filter(row => {
-                const d = row['Date']; let y = null; if(typeof d === 'number') y = XLSX.SSF.parse_date_code(d).y; else if(typeof d === 'string') y = d.substring(0, 4); return row['Nom'] === user && y == year;
-            });
-
-            filtered.forEach(row => {
-                const act = row['Activité'] || "Non catégorisé"; let h = parseFloat(String(row['temps en heure']).replace(',', '.')) || 0;
-                const cat = (categoryMapping[user] && categoryMapping[user][act]) ? categoryMapping[user][act] : null;
-                if (cat && MACRO_CATS.includes(cat)) macroStats[cat] += h; else unassigned += h;
-                
-                let m = "01"; const d = row['Date']; if(typeof d === 'number') m = String(XLSX.SSF.parse_date_code(d).m).padStart(2, '0'); else if(typeof d === 'string') { if(d.includes('-')) m = d.split('-')[1]; else if(d.includes('/')) m = d.split('/')[1]; }
-                if(seasonality[m]) {
-                    seasonality[m].total += h; if(cat === "PROJETS") seasonality[m].projet += h; else if(cat === "MCO") seasonality[m].mco += h; else if(cat === "SUPPORT") seasonality[m].support += h; else if(cat && cat.includes("GESTION")) seasonality[m].gestion += h; else seasonality[m].autre += h;
-                }
-            });
-
-            let nonProjectHours = 0; Object.keys(macroStats).forEach(cat => { if(cat !== "PROJETS") nonProjectHours += macroStats[cat]; }); nonProjectHours += unassigned;
-            const runDailyAverage = nonProjectHours / detectedDays; let projectCapacityDaily = Math.max(0, STANDARD_DAY_HOURS - runDailyAverage);
-
-            document.getElementById('kpiRunLoad').innerText = runDailyAverage.toFixed(2) + ' h'; document.getElementById('kpiProjectCapacity').innerText = projectCapacityDaily.toFixed(2) + ' h';
-            const liquidElem = document.getElementById('reservoirLiquid'); let runPercent = (runDailyAverage / STANDARD_DAY_HOURS) * 100; if(runPercent > 100) runPercent = 100; liquidElem.style.height = `${runPercent}%`;
-
-            MACRO_CATS.forEach(cat => {
-                const t = macroStats[cat]; let displayName = cat === "PROJETS" ? "PROJETS (temps indicatifs saisis en 2025)" : cat;
-                tbody.innerHTML += `<tr class="macro-row border-b border-indigo-100"><td class="py-3 px-4 text-indigo-900">${displayName}</td><td class="text-right font-bold text-indigo-900">${t.toFixed(2)} h</td><td class="text-right font-bold bg-indigo-100 text-indigo-900">${(t/detectedDays).toFixed(2)} h</td></tr>`;
-            });
-            if (unassigned > 0.1) tbody.innerHTML += `<tr class="text-slate-400 italic text-sm"><td class="py-2 px-4">⚠️ Non affecté</td><td class="text-right">${unassigned.toFixed(2)} h</td><td class="text-right">-</td></tr>`;
-
-            renderTrendChart(seasonality); generateProjections(seasonality);
-        }
-
-        function renderTrendChart(seasonalityData) {
-            const ctx = document.getElementById('trendChart').getContext('2d'); if(trendChartInstance) trendChartInstance.destroy();
-            const keys = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-            const dataRun = keys.map(k => seasonalityData[k].mco + seasonalityData[k].support + seasonalityData[k].gestion + seasonalityData[k].autre);
-            const dataProj = keys.map(k => seasonalityData[k].projet);
-            trendChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"],
-                    datasets: [{ label: 'Total Run', data: dataRun, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.3 }, { label: 'Projet', data: dataProj, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.3 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, datalabels: { display: false } }, scales: { y: { beginAtZero: true } } }
-            });
-        }
-
-        // --- UTILS ---
-        function toggleModal() { document.querySelector('.modal').classList.toggle('opacity-0'); document.querySelector('.modal').classList.toggle('pointer-events-none'); document.body.classList.toggle('modal-active'); if(!document.querySelector('.modal').classList.contains('opacity-0')) renderSettingsList(); }
-        function renderSettingsList() { document.getElementById('categoriesList').innerHTML = MACRO_CATS.map((c,i) => `<li class="flex justify-between items-center bg-white p-2 rounded border border-gray-100 shadow-sm"><span class="font-medium text-slate-700">${c}</span><button onclick="deleteCategory(${i})" class="text-red-500 hover:text-red-700 font-bold px-2">×</button></li>`).join(''); }
-        function addCategory() { const v = document.getElementById('newCatInput').value.trim().toUpperCase(); if(v && !MACRO_CATS.includes(v)) { MACRO_CATS.push(v); localStorage.setItem(LS_CATS_KEY, JSON.stringify(MACRO_CATS)); document.getElementById('newCatInput').value=''; renderSettingsList(); if(Object.keys(currentStats).length>0) {renderDetailTable(); renderMacroTable(); renderDistributionChart();} } }
-        function deleteCategory(i) { if(confirm("Supprimer ?")) { MACRO_CATS.splice(i,1); localStorage.setItem(LS_CATS_KEY, JSON.stringify(MACRO_CATS)); renderSettingsList(); if(Object.keys(currentStats).length>0) {renderDetailTable(); renderMacroTable(); renderDistributionChart();} } }
-        function resetToDefaults() { if(confirm("Reset ?")) { MACRO_CATS = [...DEFAULTS]; localStorage.setItem(LS_CATS_KEY, JSON.stringify(MACRO_CATS)); renderSettingsList(); if(Object.keys(currentStats).length>0) {renderDetailTable(); renderMacroTable(); renderDistributionChart();} } }
-        document.querySelector('.modal-overlay').addEventListener('click', toggleModal);
     </script>
+
 </body>
 </html>
