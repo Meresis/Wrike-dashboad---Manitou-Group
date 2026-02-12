@@ -8,6 +8,8 @@
         :root {
             --primary-color: #e2001a; /* Rouge Manitou */
             --bg-color: #f4f7f6;
+            --sidebar-bg: #2c3e50; /* Bleu foncé de la sidebar */
+            --sidebar-hover: #34495e;
             --text-color: #333;
             --card-bg: #ffffff;
             --shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -19,11 +21,71 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
+            /* Changement ici pour la disposition horizontale (Sidebar + Contenu) */
+            display: flex;
+            flex-direction: row; 
+            min-height: 100vh;
+        }
+
+        /* --- Styles de la Sidebar --- */
+        .sidebar {
+            width: 250px;
+            background-color: var(--sidebar-bg);
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0; /* Empêche la sidebar de rétrécir */
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-brand {
+            padding: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background-color: rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .nav-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .nav-links a {
+            display: flex;
+            align-items: center;
+            padding: 15px 25px;
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: var(--transition);
+            font-size: 1rem;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            background-color: var(--sidebar-hover);
+            color: #fff;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .nav-links a i {
+            margin-right: 15px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* --- Styles du contenu principal --- */
+        .main-content {
+            flex-grow: 1; /* Prend tout l'espace restant */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            padding: 2rem;
+            overflow-y: auto; /* Permet le scroll si l'écran est petit */
         }
 
         header {
@@ -35,6 +97,7 @@
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
             color: var(--text-color);
+            font-weight: 700;
         }
 
         header p {
@@ -46,51 +109,55 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 2rem;
-            width: 90%;
+            width: 100%;
             max-width: 1000px;
         }
 
         .card {
             background: var(--card-bg);
-            padding: 2rem;
+            padding: 3rem 2rem; /* Un peu plus de padding vertical */
             border-radius: 12px;
             box-shadow: var(--shadow);
             text-align: center;
             text-decoration: none;
             color: inherit;
             transition: var(--transition);
-            border-top: 5px solid transparent;
+            border-top: 5px solid transparent; /* Prêt pour le hover */
             display: flex;
             flex-direction: column;
             justify-content: center;
+            align-items: center;
         }
 
         .card:hover {
             transform: translateY(-10px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
             border-top: 5px solid var(--primary-color);
         }
 
-        .card i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
+        .card-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            /* Simulation de l'image centrée */
             display: block;
         }
 
         .card h2 {
-            margin: 0;
-            font-size: 1.4rem;
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
             color: #2c3e50;
         }
 
         .card p {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #7f8c8d;
-            margin-top: 0.5rem;
+            margin: 0;
+            line-height: 1.5;
         }
 
         footer {
-            margin-top: 4rem;
+            margin-top: auto; /* Pousse le footer en bas si on utilisait flex space-between */
+            padding-top: 4rem;
             font-size: 0.8rem;
             color: #999;
         }
@@ -98,34 +165,48 @@
 </head>
 <body>
 
-    <header>
-        <h1>Wrike Dashboards</h1>
-        <p>Sélectionnez le rapport que vous souhaitez consulter</p>
-    </header>
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            Manitou Wrike
+        </div>
+        <div class="nav-links">
+            <a href="#"><i>🏠</i> Accueil</a>
+            <a href="workload-wrike.html"><i>📊</i> Workload</a>
+            <a href="dragonfly-2025.html"><i>🐉</i> Dragonfly 2025</a>
+            <a href="pointages-wrike.html"><i>⏱️</i> Pointages</a>
+        </div>
+    </nav>
 
-    <div class="container">
-        <a href="workload-wrike.html" class="card">
-            <i>📊</i>
-            <h2>Workload</h2>
-            <p>Visualiser la charge de travail globale des équipes.</p>
-        </a>
+    <main class="main-content">
+        <header>
+            <h1>Wrike Dashboards</h1>
+            <p>Sélectionnez le rapport que vous souhaitez consulter</p>
+        </header>
 
-        <a href="dragonfly-2025.html" class="card">
-            <i>🐉</i>
-            <h2>Dragonfly 2025</h2>
-            <p>Suivi de l'avancement du projet Dragonfly.</p>
-        </a>
+        <div class="container">
+            <a href="workload-wrike.html" class="card">
+                <span class="card-icon">📊</span>
+                <h2>Workload</h2>
+                <p>Visualiser la charge de travail globale des équipes.</p>
+            </a>
 
-        <a href="pointages-wrike.html" class="card">
-            <i>⏱️</i>
-            <h2>Pointages</h2>
-            <p>Analyse des temps passés et des saisies Wrike.</p>
-        </a>
-    </div>
+            <a href="dragonfly-2025.html" class="card">
+                <span class="card-icon">🐉</span>
+                <h2>Dragonfly 2025</h2>
+                <p>Analyse des temps saisis en 2025</p>
+            </a>
 
-    <footer>
-        &copy; 2026 Manitou Group - Gestion de projet
-    </footer>
+            <a href="pointages-wrike.html" class="card">
+                <span class="card-icon">⏱️</span>
+                <h2>Pointages</h2>
+                <p>Analyse des temps passés et des saisies Wrike.</p>
+            </a>
+        </div>
+
+        <footer>
+            &copy; 2026 Manitou Group - Gestion de projet
+        </footer>
+    </main>
 
 </body>
 </html>
