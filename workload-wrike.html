@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wrike Pilotage v10.0 - Manitou Edition</title>
+    <title>Wrike Pilotage v10.1 - Manitou Edition</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -15,7 +16,7 @@
             --sidebar-hover: #34495e;
             --text-color: #333;
             --transition: all 0.3s ease;
-            --kpi-h: 140px;
+            --kpi-h: 150px;
         }
 
         body {
@@ -25,7 +26,7 @@
             display: flex;
             flex-direction: row;
             min-height: 100vh;
-            overflow: hidden; /* Empêche le scroll global du body */
+            overflow: hidden;
         }
 
         /* --- Sidebar Manitou --- */
@@ -88,7 +89,7 @@
         .main-wrapper {
             flex-grow: 1;
             height: 100vh;
-            overflow-y: auto; /* Scroll uniquement ici */
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
             padding: 20px;
@@ -97,19 +98,16 @@
 
         .panel { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; }
 
-        /* KPI Styling */
         .kpi-strip { display: flex; gap: 15px; height: var(--kpi-h); flex-shrink: 0; }
         .kpi-box { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-bottom: 4px solid transparent; padding: 10px; }
         .kpi-box.primary { border-color: var(--primary-color); }
         .kpi-val { font-size: 1.8rem; font-weight: 800; color: #1e293b; }
         .kpi-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
 
-        /* Progress Bar Section */
         .progress-stacked { height: 12px; width: 100%; border-radius: 6px; background-color: #e9ecef; display: flex; overflow: hidden; margin-bottom: 8px; }
         .progress-bar { transition: width .6s ease; }
         .kpi-legend { display: flex; justify-content: space-between; width: 100%; font-size: 0.75rem; font-weight: 700; }
 
-        /* Import Screen */
         #import-view { 
             position: absolute; top:0; right:0; width: calc(100% - 250px); height:100%; 
             z-index: 100; background: var(--bg-color); 
@@ -119,10 +117,10 @@
         .upload-card { border: 2px dashed #cbd5e1; padding: 30px 20px; text-align: center; background: white; border-radius: 12px; cursor: pointer; height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: 0.2s; }
         .upload-card.done { border-color: #198754; background: #d1e7dd; }
         .upload-card.loading { border-color: #ffc107; background: #fff3cd; cursor: wait; }
-        .btn-go { grid-column: span 3; padding: 15px; font-weight: bold; background-color: var(--primary-color); border: none; }
+        .btn-go { grid-column: span 3; padding: 15px; font-weight: bold; background-color: var(--primary-color); border: none; color: white; }
         .btn-go:hover { background-color: #b30015; }
+        .btn-go.disabled { opacity: 0.5; pointer-events: none; }
 
-        /* Utils */
         .d-none { display: none !important; }
         .active-tab { display: flex !important; }
         .opti-th { cursor: pointer; background: #f8f9fa; position: sticky; top: 0; }
@@ -133,10 +131,10 @@
     <nav class="sidebar">
         <div class="sidebar-brand">Manitou Wrike</div>
         <div class="nav-links">
-            <a href="#" onclick="location.reload()"><i>🏠</i> Accueil</a>
-            <a href="#" class="active"><i>📊</i> Workload</a>
-            <a href="#"><i>🐉</i> Dragonfly 2025</a>
-            <a href="#"><i>⏱️</i> Pointages</a>
+            <a href="https://meresis.github.io/Wrike-dashboad---Manitou-Group/"><i>🏠</i> Accueil</a>
+            <a href="https://meresis.github.io/Wrike-dashboad---Manitou-Group/workload-wrike.html" class="active"><i>📊</i> Workload</a>
+            <a href="https://meresis.github.io/Wrike-dashboad---Manitou-Group/dragonfly-2025.html"><i>🐉</i> Dragonfly 2025</a>
+            <a href="https://meresis.github.io/Wrike-dashboad---Manitou-Group/pointages-wrike.html"><i>⏱️</i> Pointages</a>
         </div>
     </nav>
 
@@ -166,12 +164,11 @@
                     <div class="small text-muted" id="txt-proj">Référentiel PROJETS</div>
                     <input type="file" id="fileProj" hidden onchange="handleFile(this, 'proj')">
                 </div>
-                <button id="btn-launch" class="btn btn-primary btn-go disabled" onclick="launchDashboard()">LANCER L'ANALYSE</button>
+                <button id="btn-launch" class="btn btn-go disabled" onclick="launchDashboard()">LANCER L'ANALYSE</button>
             </div>
         </div>
 
         <div id="dashboard-view" class="d-none h-100 d-flex flex-column gap-3">
-            
             <div class="panel p-3 d-flex align-items-center justify-content-between">
                 <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-secondary fw-bold" onclick="setPeriod('week')">Semaine</button>
@@ -182,11 +179,9 @@
                 <select id="selCollab" class="form-select form-select-sm w-auto fw-bold" onchange="runEngine()">
                     <option value="ALL">Équipe IS Supply</option>
                 </select>
-                <div class="d-flex gap-2">
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-primary active" id="btn-unit-h" onclick="setUnit('h')">H</button>
-                        <button class="btn btn-outline-primary" id="btn-unit-j" onclick="setUnit('j')">J</button>
-                    </div>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-primary active" id="btn-unit-h" onclick="setUnit('h')">H</button>
+                    <button class="btn btn-outline-primary" id="btn-unit-j" onclick="setUnit('j')">J</button>
                 </div>
             </div>
 
@@ -228,10 +223,6 @@
 
                 <div id="view-opti" class="tab-pane d-none h-100 flex-column">
                     <div class="panel h-100 overflow-y-auto">
-                        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
-                            <h6 class="m-0 fw-bold">🔍 Planning : <span id="opti-user-name"></span></h6>
-                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="chk-hide-past" onchange="renderOptiTableInternal()"><label class="form-check-label small">Masquer passé</label></div>
-                        </div>
                         <table class="table table-bordered text-center align-middle m-0" id="opti-table">
                             <thead><tr><th class="opti-th" onclick="sortOptiTable('label')">Période</th><th>Jours</th><th>Capa</th><th>Charge</th><th>Dispo</th><th>Occ.</th><th>Statut</th></tr></thead>
                             <tbody></tbody>
@@ -243,7 +234,7 @@
     </div>
 
 <script>
-    // --- Moteur de données ---
+    // Logique du moteur conservée (v9.1 stable)
     let WORKLOAD_RAW=[], REF_RUN=new Set(), REF_PROJ=new Set(), DATA=[]; 
     let DISPLAY_UNIT='h', optiSortCol='label', optiSortAsc=true, optiMode='week';
     let filesLoaded={workload:false,run:false,proj:false};
@@ -257,14 +248,18 @@
         setTimeout(() => {
             const reader=new FileReader();
             reader.onload=(e)=>{
-                const wb=XLSX.read(e.target.result,{type:'array'});
-                const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
-                if(type==='workload') { WORKLOAD_RAW=json; filesLoaded.workload=true; }
-                else if(type==='run') extractRef(json, REF_RUN);
-                else extractRef(json, REF_PROJ);
-                
-                card.classList.replace('loading','done'); spin.classList.add('d-none'); icon.classList.remove('d-none'); icon.innerHTML="✅";
-                if(filesLoaded.workload) document.getElementById('btn-launch').classList.remove('disabled');
+                try {
+                    const wb=XLSX.read(e.target.result,{type:'array'});
+                    const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1});
+                    if(type==='workload') { WORKLOAD_RAW=json; filesLoaded.workload=true; }
+                    else if(type==='run') extractRef(json, REF_RUN);
+                    else extractRef(json, REF_PROJ);
+                    
+                    card.classList.replace('loading','done'); spin.classList.add('d-none'); icon.classList.remove('d-none'); icon.innerHTML="✅";
+                    if(filesLoaded.workload) document.getElementById('btn-launch').classList.remove('disabled');
+                } catch(err) {
+                    alert("Erreur de lecture : " + err.message);
+                }
             };
             reader.readAsArrayBuffer(input.files[0]);
         }, 100);
@@ -273,10 +268,11 @@
     function extractRef(rows, targetSet) {
         let idx=-1;
         for(let i=0; i<Math.min(20, rows.length); i++) {
-            let row=rows[i].map(x=>String(x).toLowerCase());
+            let row=(rows[i] || []).map(x=>String(x).toLowerCase());
             if(row.includes('projet ou dossier')) { idx=row.indexOf('projet ou dossier'); break; }
             if(row.includes('nom')) { idx=row.indexOf('nom'); break; }
         }
+        if(idx === -1) return;
         for(let i=1; i<rows.length; i++) if(rows[i][idx]) targetSet.add(String(rows[i][idx]).trim().toUpperCase());
     }
 
@@ -291,6 +287,7 @@
     function processData() {
         const rows=WORKLOAD_RAW;
         let hIdx=rows.findIndex(r=>r.some(c=>String(c).includes('Allocated effort')));
+        if(hIdx === -1) return;
         const headers=rows[hIdx];
         const cAss=headers.findIndex(h=>h.toLowerCase().includes('assignee'));
         const cProj=headers.findIndex(h=>h.toLowerCase().includes('project name'));
@@ -304,7 +301,7 @@
         DATA=[];
         for(let i=hIdx+1; i<rows.length; i++){
             let r=rows[i];
-            if(String(r[0]).includes('Total')) continue;
+            if(!r || String(r[0]).includes('Total')) continue;
             let proj=String(r[cProj]||'').trim();
             let cat=REF_RUN.has(proj.toUpperCase())?'RUN':(REF_PROJ.has(proj.toUpperCase())?'PROJETS':'AUTRE');
             let vals=[];
@@ -318,6 +315,7 @@
 
     function initFilters() {
         const sel=document.getElementById('selCollab');
+        sel.innerHTML = '<option value="ALL">Équipe IS Supply</option>';
         [...new Set(DATA.map(d=>d.assignee))].sort().forEach(a=>sel.innerHTML+=`<option value="${a}">${a}</option>`);
     }
 
@@ -333,7 +331,11 @@
     function setUnit(u) { DISPLAY_UNIT=u; runEngine(); }
 
     function runEngine() {
-        const s=new Date(document.getElementById('dStart').value), e=new Date(document.getElementById('dEnd').value), who=document.getElementById('selCollab').value;
+        const sVal = document.getElementById('dStart').value;
+        const eVal = document.getElementById('dEnd').value;
+        if(!sVal || !eVal) return;
+        
+        const s=new Date(sVal), e=new Date(eVal), who=document.getElementById('selCollab').value;
         const div=DISPLAY_UNIT==='h'?1:8;
 
         document.getElementById('tab-opti').classList.toggle('d-none', who==='ALL');
@@ -350,16 +352,15 @@
         });
 
         document.getElementById('k-load').innerText=(tot/div).toFixed(1);
-        document.getElementById('pb-run').style.width=(cats.RUN/tot*100)+'%';
-        document.getElementById('pb-proj').style.width=(cats.PROJETS/tot*100)+'%';
-        document.getElementById('pb-other').style.width=(cats.AUTRE/tot*100)+'%';
-        document.getElementById('val-run').innerText=`RUN: ${(cats.RUN/tot*100||0).toFixed(0)}%`;
-        document.getElementById('val-proj').innerText=`PROJ: ${(cats.PROJETS/tot*100||0).toFixed(0)}%`;
+        document.getElementById('pb-run').style.width= (tot > 0 ? (cats.RUN/tot*100) : 0) +'%';
+        document.getElementById('pb-proj').style.width= (tot > 0 ? (cats.PROJETS/tot*100) : 0) +'%';
+        document.getElementById('pb-other').style.width= (tot > 0 ? (cats.AUTRE/tot*100) : 0) +'%';
+        document.getElementById('val-run').innerText=`RUN: ${(tot > 0 ? (cats.RUN/tot*100) : 0).toFixed(0)}%`;
+        document.getElementById('val-proj').innerText=`PROJ: ${(tot > 0 ? (cats.PROJETS/tot*100) : 0).toFixed(0)}%`;
 
         renderChart(daily);
         const tbody=document.querySelector('#top-proj tbody'); tbody.innerHTML='';
         Object.entries(projs).sort((a,b)=>b[1]-a[1]).forEach(([n,v])=>tbody.innerHTML+=`<tr><td>${n}</td><td class="text-end">${(v/div).toFixed(1)}</td></tr>`);
-        if(who!=='ALL') prepareOptiData();
     }
 
     let chart;
@@ -374,10 +375,8 @@
         document.querySelectorAll('.tab-pane').forEach(p=>p.classList.add('d-none'));
         document.getElementById('tab-'+t).classList.add('active');
         document.getElementById('view-'+t).classList.remove('d-none');
+        document.getElementById('view-'+t).classList.add('active-tab');
     }
-
-    // (Logique Opti & Tri simplifiée pour l'intégration)
-    function prepareOptiData() { /* Logic v9.0 */ }
 </script>
 </body>
 </html>
