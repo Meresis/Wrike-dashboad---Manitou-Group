@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyse RUN & Projets v 1.9</title>
+    <title>Time Tracking Manager - Wrike v 1.27</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -36,6 +36,7 @@
         .nav-pills .nav-link.active-run { background-color: #d63384 !important; color: white; }
         .nav-pills .nav-link.active-project { background-color: #fd7e14 !important; color: white; }
         .nav-pills .nav-link.active-user { background-color: #20c997 !important; color: white; }
+        .nav-pills .nav-link.active-audit { background-color: #0dcaf0 !important; color: white; }
         .nav-pills .nav-link.active-settings { background-color: #495057 !important; color: white; }
         
         .filter-bar { background: white; padding: 10px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 25px; }
@@ -43,7 +44,6 @@
         .btn-preset:hover, .btn-preset.active { background-color: #e9ecef; color: #212529; border-color: #adb5bd; }
         .filter-label { font-size: 0.75rem; font-weight: 600; color: #adb5bd; display: block; margin-bottom: 2px; }
         
-        /* Ajustement taille police pour faire tenir 5 KPIs */
         .stat-value { font-size: 1.5rem; font-weight: 700; color: #212529; }
         .stat-label { font-size: 0.7rem; color: #adb5bd; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         
@@ -54,6 +54,21 @@
         .user-list-item.disabled-row { background-color: #f8f9fa; color: #adb5bd; }
         .user-list-item label { cursor: pointer; font-size: 0.95rem; }
         .badge-team { font-size: 0.75rem; background-color: #e9ecef; color: #495057; padding: 4px 8px; border-radius: 4px; margin-left: 10px; }
+
+        /* --- STYLES AUDIT / HEATMAP --- */
+        .heatmap-container { overflow-x: auto; white-space: nowrap; padding-bottom: 10px; }
+        .heatmap-table { width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 0.85rem; }
+        .heatmap-table th { position: sticky; left: 0; background: white; z-index: 2; border-right: 2px solid #f0f0f0; padding: 8px; text-align: left; min-width: 140px; }
+        .heatmap-table td { padding: 4px; text-align: center; border-radius: 4px; min-width: 60px; }
+        .heatmap-header-date { font-size: 0.75rem; color: #6c757d; font-weight: 600; padding: 5px; line-height: 1.2; }
+        
+        .cell-ok { background-color: #d1e7dd; color: #0f5132; } /* Vert >= Objectif */
+        .cell-incomplete { background-color: #fff3cd; color: #664d03; } /* Jaune < Objectif */
+        .cell-missing { background-color: #ffd8a8; color: #944900; font-weight: bold; } /* Orange 0h */
+        .cell-overload { background-color: #f8d7da; color: #842029; font-weight: bold; } /* Rouge > Objectif */
+        
+        .cell-weekend { background-color: #e9ecef; color: #adb5bd; } /* Gris WE */
+        .cell-absence { background-color: #cfe2ff; color: #084298; border: 1px solid #b6d4fe; } /* Bleu Absence */
 
         @keyframes shake {
             0% { transform: translate(1px, 1px) rotate(0deg); }
@@ -76,8 +91,8 @@
 <div class="container pb-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold m-0"><i class="bi bi-activity text-primary me-2"></i>Analyse RUN & Projets <span class="text-muted fs-6">v 1.9</span></h2>
-            <p class="text-muted small m-0">Tableau de bord de suivi consolidé</p>
+            <h2 class="fw-bold m-0"><i class="bi bi-activity text-primary me-2"></i>Time Tracking Manager - Wrike <span class="text-muted fs-6">v 1.27</span></h2>
+            <p class="text-muted small m-0">Tableau de bord & Audit</p>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-dark btn-sm" onclick="exportToPDF()" id="pdfBtn" style="display:none;">
@@ -143,6 +158,11 @@
                 </button>
             </li>
             <li class="nav-item ms-3 border-start ps-3">
+                <button class="nav-link" onclick="switchView('audit')">
+                    <i class="bi bi-table"></i> Audit & Contrôle
+                </button>
+            </li>
+            <li class="nav-item">
                 <button class="nav-link" onclick="switchView('settings')">
                     <i class="bi bi-gear-fill"></i> Paramètres
                 </button>
@@ -223,6 +243,26 @@
                         <option value="week" selected>Semaine</option>
                         <option value="month">Mois</option>
                     </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="auditContent" style="display:none;">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-table text-info me-2"></i>Matrice de Complétude</h5>
+                    <div class="d-flex gap-2 align-items-center">
+                        <span class="badge rounded-pill bg-success">Validé (Objectif)</span>
+                        <span class="badge rounded-pill bg-danger">Surcharge (&gt;Objectif)</span>
+                        <span class="badge rounded-pill bg-warning text-dark">Incomplet (&lt;Objectif)</span>
+                        <span class="badge rounded-pill" style="background-color:#ffd8a8; color:#944900;">Manquant (0h)</span>
+                        <span class="badge rounded-pill" style="background-color:#cfe2ff; color:#084298;">Absence</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="auditContainer" class="heatmap-container p-3">
+                        <p class="text-center text-muted p-5">Veuillez sélectionner une période pour afficher l'audit.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -338,7 +378,6 @@
         backgroundColor: 'rgba(255,255,255,0.5)',
         borderRadius: 3,
         font: { weight: 'bold', size: 13 }, 
-        // UTILISATION DU FORMAT H.MM
         formatter: (value) => formatH_MM(value) + 'h',
         anchor: 'end', align: 'end', offset: 0,
         display: function(context) { return context.dataset.data[context.dataIndex] > 0; }
@@ -347,13 +386,44 @@
     // --- STATE & PERSISTENCE ---
     let store = { project: [], run: [], currentView: 'global' };
     
-    // Chargement sécurisé du LocalStorage
-    let userTeamMap = {};
+    // CONFIGURATION PAR DEFAUT (V1.26)
+    const DEFAULT_TEAMS_CONFIG = {
+        "Cyril Bernard": "SUPPLY CHAIN",
+        "David Sechet": "SUPPLY CHAIN",
+        "Jeremy Plouzennec": "SUPPLY CHAIN",
+        "Laetitia Grosbois": "SUPPLY CHAIN",
+        "Liliane Da Costa": "SUPPLY CHAIN",
+        
+        "Eloïse Rivery": "P&Q",
+        "Florian Poirier": "P&Q",
+        "Mickaël Serre": "P&Q",
+        "Stéphane Bechieau": "P&Q",
+        
+        "Christian Jacques": "INDUS IT",
+        "Guillaume Moynard": "INDUS IT",
+        "Hadrien Bosseau": "INDUS IT",
+        "Jérémie You": "INDUS IT",
+        "Matthieu Avis": "INDUS IT",
+        "Sébastien Charron": "INDUS IT",
+        "Thomas Joubert": "INDUS IT",
+        
+        "Alexandre Zemmer": "R&D IS",
+        "Julien Juhel": "R&D IS",
+        "Olivier Guyot": "R&D IS",
+        "Xavier Gallard": "R&D IS"
+    };
+
+    // Chargement sécurisé du LocalStorage avec Merge
+    let userTeamMap = Object.assign({}, DEFAULT_TEAMS_CONFIG);
     try {
         const saved = localStorage.getItem('teamConfig');
-        if (saved) userTeamMap = JSON.parse(saved);
+        if (saved) {
+            const savedMap = JSON.parse(saved);
+            // On surcharge les défauts avec les sauvegardes utilisateur
+            Object.assign(userTeamMap, savedMap);
+        }
     } catch(e) {
-        userTeamMap = {};
+        console.error("Erreur chargement config", e);
     }
 
     const TEAMS = ['SUPPLY CHAIN', 'P&Q', 'INDUS IT', 'R&D IS'];
@@ -433,11 +503,9 @@
         } else { startAnalysis(); }
     }
 
-    // --- MOTEUR IMPORT (BASE 1.5 - INCHANGE) ---
     function processRawData(data, sourceType) {
         return data.filter(row => {
             if (!row) return false;
-            // Détection "large" qui fonctionnait
             const u = Object.keys(row).find(k => k && k.toLowerCase().includes("utilisateur"));
             const t = Object.keys(row).find(k => k && k.toLowerCase().includes("temps passé"));
             return u && row[u] && t;
@@ -455,12 +523,10 @@
                 });
             }
 
-            // Safe Date Parsing
             let dObj = new Date(row[dKey]);
             if (isNaN(dObj.getTime())) { dObj = new Date(); }
             dObj.setHours(12, 0, 0, 0); 
 
-            // -- DETECTION ABSENCE V2.6 --
             let finalSource = sourceType;
             const catVal = (cKey && row[cKey]) ? String(row[cKey]) : "";
             const projVal = (pKey && row[pKey]) ? String(row[pKey]) : "";
@@ -486,8 +552,6 @@
         if (typeof timeStr === 'number') return timeStr * 24; 
         
         let str = String(timeStr).trim().replace(',', '.');
-        
-        // Format "1h 30m" ou "1h30"
         if (str.toLowerCase().includes('h')) {
             let parts = str.toLowerCase().split('h');
             let h = parseFloat(parts[0]) || 0;
@@ -497,8 +561,6 @@
             }
             return h + (m/60);
         }
-
-        // Format "1:30"
         if (str.includes(':')) {
             const parts = str.split(':');
             if (parts.length >= 2) return parseInt(parts[0]) + (parseInt(parts[1])/60);
@@ -529,7 +591,6 @@
         updateDashboard();
     }
 
-    // --- POPULATION LISTE UTILISATEUR AVEC EQUIPES ---
     function populateUserSelect() {
         const allData = [...store.project, ...store.run];
         const uniqueUsers = [...new Set(allData.map(d => d.user))].sort();
@@ -585,7 +646,6 @@
             let badge = "";
             if (isAssignedElsewhere) badge = `<span class="badge-team">${assignedTeam}</span>`;
 
-            // ID safe for querySelector
             const safeId = user.replace(/[^a-zA-Z0-9]/g, '');
 
             div.innerHTML = `
@@ -613,13 +673,14 @@
     function switchView(view) {
         store.currentView = view;
         document.querySelectorAll('.nav-link').forEach(l => {
-            l.classList.remove('active', 'active-run', 'active-global', 'active-project', 'active-user', 'active-settings');
+            l.classList.remove('active', 'active-run', 'active-global', 'active-project', 'active-user', 'active-audit', 'active-settings');
             if (l.getAttribute('onclick').includes(`'${view}'`)) {
                 l.classList.add('active');
                 if (view === 'run') l.classList.add('active-run');
                 if (view === 'global') l.classList.add('active-global');
                 if (view === 'project') l.classList.add('active-project');
                 if (view === 'user') l.classList.add('active-user');
+                if (view === 'audit') l.classList.add('active-audit');
                 if (view === 'settings') l.classList.add('active-settings');
             }
         });
@@ -638,31 +699,48 @@
             distribTitle: document.getElementById('distribTitle'),
             settingsContainer: document.getElementById('settingsContainer'),
             mainFilterBar: document.getElementById('mainFilterBar'),
-            dashboardContent: document.getElementById('dashboardContent')
+            dashboardContent: document.getElementById('dashboardContent'),
+            auditContent: document.getElementById('auditContent')
         };
 
-        // Reset
+        // Reset display
         elements.distCard.style.display = 'none';
         elements.projectCatCard.style.display = 'none';
         elements.userCatCard.style.display = 'none';
         elements.userChartCard.style.display = 'block';
-        
+        elements.settingsContainer.style.display = 'none';
+        elements.auditContent.style.display = 'none';
+        elements.dashboardContent.style.display = 'block';
+        elements.mainFilterBar.style.display = 'block';
+
         if (view === 'settings') {
             elements.settingsContainer.style.display = 'block';
             elements.mainFilterBar.style.display = 'none';
             elements.dashboardContent.style.display = 'none';
             renderTeamManager();
             return; 
-        } else {
-            elements.settingsContainer.style.display = 'none';
-            elements.mainFilterBar.style.display = 'block';
-            elements.dashboardContent.style.display = 'block';
+        } 
+        
+        if (view === 'audit') {
+            elements.auditContent.style.display = 'block';
+            elements.dashboardContent.style.display = 'none';
+            elements.colSelector.style.display = 'block'; 
+            elements.colDate.className = 'col-md-3';
+            elements.colShortcuts.className = 'col-md-4';
+            elements.colSelector.className = 'col-md-3';
+            elements.colGranularity.classList.remove('d-none');
+            elements.colGranularity.className = 'col-md-2';
+            updateDashboard();
+            return;
         }
 
+        // Sinon vues classiques
+        elements.colGranularity.classList.remove('d-none');
+        
         if (view === 'global') {
             elements.colSelector.style.display = 'none';
             elements.colDate.className = 'col-md-3';
-            elements.colShortcuts.className = 'col-md-6'; // Agrandit pour remplir
+            elements.colShortcuts.className = 'col-md-6';
             elements.colGranularity.className = 'col-md-3';
             
             elements.distCard.style.display = 'block'; 
@@ -670,10 +748,9 @@
             elements.distribTitle.innerText = 'Répartition RUN vs Projet';
         } 
         else {
-            // Vue RUN, PROJET ou USER : Affiche Selecteur, Compacte Raccourcis
             elements.colSelector.style.display = 'block';
             elements.colDate.className = 'col-md-3';
-            elements.colShortcuts.className = 'col-md-4'; // Réduit
+            elements.colShortcuts.className = 'col-md-4';
             elements.colSelector.className = 'col-md-3';
             elements.colGranularity.className = 'col-md-2';
 
@@ -688,7 +765,6 @@
                 elements.distribTitle.innerText = 'Répartition (RUN vs Projet)';
                 elements.detailTitle.innerText = 'Top 10 Tâches/Projets';
                 
-                // Cache userChart si c'est un user unique
                 const val = document.getElementById('userSelect').value;
                 if (!TEAMS.includes(val) && val !== 'all') {
                     elements.userChartCard.style.display = 'none'; 
@@ -708,11 +784,16 @@
 
         updatePeriodLabel(start, end);
 
+        // --- SECTION AUDIT V1.26 ---
+        if (store.currentView === 'audit') {
+            renderAuditView(start, end, selectedVal);
+            return;
+        }
+
         let dataset = [];
         if (store.currentView === 'global' || store.currentView === 'user' || store.currentView === 'settings') dataset = [...store.project, ...store.run];
         else dataset = store[store.currentView];
 
-        // LOGIQUE DIVISEUR POUR MOYENNE
         let divisor = 1;
         let suffix = 'h';
         const rangeDurationMs = end - start;
@@ -730,15 +811,12 @@
             suffix = 'h';
         }
 
-        // FILTRAGE SUR TOUTES LES VUES SAUF GLOBAL
-        // (Si on est en Global, on ignore le selecteur car il est caché)
         const isFilteredView = ['user', 'run', 'project'].includes(store.currentView);
         
         if (isFilteredView && selectedVal !== 'all') {
             if (TEAMS.includes(selectedVal)) {
                 const teamMembers = Object.keys(userTeamMap).filter(u => userTeamMap[u] === selectedVal);
                 dataset = dataset.filter(d => teamMembers.includes(d.user));
-                // Update Title only for User view
                 if(store.currentView === 'user') document.getElementById('distribTitle').innerText = `Répartition Équipe : ${selectedVal}`;
             } else {
                 dataset = dataset.filter(d => d.user === selectedVal);
@@ -748,17 +826,13 @@
 
         const filtered = dataset.filter(d => d.timestamp >= start && d.timestamp <= end);
         let totalHours = 0;
-        let totalProdHours = 0; // NOUVEAU COMPTEUR (v1.9)
+        let totalProdHours = 0;
         const users = {}, items = {}, projectCategories = {}, userCategories = {}, 
               sources = { project: 0, run: 0, absence: 0 }, 
               days = new Set(), timeline = {};
 
         filtered.forEach(d => {
-            // -- LOGIQUE AGGREGATION --
-            // Le total Global inclut TOUT (y compris absence)
             totalHours += d.hours;
-            
-            // Le total Productif exclut les absences
             if (d.source !== 'absence') {
                 totalProdHours += d.hours;
             }
@@ -774,7 +848,6 @@
             if (store.currentView === 'project') projectCategories[d.category] = (projectCategories[d.category] || 0) + d.hours;
             if (store.currentView === 'user') userCategories[d.category] = (userCategories[d.category] || 0) + d.hours;
 
-            // On ajoute au compteur de source adéquat (run, project ou absence)
             if (sources[d.source] !== undefined) {
                 sources[d.source] += d.hours;
             } else {
@@ -786,7 +859,6 @@
             let k;
             const dt = d.dateObj;
             
-            // KEY GENERATION (DATE LOCAL FIX)
             if (granular === 'day') {
                 const y = dt.getFullYear();
                 const m = String(dt.getMonth()+1).padStart(2, '0');
@@ -803,7 +875,6 @@
             if (!timeline[k]) timeline[k] = { total: 0, project: 0, run: 0, absence: 0 };
             timeline[k].total += d.hours;
             
-            // Sécurité pour la timeline
             if (timeline[k][d.source] !== undefined) {
                 timeline[k][d.source] += d.hours;
             } else {
@@ -811,9 +882,8 @@
             }
         });
 
-        // KPI FORMATTE H.MM
-        document.getElementById('kpiHoursGlobal').innerText = formatH_MM(totalHours); // GLOBAL
-        document.getElementById('kpiHours').innerText = formatH_MM(totalProdHours); // PRODUCTIF
+        document.getElementById('kpiHoursGlobal').innerText = formatH_MM(totalHours);
+        document.getElementById('kpiHours').innerText = formatH_MM(totalProdHours);
         document.getElementById('kpiDays').innerText = days.size;
         
         if (store.currentView === 'user') {
@@ -830,12 +900,10 @@
         }
         document.getElementById('kpiTasks').innerText = Object.keys(items).length;
 
-        // MISE A JOUR DU GRAPHIQUE CAMEMBERT (DISTRIBUTION)
         if (store.currentView === 'global' || store.currentView === 'user') {
-            // On ajoute 'Absences' aux données et au schéma de couleurs (gris)
             renderChart('distributionChart', 'doughnut', 'Source', 
                 { 'RUN': sources.run, 'Projets': sources.project, 'Absences': sources.absence }, 
-                ['#d63384', '#fd7e14', '#6c757d'], // Ajout du gris pour absence
+                ['#d63384', '#fd7e14', '#6c757d'],
                 divisor, suffix);
         }
 
@@ -869,7 +937,6 @@
             renderChart('userCategoryChart', 'bar', 'Heures', Object.fromEntries(sortedUserCats), '#20c997', divisor, suffix);
         }
 
-        // Afficher Top Contributeurs sauf si User unique selectionné
         const hideUserChart = (store.currentView === 'user' && selectedVal !== 'all' && !TEAMS.includes(selectedVal));
         if (!hideUserChart) {
             const sortedUsers = Object.entries(users).sort((a,b) => b[1] - a[1]);
@@ -896,6 +963,173 @@
         });
 
         renderTimeline('timeChart', timelineDataForChart, granular);
+    }
+
+    // --- HELPER FIX DATE KEY ---
+    function getSafeDateKey(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // --- MODULE AUDIT (V1.26 - Surcharge & Manquant) ---
+    function renderAuditView(start, end, selectedUserOrTeam) {
+        const container = document.getElementById('auditContainer');
+        container.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary"></div><p>Génération de l\'audit...</p></div>';
+        
+        const granularity = document.getElementById('granularitySelect').value;
+        let targetHours = 8;
+        if (granularity === 'week') targetHours = 40;
+        if (granularity === 'month') targetHours = 150; 
+
+        // 1. Filtrer les données
+        let allData = [...store.project, ...store.run];
+        
+        if (selectedUserOrTeam !== 'all') {
+            if (TEAMS.includes(selectedUserOrTeam)) {
+                const teamMembers = Object.keys(userTeamMap).filter(u => userTeamMap[u] === selectedUserOrTeam);
+                allData = allData.filter(d => teamMembers.includes(d.user));
+            } else {
+                allData = allData.filter(d => d.user === selectedUserOrTeam);
+            }
+        }
+
+        // 2. Générer les colonnes (Slots)
+        const slots = [];
+        let curr = new Date(start);
+        const endDate = new Date(end);
+        let safetyCount = 0;
+
+        while (curr <= endDate && safetyCount < 400) {
+            let key, label, nextStep;
+            
+            if (granularity === 'week') {
+                const monday = getMonday(curr);
+                key = getSafeDateKey(monday); 
+                
+                // Calcul affichage S5 2026 (26/01 - 01/02)
+                const weekNum = getWeekNumber(monday);
+                const year = monday.getFullYear();
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+                const opts = {day:'2-digit', month:'2-digit'};
+                
+                label = `S${weekNum} ${year}<br><span class="small text-muted fw-normal">${monday.toLocaleDateString('fr-FR', opts)} - ${sunday.toLocaleDateString('fr-FR', opts)}</span>`; 
+                
+                nextStep = new Date(curr);
+                nextStep.setDate(nextStep.getDate() + 7);
+            } 
+            else if (granularity === 'month') {
+                key = `${curr.getFullYear()}-${String(curr.getMonth()+1).padStart(2,'0')}`;
+                label = curr.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+                
+                nextStep = new Date(curr);
+                nextStep.setMonth(nextStep.getMonth() + 1);
+                nextStep.setDate(1); 
+            }
+            else { // DAY
+                key = getSafeDateKey(curr); 
+                label = capitalize(curr.toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit'}));
+                
+                nextStep = new Date(curr);
+                nextStep.setDate(nextStep.getDate() + 1);
+            }
+
+            if (!slots.find(s => s.key === key)) {
+                slots.push({ key: key, label: label, dateObj: new Date(curr) });
+            }
+
+            curr = nextStep;
+            safetyCount++;
+        }
+
+        // 3. Mapper les données
+        const matrix = {};
+        let targetUsers = [];
+        if (TEAMS.includes(selectedUserOrTeam)) {
+            targetUsers = Object.keys(userTeamMap).filter(u => userTeamMap[u] === selectedUserOrTeam);
+        } else if (selectedUserOrTeam !== 'all') {
+             targetUsers = [selectedUserOrTeam];
+        } else {
+             targetUsers = [...new Set(allData.map(d => d.user))];
+        }
+        targetUsers.sort();
+
+        targetUsers.forEach(u => {
+            matrix[u] = {};
+            slots.forEach(s => {
+                matrix[u][s.key] = { h: 0, abs: 0 };
+            });
+        });
+
+        allData.forEach(d => {
+            if (!targetUsers.includes(d.user)) return;
+            if (d.timestamp < start || d.timestamp > end) return;
+
+            let slotKey;
+            if (granularity === 'week') {
+                slotKey = getSafeDateKey(getMonday(d.dateObj)); 
+            } else if (granularity === 'month') {
+                slotKey = `${d.dateObj.getFullYear()}-${String(d.dateObj.getMonth()+1).padStart(2,'0')}`;
+            } else {
+                slotKey = getSafeDateKey(d.dateObj); 
+            }
+
+            if (matrix[d.user] && matrix[d.user][slotKey]) {
+                matrix[d.user][slotKey].h += d.hours;
+                if (d.source === 'absence') matrix[d.user][slotKey].abs += d.hours;
+            }
+        });
+
+        // 4. Construction HTML
+        let html = '<table class="heatmap-table"><thead><tr><th>Collaborateur</th>';
+        
+        slots.forEach(s => {
+            let style = '';
+            if (granularity === 'day') {
+                const dayNum = s.dateObj.getDay();
+                if (dayNum === 0 || dayNum === 6) style = 'background-color:#f8f9fa; color:#adb5bd;';
+            }
+            html += `<th class="text-center" style="${style}"><div class="heatmap-header-date" style="height:auto; transform:none; writing-mode:horizontal-tb;">${s.label}</div></th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        targetUsers.forEach(u => {
+            html += `<tr><td class="fw-bold text-truncate" title="${u}">${u}</td>`;
+            slots.forEach(s => {
+                const data = matrix[u][s.key];
+                let cellClass = '';
+                let cellText = formatH_MM(data.h);
+                let isWeekend = false;
+
+                if (granularity === 'day') {
+                    const dayNum = s.dateObj.getDay();
+                    if (dayNum === 0 || dayNum === 6) {
+                        isWeekend = true;
+                        cellClass = 'cell-weekend';
+                        if (data.h > 0) cellClass = 'cell-ok'; 
+                    }
+                }
+
+                if (!isWeekend) {
+                    if (data.h === 0) cellClass = 'cell-missing'; // 0h = Orange
+                    else if (data.h > targetHours) cellClass = 'cell-overload'; // > Obj = Rouge
+                    else if (data.h < targetHours) cellClass = 'cell-incomplete'; // < Obj = Jaune
+                    else cellClass = 'cell-ok'; // = Obj = Vert
+                    
+                    if (data.abs > 0 && data.abs >= data.h * 0.5) { 
+                         cellClass = 'cell-absence';
+                    }
+                }
+                
+                html += `<td class="${cellClass}" title="Total: ${cellText}h / Obj: ${targetHours}h">${cellText}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
     }
 
     function exportToPDF() {
@@ -1044,17 +1278,15 @@
         });
     }
 
-    // --- TIMELINE AVEC ABSENCES ---
     function renderTimeline(id, dataMap, granular) {
         const ctx = document.getElementById(id).getContext('2d');
         if (charts[id]) charts[id].destroy();
         const labels = Object.keys(dataMap).sort();
         const datasets = [];
-        // PAS DE DIVISEUR POUR TIMELINE
+        
         if (store.currentView === 'global' || store.currentView === 'user' || store.currentView === 'settings') { 
             datasets.push({ label: 'RUN', data: labels.map(k => dataMap[k].run), backgroundColor: '#d63384', stack: 'Stack 0' }); 
             datasets.push({ label: 'Projet', data: labels.map(k => dataMap[k].project), backgroundColor: '#fd7e14', stack: 'Stack 0' }); 
-            // AJOUT DU DATASET ABSENCE (GRIS)
             datasets.push({ label: 'Absences', data: labels.map(k => dataMap[k].absence || 0), backgroundColor: '#6c757d', stack: 'Stack 0' });
         } 
         else { 
@@ -1082,10 +1314,19 @@
     function setPreset(type) {
         const today = new Date();
         let start, end;
+
+        const granularitySelect = document.getElementById('granularitySelect');
+        if (type === 'currentWeek' || type === 'lastWeek') {
+            granularitySelect.value = 'day'; 
+        } else if (type === 'currentMonth' || type === 'lastMonth') {
+            granularitySelect.value = 'week'; 
+        } else if (type === 'currentYear') {
+            granularitySelect.value = 'month'; 
+        }
+
         if (type === 'currentMonth') { start = new Date(today.getFullYear(), today.getMonth(), 1); end = new Date(today.getFullYear(), today.getMonth() + 1, 0); } 
         else if (type === 'lastMonth') { start = new Date(today.getFullYear(), today.getMonth() - 1, 1); end = new Date(today.getFullYear(), today.getMonth(), 0); } 
         else if (type === 'currentYear') { start = new Date(today.getFullYear(), 0, 1); end = new Date(today.getFullYear(), 11, 31); } 
-        // NOUVEAUX RACCOURCIS SEMAINE
         else if (type === 'currentWeek') { 
             start = getMonday(new Date()); 
             end = new Date(start); 
@@ -1101,7 +1342,6 @@
         else { const all = [...store.project, ...store.run]; const ts = all.map(d => d.timestamp); start = new Date(Math.min(...ts)); end = new Date(Math.max(...ts)); }
         
         document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
-        // Met en surbrillance le bouton cliqué (event.target ne marche pas ici car appelé via JS parfois, on simplifie)
         
         datePickerInst.setDate([start, end], true);
     }
