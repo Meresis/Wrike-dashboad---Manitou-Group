@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyse Dragonfly v2.7</title>
+    <title>Analyse Dragonfly v2.6 + Sidebar</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -23,7 +23,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             margin: 0;
-            display: flex; /* Indispensable pour le menu à gauche */
+            display: flex; /* Structure Menu / Contenu */
             flex-direction: row;
             min-height: 100vh;
         }
@@ -32,36 +32,36 @@
         #menu-placeholder {
             width: 250px;
             flex-shrink: 0;
-            background-color: var(--sidebar-bg);
+            z-index: 1000;
         }
 
-        /* --- Contenu Principal --- */
+        /* --- Zone de contenu principal --- */
         .main-content {
             flex-grow: 1;
             padding: 30px;
             max-width: calc(100% - 250px);
-            overflow-x: hidden;
         }
 
-        /* --- Styles Analyse --- */
         .fade-in { animation: fadeIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
         th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 700; background-color: #f8fafc; padding: 12px 16px; text-align: left; }
         td { padding: 8px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 0.9rem; vertical-align: middle; }
+        .macro-header { background-color: #312e81; color: white; }
         
+        .modal { transition: opacity 0.25s ease; z-index: 2000; }
+        body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
+
         .reservoir-container { background: #f1f5f9; border-radius: 1rem; position: relative; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
         .reservoir-liquid { background: linear-gradient(to top, #64748b, #94a3b8); width: 100%; position: absolute; bottom: 0; left: 0; transition: height 1s ease-in-out; border-top: 2px solid #475569; z-index: 10; }
         .reservoir-project { background: linear-gradient(to bottom, #dcfce7, #bbf7d0); position: absolute; top: 0; left: 0; width: 100%; height: 100%; transition: height 1s ease-in-out; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 20px; z-index: 1; }
         
-        .tab-active { border-bottom: 2px solid #4f46e5; color: #4f46e5; background-color: #eef2ff; font-weight: bold; }
+        .tab-active { border-bottom: 2px solid #4f46e5; color: #4f46e5; background-color: #eef2ff; }
         .tab-inactive { border-bottom: 2px solid transparent; color: #64748b; }
-        
-        .modal { transition: opacity 0.25s ease; z-index: 2000; }
-        body.modal-active { overflow: hidden; }
+        .tab-inactive:hover { color: #374151; border-color: #cbd5e1; }
     </style>
 </head>
-<body>
+<body class="bg-slate-100">
 
     <div id="menu-placeholder"></div>
 
@@ -70,21 +70,23 @@
             
             <header class="flex justify-between items-center mb-8">
                 <div class="flex items-center gap-3">
-                    <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Analyse Dragonfly</h1>
-                    <span class="text-xs font-mono font-bold text-white bg-indigo-600 px-2 py-1 rounded shadow">v2.7</span>
+                    <h1 class="text-3xl font-extrabold text-indigo-900 tracking-tight">Analyse Dragonfly</h1>
+                    <span class="text-xs font-mono font-bold text-white bg-indigo-600 px-2 py-1 rounded shadow">v2.6</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="toggleModal()" class="bg-white text-slate-700 px-4 py-2 rounded-lg shadow border border-slate-300 hover:bg-slate-50 transition-colors text-sm font-semibold">
+                    <button onclick="toggleModal()" class="flex items-center gap-2 bg-white text-slate-700 px-4 py-2 rounded-lg shadow border border-slate-300 hover:bg-slate-50 transition-colors font-semibold text-sm">
                         ⚙️ Paramètres
                     </button>
-                    <div id="statusBadge" class="hidden px-4 py-2 bg-green-100 text-green-700 font-bold rounded-lg text-xs border border-green-200">Fichier chargé ✔</div>
+                    <div id="statusBadge" class="hidden px-4 py-2 bg-green-100 text-green-700 font-bold rounded-lg text-xs border border-green-200">Données actives ✔</div>
                 </div>
             </header>
 
-            <div id="uploadZone" class="bg-white border-2 border-dashed border-indigo-200 rounded-2xl p-10 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer shadow-sm">
-                <input type="file" id="fileInput" accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                <p class="text-lg font-medium text-slate-700">Importez le fichier Dragonfly Excel</p>
-                <p class="text-xs text-slate-400 mt-2">La configuration est conservée automatiquement.</p>
+            <div id="uploadZone" class="bg-white border-2 border-dashed border-indigo-200 rounded-2xl p-10 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer relative shadow-sm">
+                <input type="file" id="fileInput" accept=".xlsx, .xls" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                <div class="space-y-2 pointer-events-none">
+                    <p class="text-lg font-medium text-slate-700">Cliquez pour importer votre Excel Dragonfly</p>
+                    <p class="text-xs text-slate-400 mt-2">Nécessaire une fois par session.</p>
+                </div>
             </div>
 
             <div id="dashboard" class="hidden mt-8 space-y-6">
@@ -92,39 +94,41 @@
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-6 items-end">
                     <div class="flex-1 w-full">
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Collaborateur</label>
-                        <select id="userSelect" class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"></select>
+                        <select id="userSelect" class="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <option value="">Chargement...</option>
+                        </select>
                     </div>
                     <div class="w-full sm:w-48">
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Année Source</label>
-                        <select id="yearSelect" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none">
+                        <select id="yearSelect" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:ring-2 focus:ring-indigo-500">
                             <option value="2025" selected>2025</option>
                             <option value="2024">2024</option>
                         </select>
                     </div>
                     <div class="bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100 text-center min-w-[120px]">
-                        <p class="text-[10px] text-indigo-400 uppercase font-bold">Jours Saisis</p>
+                        <p class="text-xs text-indigo-400 uppercase font-bold text-[10px]">Jours Saisis</p>
                         <p class="text-xl font-extrabold text-indigo-700" id="detectedDaysCount">-</p>
                     </div>
                 </div>
 
                 <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-1 flex">
-                    <button onclick="switchTab('tab1')" id="btn-tab1" class="tab-active flex-1 py-3 rounded-md text-xs transition-all">1. Affectation</button>
-                    <button onclick="switchTab('tab2')" id="btn-tab2" class="tab-inactive flex-1 py-3 rounded-md text-xs transition-all">2. Analyse</button>
-                    <button onclick="switchTab('tab3')" id="btn-tab3" class="tab-inactive flex-1 py-3 rounded-md text-xs transition-all">3. Projections 2026</button>
+                    <button onclick="switchTab('tab1')" id="btn-tab1" class="tab-active flex-1 py-3 rounded-md font-bold text-xs transition-all">1. Affectation</button>
+                    <button onclick="switchTab('tab2')" id="btn-tab2" class="tab-inactive flex-1 py-3 rounded-md font-medium text-xs transition-all">2. Analyse</button>
+                    <button onclick="switchTab('tab3')" id="btn-tab3" class="tab-inactive flex-1 py-3 rounded-md font-medium text-xs transition-all">3. Projections 2026</button>
                 </div>
 
                 <div id="tab1" class="fade-in space-y-6">
                     <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
                         <table class="w-full">
                             <thead>
-                                <tr><th>Tâche</th><th class="bg-indigo-50">Catégorie</th><th class="text-right">Total</th><th class="text-right bg-amber-50">Moy. Jour</th></tr>
+                                <tr><th>Tâche</th><th class="bg-indigo-50">Catégorie</th><th class="text-right">Heures Totales</th><th class="text-right bg-amber-50">Moy. Jour</th></tr>
                             </thead>
                             <tbody id="statsTableBody"></tbody>
                         </table>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative">
-                        <h3 class="text-sm font-bold text-slate-700 mb-4 border-b pb-2 uppercase">📊 Répartition des Temps</h3>
-                        <div style="height: 350px;"><canvas id="distributionChart"></canvas></div>
+                        <h3 class="text-sm font-bold text-slate-700 mb-2 border-b pb-2 uppercase">📊 Répartition des Temps (Trié)</h3>
+                        <div style="height: 300px;"><canvas id="distributionChart"></canvas></div>
                     </div>
                 </div>
 
@@ -135,7 +139,7 @@
                             <div id="reservoirLiquid" class="reservoir-liquid"></div>
                         </div>
                         <div class="flex-1">
-                            <h3 class="text-lg font-bold text-slate-800 mb-4 uppercase">Capacité Journalière (Base 8h)</h3>
+                            <h3 class="text-lg font-bold text-slate-800 mb-2 uppercase tracking-wide">Moyenne Annuelle (Base 8h)</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="bg-green-50 border border-green-200 p-4 rounded-xl">
                                     <p class="text-xs font-bold text-green-700 uppercase">Capacité Projet</p>
@@ -149,17 +153,17 @@
                         </div>
                     </div>
                     <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative">
-                        <h3 class="text-sm font-bold text-slate-700 mb-4 border-b pb-2 uppercase">📅 Saisonnalité</h3>
+                        <h3 class="text-sm font-bold text-slate-700 mb-2 border-b pb-2 uppercase tracking-wider">📅 Saisonnalité (Mensuelle)</h3>
                         <div style="height: 300px;"><canvas id="trendChart"></canvas></div>
                     </div>
                     <div class="bg-white rounded-xl shadow-lg border border-indigo-900 overflow-hidden">
-                        <table class="w-full"><thead><tr><th class="bg-indigo-900 text-white w-1/3">Catégorie</th><th class="bg-indigo-900 text-white text-right">Total</th><th class="bg-indigo-800 text-white text-right">Moy. Jour</th></tr></thead><tbody id="macroTableBody"></tbody></table>
+                        <table class="w-full"><thead><tr><th class="macro-header w-1/3">Catégorie</th><th class="macro-header text-right">Total</th><th class="macro-header text-right bg-indigo-800">Moy. Jour</th></tr></thead><tbody id="macroTableBody"></tbody></table>
                     </div>
                 </div>
 
                 <div id="tab3" class="hidden fade-in space-y-6">
                     <div class="bg-gradient-to-r from-indigo-900 to-indigo-700 text-white p-6 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center">
-                        <div><h2 class="text-2xl font-bold mb-1">🎯 Planification 2026</h2><p class="text-indigo-200 text-sm">Année type de 218 jours ouvrés.</p></div>
+                        <div><h2 class="text-2xl font-bold mb-1">🎯 Planification 2026</h2><p class="text-indigo-200 text-sm">Basé sur une année type de 218 jours ouvrés.</p></div>
                         <div class="mt-4 md:mt-0 text-right bg-white/10 p-3 rounded-lg border border-white/20">
                             <p class="text-[10px] font-bold uppercase tracking-wider text-indigo-200">Capacité Projet Totale</p>
                             <p class="text-3xl font-extrabold text-white" id="totalYearlyCapacity">- JH</p>
@@ -167,13 +171,14 @@
                     </div>
                     <div class="grid grid-cols-1 gap-4" id="projectionContainer"></div>
                 </div>
+
             </div>
         </div>
     </div>
 
     <div id="settingsModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg overflow-y-auto">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal()"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg overflow-y-auto z-50">
             <div class="modal-content py-4 text-left px-6">
                 <p class="text-2xl font-bold text-indigo-900 border-b pb-2 mb-4">Paramètres</p>
                 <div class="flex gap-2 mb-6">
@@ -183,8 +188,8 @@
                 <h4 class="font-bold text-gray-700 mb-2 text-sm uppercase">Grandes Catégories</h4>
                 <div class="flex gap-2 mb-4"><input type="text" id="newCatInput" placeholder="Nouvelle..." class="border p-2 rounded w-full text-sm"><button onclick="addCategory()" class="bg-indigo-600 text-white font-bold px-4 rounded text-sm">+</button></div>
                 <ul id="categoriesList" class="bg-gray-50 rounded border max-h-60 overflow-y-auto p-2 space-y-2"></ul>
-                <div class="mt-6 pt-4 border-t border-gray-200 flex justify-between items-center">
-                    <button onclick="resetToDefaults()" class="text-xs text-red-500 underline font-semibold">Rétablir défauts</button>
+                <div class="mt-6 pt-4 border-t flex justify-between">
+                    <button onclick="resetToDefaults()" class="text-xs text-red-500 underline">Rétablir défauts</button>
                     <button onclick="toggleModal()" class="px-4 py-2 bg-gray-200 rounded text-xs">Fermer</button>
                 </div>
             </div>
@@ -194,15 +199,23 @@
     <script>
         Chart.register(ChartDataLabels);
 
-        // --- GESTION DU MENU LATERAL ---
+        // --- GESTION DU MENU ET PERSISTANCE (sessionStorage) ---
         document.addEventListener("DOMContentLoaded", function() {
+            // Charger le menu
             fetch('menu.html')
-                .then(response => { if(response.ok) return response.text(); throw new Error('Menu introuvable'); })
+                .then(response => response.text())
                 .then(html => {
                     document.getElementById('menu-placeholder').innerHTML = html;
                     setActiveLink();
                 })
-                .catch(err => console.error(err));
+                .catch(err => console.error("Erreur menu:", err));
+
+            // Vérifier si des données existent déjà
+            const savedData = sessionStorage.getItem('dragonfly_raw_data');
+            if (savedData) {
+                rawData = JSON.parse(savedData);
+                initUI();
+            }
         });
 
         function setActiveLink() {
@@ -210,6 +223,7 @@
             const links = document.querySelectorAll('.nav-links a');
             links.forEach(l => {
                 const linkUrl = l.getAttribute('href');
+                // Gestion spécifique GitHub Pages
                 if (currentFullUrl.includes(linkUrl) || (linkUrl.includes('index.html') && currentFullUrl === "https://meresis.github.io/Wrike-dashboad---Manitou-Group/")) {
                     l.classList.add('active');
                 }
@@ -217,7 +231,7 @@
         }
 
         // --- LOGIQUE DRAGONFLY ---
-        const STORAGE_VERSION = 'v2.7';
+        const STORAGE_VERSION = 'v2.6';
         const LS_CATS_KEY = `df_cats_${STORAGE_VERSION}`; 
         const LS_MAP_KEY = `df_mapping_${STORAGE_VERSION}`;
         const DEFAULTS = ["MCO", "SUPPORT", "GESTION OPERATIONNELLE", "PROJETS", "MANAGEMENT", "FORMATION / TRANSFERT", "CONGES / ABSENCES", "REUNIONS"];
@@ -236,6 +250,9 @@
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, {type: 'array'});
                 rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                
+                // Sauvegarder pour la navigation
+                sessionStorage.setItem('dragonfly_raw_data', JSON.stringify(rawData));
                 initUI();
             }; reader.readAsArrayBuffer(file);
         });
@@ -253,11 +270,10 @@
         }
 
         function updateAnalysis() {
-            const user = document.getElementById('userSelect').value;
-            const year = document.getElementById('yearSelect').value;
+            const user = document.getElementById('userSelect').value, year = document.getElementById('yearSelect').value;
             if(!user) return;
             const filtered = rawData.filter(row => {
-                const d = row['Date']; let y = (typeof d === 'number') ? XLSX.SSF.parse_date_code(d).y : d.substring(0, 4);
+                const d = row['Date']; let y = (typeof d === 'number') ? XLSX.SSF.parse_date_code(d).y : String(d).substring(0,4);
                 return row['Nom'] === user && y == year;
             });
             const uniqueDays = new Set(); currentStats = {};
@@ -314,7 +330,7 @@
             const macro = {}; MACRO_CATS.forEach(c => macro[c] = 0);
             const season = {}; for(let i=1; i<=12; i++) season[String(i).padStart(2,'0')] = { total: 0, projet: 0, mco: 0, support: 0, gestion: 0, autre: 0 };
             const filtered = rawData.filter(row => {
-                const d = row['Date']; let y = (typeof d === 'number') ? XLSX.SSF.parse_date_code(d).y : d.substring(0,4);
+                const d = row['Date']; let y = (typeof d === 'number') ? XLSX.SSF.parse_date_code(d).y : String(d).substring(0,4);
                 return row['Nom'] === user && y == year;
             });
             filtered.forEach(row => {
@@ -346,7 +362,7 @@
             const ctx = document.getElementById('trendChart').getContext('2d'); if(trendChartInstance) trendChartInstance.destroy();
             const keys = Object.keys(s);
             trendChartInstance = new Chart(ctx, {
-                type: 'line', data: { labels: ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"], datasets: [{ label: 'Charge Hors-Projet', data: keys.map(k=>s[k].mco+s[k].support+s[k].gestion+s[k].autre), borderColor: '#ef4444', fill: false, tension: 0.3 }, { label: 'Capacité Projet', data: keys.map(k=>s[k].projet), borderColor: '#10b981', fill: false, tension: 0.3 }] },
+                type: 'line', data: { labels: ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"], datasets: [{ label: 'Charge Run', data: keys.map(k=>s[k].mco+s[k].support+s[k].gestion+s[k].autre), borderColor: '#ef4444', fill: false, tension: 0.3 }, { label: 'Capacité Projet', data: keys.map(k=>s[k].projet), borderColor: '#10b981', fill: false, tension: 0.3 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { datalabels: { display: false } } }
             });
         }
@@ -382,13 +398,7 @@
             document.getElementById('btn-'+id).className = "tab-active flex-1 py-3 rounded-md text-xs transition-all";
         }
 
-        function toggleModal() { 
-            const m = document.getElementById('settingsModal');
-            m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); 
-            document.body.classList.toggle('modal-active');
-            renderSettingsList();
-        }
-
+        function toggleModal() { document.getElementById('settingsModal').classList.toggle('opacity-0'); document.getElementById('settingsModal').classList.toggle('pointer-events-none'); renderSettingsList(); }
         function renderSettingsList() { document.getElementById('categoriesList').innerHTML = MACRO_CATS.map((c,i) => `<li class="flex justify-between items-center bg-white p-2 rounded border text-xs font-medium">${c}<button onclick="deleteCategory(${i})" class="text-red-500 font-bold px-2">×</button></li>`).join(''); }
         function addCategory() { const v = document.getElementById('newCatInput').value.trim().toUpperCase(); if(v) { MACRO_CATS.push(v); localStorage.setItem(LS_CATS_KEY, JSON.stringify(MACRO_CATS)); renderSettingsList(); } }
         function deleteCategory(i) { MACRO_CATS.splice(i,1); localStorage.setItem(LS_CATS_KEY, JSON.stringify(MACRO_CATS)); renderSettingsList(); }
