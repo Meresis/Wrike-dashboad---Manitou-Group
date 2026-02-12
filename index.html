@@ -26,7 +26,7 @@
             min-height: 100vh;
         }
 
-        /* --- Styles de la Sidebar --- */
+        /* --- Sidebar --- */
         .sidebar {
             width: 250px;
             background-color: var(--sidebar-bg);
@@ -45,15 +45,6 @@
             margin-bottom: 20px;
         }
 
-        .nav-links {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
         .nav-links a {
             display: flex;
             align-items: center;
@@ -61,7 +52,6 @@
             color: #bdc3c7;
             text-decoration: none;
             transition: var(--transition);
-            font-size: 1rem;
         }
 
         .nav-links a:hover, .nav-links a.active {
@@ -70,7 +60,7 @@
             border-left: 4px solid var(--primary-color);
         }
 
-        /* --- Styles du contenu principal --- */
+        /* --- Main Content --- */
         .main-content {
             flex-grow: 1;
             display: flex;
@@ -85,13 +75,6 @@
             margin-bottom: 3rem;
         }
 
-        header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            color: var(--text-color);
-            font-weight: 700;
-        }
-
         .container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -100,6 +83,7 @@
             max-width: 1100px;
         }
 
+        /* --- Carte cliquable --- */
         .card {
             background: var(--card-bg);
             padding: 2rem;
@@ -109,145 +93,111 @@
             border-top: 5px solid transparent;
             display: flex;
             flex-direction: column;
+            cursor: pointer; /* Indique que la carte est cliquable */
+            position: relative;
         }
 
         .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
             border-top: 5px solid var(--primary-color);
         }
 
-        .card-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
+        .card-icon { font-size: 3rem; margin-bottom: 1rem; text-align: center; }
+        .card h2 { margin: 0 0 10px 0; font-size: 1.5rem; color: #2c3e50; text-align: center; }
+        .card-desc { font-size: 0.95rem; color: #7f8c8d; margin-bottom: 1.5rem; text-align: center; }
 
-        .card h2 {
-            margin: 0 0 10px 0;
-            font-size: 1.5rem;
-            color: #2c3e50;
-            text-align: center;
-        }
-
-        .card-desc {
-            font-size: 0.95rem;
-            color: #7f8c8d;
-            margin-bottom: 1.5rem;
-            text-align: center;
-            font-style: italic;
-        }
-
-        /* Styles pour les nouveaux liens */
         .card-instructions {
             font-size: 0.9rem;
             border-top: 1px solid #eee;
             padding-top: 15px;
         }
 
-        .card-instructions p {
-            margin: 0 0 10px 0;
-            font-weight: bold;
-            color: #444;
-        }
-
-        .report-links {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .report-links li {
-            margin-bottom: 8px;
-        }
+        .report-links { list-style: none; padding: 0; margin: 0; }
+        .report-links li { margin-bottom: 8px; }
 
         .report-links a {
             color: var(--primary-color);
             text-decoration: none;
             font-size: 0.85rem;
             display: block;
-            padding: 5px;
-            border-radius: 4px;
+            padding: 8px;
+            border-radius: 6px;
             background: #fff5f5;
             transition: 0.2s;
+            border: 1px solid transparent;
         }
 
         .report-links a:hover {
             background: #ffe0e0;
-            text-decoration: underline;
+            border: 1px solid var(--primary-color);
         }
 
         .file-highlight {
             display: inline-block;
             background: #e9ecef;
-            padding: 2px 8px;
+            padding: 4px 10px;
             border-radius: 4px;
             font-family: monospace;
             color: #d63384;
+            font-size: 0.85rem;
         }
 
-        footer {
-            margin-top: 4rem;
-            padding: 2rem;
-            font-size: 0.8rem;
-            color: #999;
-        }
+        footer { margin-top: 4rem; padding: 2rem; font-size: 0.8rem; color: #999; }
     </style>
 </head>
 <body>
 
     <nav class="sidebar">
-        <div class="sidebar-brand">
-            Manitou Wrike
-        </div>
+        <div class="sidebar-brand">Manitou Wrike</div>
         <div class="nav-links">
-            <a href="#" class="active"><i>🏠</i> Accueil</a>
-            <a href="workload-wrike.html"><i>📊</i> Workload</a>
-            <a href="dragonfly-2025.html"><i>🐉</i> Dragonfly 2025</a>
-            <a href="pointages-wrike.html"><i>⏱️</i> Pointages</a>
+            <a href="#" class="active">🏠 Accueil</a>
+            <a href="workload-wrike.html">📊 Workload</a>
+            <a href="dragonfly-2025.html">🐉 Dragonfly 2025</a>
+            <a href="pointages-wrike.html">⏱️ Pointages</a>
         </div>
     </nav>
 
     <main class="main-content">
         <header>
             <h1>Wrike Dashboards</h1>
-            <p>Sélectionnez le rapport que vous souhaitez consulter</p>
+            <p>Cliquez sur un panneau pour ouvrir le dashboard ou sur un lien pour le rapport Wrike</p>
         </header>
 
         <div class="container">
-            <div class="card">
+            <div class="card" onclick="window.location.href='workload-wrike.html';">
                 <span class="card-icon">📊</span>
                 <h2>Workload</h2>
                 <p class="card-desc">Visualiser la charge de travail globale des équipes.</p>
                 <div class="card-instructions">
-                    <p>Il faudra télécharger 3 rapports Wrike :</p>
+                    <p><strong>Rapports Wrike à télécharger :</strong></p>
                     <ul class="report-links">
-                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/single-workload/350614?spaceId=1747077301" target="_blank">🔗 CHARGE PRODUCT MANAGEMENT</a></li>
-                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/reports/93932585?spaceId=1747077301" target="_blank">🔗 Liste tâches [RUN]</a></li>
-                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/reports/93932586?spaceId=1747077301" target="_blank">🔗 Liste tâches [PROJETS]</a></li>
+                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/single-workload/350614?spaceId=1747077301" target="_blank" onclick="event.stopPropagation();">🔗 CHARGE PRODUCT MANAGEMENT</a></li>
+                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/reports/93932585?spaceId=1747077301" target="_blank" onclick="event.stopPropagation();">🔗 Liste tâches [RUN]</a></li>
+                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/reports/93932586?spaceId=1747077301" target="_blank" onclick="event.stopPropagation();">🔗 Liste tâches [PROJETS]</a></li>
                     </ul>
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" onclick="window.location.href='dragonfly-2025.html';">
                 <span class="card-icon">🐉</span>
                 <h2>Dragonfly 2025</h2>
                 <p class="card-desc">Analyse des temps saisis en 2025</p>
                 <div class="card-instructions">
-                    <p>Fichier à charger :</p>
+                    <p><strong>Fichier à charger :</strong></p>
                     <span class="file-highlight">20260115-kimai-export.xlsx</span>
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" onclick="window.location.href='pointages-wrike.html';">
                 <span class="card-icon">⏱️</span>
                 <h2>Pointages</h2>
                 <p class="card-desc">Analyse des temps passés et des saisies Wrike.</p>
                 <div class="card-instructions">
-                    <p>Il faudra télécharger 2 rapports Wrike :</p>
+                    <p><strong>Rapports Wrike à télécharger :</strong></p>
                     <ul class="report-links">
-                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/reports/93931564?spaceId=1747077301" target="_blank">🔗 SUIVI DES TEMPS [RUN]</a></li>
-                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/reports/93924446?spaceId=1747077301" target="_blank">🔗 SUIVI DES TEMPS [PROJETS]</a></li>
+                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/reports/93931564?spaceId=1747077301" target="_blank" onclick="event.stopPropagation();">🔗 SUIVI DES TEMPS [RUN]</a></li>
+                        <li><a href="https://app-eu.wrike.com/workspace.htm?wr=4&acc=6155635#/reports/93924446?spaceId=1747077301" target="_blank" onclick="event.stopPropagation();">🔗 SUIVI DES TEMPS [PROJETS]</a></li>
                     </ul>
                 </div>
             </div>
