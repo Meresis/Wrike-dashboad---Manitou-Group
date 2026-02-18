@@ -8,102 +8,78 @@
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        
-        /* Cartes de tâches */
-        .card-task { 
-            background: white; 
-            border: none; 
-            border-left: 5px solid #0d6efd; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
-            margin-bottom: 15px; 
-            transition: transform 0.2s; 
-        }
+        .card-task { background: white; border-left: 5px solid #0d6efd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; transition: transform 0.2s; }
         .card-task:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        
         .task-modified { border-left-color: #198754; background-color: #f8fff9; }
         .old-title { text-decoration: line-through; color: #adb5bd; font-size: 0.85em; display: block; margin-bottom: 2px;}
         .new-title { color: #198754; font-weight: 700; font-size: 1.1em; }
-        
         .badge-subtask { background-color: #e9ecef; color: #495057; border: 1px solid #dee2e6; margin-right: 5px; margin-top: 5px; font-weight: normal; }
-        .status-badge { font-size: 0.8em; padding: 5px 10px; border-radius: 20px; }
-        
-        /* Dashboard */
         .progress { height: 25px; border-radius: 12px; }
         .avatar-circle { width: 40px; height: 40px; background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #495057; margin-right: 10px; }
 
-        /* Loader */
-        #loader { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(255,255,255,0.95); z-index: 9999; 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-        }
+        /* Loader & Overlay */
+        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.98); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div id="loader">
-    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
-    <h5>Chargement des données TATTOO...</h5>
-    <p class="text-muted small">Récupération depuis GitHub Pages...</p>
+    <div id="spinnerArea">
+        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <h5>Connexion aux données...</h5>
+    </div>
+    
+    <div id="errorArea" class="hidden">
+        <div class="alert alert-warning shadow p-4" style="max-width: 600px;">
+            <h4>⚠️ Impossible de charger les données en ligne</h4>
+            <p class="small text-muted">Le navigateur a bloqué l'accès automatique ou le lien est incorrect (CORS/404).</p>
+            <hr>
+            <p class="mb-3">Veuillez sélectionner le fichier <strong>data_tattoo.txt</strong> présent sur votre ordinateur :</p>
+            <input type="file" id="fileInput" class="form-control" accept=".txt,.csv">
+        </div>
+    </div>
 </div>
 
 <nav class="navbar navbar-dark bg-dark sticky-top mb-4">
     <div class="container">
         <span class="navbar-brand mb-0 h1">🛠️ TATTOO Manager</span>
         <div class="d-flex gap-2">
-            <button onclick="resetData()" class="btn btn-outline-danger btn-sm">⚠️ Réinitialiser tout</button>
-            <button onclick="downloadLogFile()" class="btn btn-success btn-sm">💾 Sauvegarder (Fichier Serveur)</button>
+            <button onclick="document.getElementById('fileInput').click()" class="btn btn-outline-light btn-sm">📂 Ouvrir un autre fichier</button>
+            <button onclick="resetData()" class="btn btn-outline-danger btn-sm">⚠️ Reset</button>
+            <button onclick="downloadLogFile()" class="btn btn-success btn-sm">💾 Sauvegarder</button>
         </div>
     </div>
 </nav>
 
 <div class="container">
-    
     <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks-pane" type="button">📋 Mes Tâches</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard-pane" type="button" onclick="renderDashboard()">📊 Tableau de Bord</button>
-        </li>
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tasks-pane">📋 Mes Tâches</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#dashboard-pane" onclick="renderDashboard()">📊 Tableau de Bord</button></li>
     </ul>
 
     <div class="tab-content">
-        
         <div class="tab-pane fade show active" id="tasks-pane">
             <div class="row mb-4">
                 <div class="col-md-8 offset-md-2">
                     <div class="input-group">
                         <span class="input-group-text bg-white">👤 Utilisateur</span>
                         <select class="form-select" id="userSelect" onchange="filterTasks()">
-                            <option value="">-- Chargement en cours... --</option>
+                            <option value="">-- En attente de données --</option>
                         </select>
                     </div>
                 </div>
             </div>
-
-            <div id="taskListArea" class="row">
-                <div class="col-12 text-center text-muted mt-5">
-                    <h4>Bienvenue sur l'outil TATTOO</h4>
-                    <p>Veuillez attendre la fin du chargement des données, puis sélectionnez votre nom.</p>
-                </div>
-            </div>
+            <div id="taskListArea" class="row"></div>
         </div>
 
         <div class="tab-pane fade" id="dashboard-pane">
             <div class="card shadow-sm">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">Suivi de l'avancement global</h5>
-                </div>
                 <div class="card-body p-0">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-4">Membre de l'équipe</th>
-                                <th class="text-center">Tâches Totales</th>
-                                <th class="text-center">Modifiées</th>
-                                <th>Progression</th>
+                                <th class="ps-4">Membre</th><th class="text-center">Total</th><th class="text-center">Modifiées</th><th>Progression</th>
                             </tr>
                         </thead>
                         <tbody id="dashboardTableBody"></tbody>
@@ -117,42 +93,20 @@
 <div class="modal fade" id="actionModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Éditer la tâche</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+            <div class="modal-header"><h5 class="modal-title">Éditer la tâche</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
                 <input type="hidden" id="currentTaskId">
-                <div class="alert alert-light border">
-                    <small class="text-muted">Titre original :</small><br>
-                    <strong id="modalTaskTitle"></strong>
-                </div>
-                
-                <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
-                    <li class="nav-item">
-                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pills-rename" type="button">✏️ Renommer</button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#pills-split" type="button">✂️ Découper (Sous-tâches)</button>
-                    </li>
-                </ul>
-
+                <div class="alert alert-light border"><small class="text-muted">Original :</small><br><strong id="modalTaskTitle"></strong></div>
+                <ul class="nav nav-pills mb-3"><li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pills-rename">Renommer</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#pills-split">Découper</button></li></ul>
                 <div class="tab-content">
                     <div class="tab-pane fade show active" id="pills-rename">
-                        <label class="form-label">Nouveau libellé de la tâche :</label>
                         <input type="text" class="form-control" id="renameInput">
-                        <div class="d-grid gap-2 mt-3">
-                            <button onclick="saveRename()" class="btn btn-primary">Valider le changement de nom</button>
-                        </div>
+                        <button onclick="saveRename()" class="btn btn-primary mt-3 w-100">Valider</button>
                     </div>
-
                     <div class="tab-pane fade" id="pills-split">
-                        <p class="text-muted small">Créez plusieurs sous-tâches pour remplacer la tâche principale.</p>
                         <div id="subtasksContainer"></div>
-                        <button onclick="addSubtaskField()" class="btn btn-sm btn-outline-secondary mt-2 mb-3">+ Ajouter une ligne</button>
-                        <div class="d-grid gap-2">
-                            <button onclick="saveSplit()" class="btn btn-primary">Valider le découpage</button>
-                        </div>
+                        <button onclick="addSubtaskField()" class="btn btn-sm btn-secondary mt-2">+ Ligne</button>
+                        <button onclick="saveSplit()" class="btn btn-primary mt-3 w-100">Valider</button>
                     </div>
                 </div>
             </div>
@@ -161,392 +115,226 @@
 </div>
 
 <script>
-    // ---------------------------------------------------------
-    // CONFIGURATION : URL DU FICHIER DONNÉES
-    // ---------------------------------------------------------
+    // URL CIBLE
     const DATA_URL = "https://meresis.github.io/Wrike-dashboad---Manitou-Group/data_tattoo.txt";
 
     let tasks = [];
     let users = new Set();
     let modifications = [];
 
-    // ---------------------------------------------------------
-    // 1. INITIALISATION & FETCH (CHARGEMENT)
-    // ---------------------------------------------------------
+    // --- 1. CHARGEMENT HYBRIDE (WEB + LOCAL) ---
     async function init() {
+        // Charger modifications locales
+        const savedMods = localStorage.getItem('tattoo_mods');
+        if (savedMods) modifications = JSON.parse(savedMods);
+
+        // Gestionnaire pour le bouton d'upload manuel (Si le web échoue)
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                processData(e.target.result);
+                document.getElementById('loader').classList.add('hidden');
+            };
+            reader.readAsText(file);
+        });
+
+        // Tentative de chargement Web
         try {
-            // 1. Chargement des sauvegardes locales (Persistance)
-            const savedMods = localStorage.getItem('tattoo_mods');
-            if (savedMods) {
-                modifications = JSON.parse(savedMods);
-            }
+            // Timeout de 3 secondes pour ne pas bloquer indéfiniment
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-            // 2. Récupération du fichier CSV distant
-            // Ajout d'un timestamp pour éviter le cache du navigateur
-            const noCacheUrl = `${DATA_URL}?t=${new Date().getTime()}`;
-            
-            const response = await fetch(noCacheUrl);
-            
-            if (!response.ok) {
-                throw new Error(`Erreur HTTP: ${response.status} - Impossible de lire le fichier.`);
-            }
+            const response = await fetch(DATA_URL + "?t=" + Date.now(), { signal: controller.signal });
+            clearTimeout(timeoutId);
 
-            const rawCsvData = await response.text();
+            if (!response.ok) throw new Error("Erreur HTTP");
+            const text = await response.text();
             
-            // 3. Traitement des données
-            processData(rawCsvData);
-            
-            // 4. Masquer le loader
-            document.getElementById('loader').style.display = 'none';
+            processData(text);
+            document.getElementById('loader').classList.add('hidden');
 
         } catch (error) {
-            console.error("Erreur critique:", error);
-            document.getElementById('loader').innerHTML = `
-                <div class="alert alert-danger text-center shadow p-4" style="max-width: 500px;">
-                    <h4 class="alert-heading">🚫 Erreur de chargement</h4>
-                    <p>Impossible de récupérer le fichier de données à l'adresse suivante :</p>
-                    <code class="d-block mb-3 bg-light p-2 rounded text-break">${DATA_URL}</code>
-                    <hr>
-                    <p class="mb-0 small">${error.message}</p>
-                    <button class="btn btn-outline-danger btn-sm mt-3" onclick="location.reload()">Réessayer</button>
-                </div>
-            `;
+            console.warn("Chargement web échoué, passage en mode manuel.", error);
+            // Afficher l'interface de chargement manuel
+            document.getElementById('spinnerArea').classList.add('hidden');
+            document.getElementById('errorArea').classList.remove('hidden');
         }
     }
 
-    // ---------------------------------------------------------
-    // 2. PARSING & PROCESSING DES DONNÉES
-    // ---------------------------------------------------------
+    // --- 2. TRAITEMENT DES DONNÉES ---
     function processData(csvText) {
         const parsedData = parseCSV(csvText);
-        
-        // On suppose que la ligne 0 est l'en-tête
+        tasks = [];
+        users = new Set();
+
         for (let i = 1; i < parsedData.length; i++) {
             const row = parsedData[i];
-            
-            // Vérification basique pour ignorer les lignes vides
             if (row.length < 5) continue; 
 
-            // Mapping des colonnes basé sur l'ordre standard du fichier
-            // 0:Key, 5:Title, 7:Status, 9:Priority, 10:Assigned To
-            const taskId = row[0];
-            const taskTitle = row[5];
-            const taskStatus = row[7];
-            const taskPriority = row[9];
-            const rawUsers = row[10] || "Non assigné";
-
-            // Nettoyage des utilisateurs (enlève les emails)
-            const userList = rawUsers.split(',').map(u => {
-                let clean = u.trim().split('<')[0].trim();
-                return clean;
-            }).filter(u => u !== "");
-
+            // Mapping: 0:Key, 5:Title, 7:Status, 9:Priority, 10:Assigned To
+            const userList = (row[10] || "").split(',').map(u => u.trim().split('<')[0].trim()).filter(u => u !== "");
             userList.forEach(u => users.add(u));
 
             let taskObj = {
-                id: taskId,
-                title: taskTitle,
-                originalTitle: taskTitle,
+                id: row[0],
+                title: row[5],
+                originalTitle: row[5],
                 assignedTo: userList,
-                status: taskStatus,
-                priority: taskPriority,
+                status: row[7],
+                priority: row[9],
                 isModified: false,
                 subTasks: []
             };
 
-            // Ré-appliquer les modifications sauvegardées localement
+            // Ré-appliquer modifs
             const savedState = modifications.find(m => m.taskId === taskObj.id);
             if (savedState) {
                 taskObj.isModified = true;
-                if (savedState.type === 'rename') {
-                    taskObj.title = savedState.newValue;
-                } else if (savedState.type === 'split') {
-                    taskObj.subTasks = savedState.subTasks;
-                }
+                if (savedState.type === 'rename') taskObj.title = savedState.newValue;
+                else if (savedState.type === 'split') taskObj.subTasks = savedState.subTasks;
             }
-
             tasks.push(taskObj);
         }
 
-        // Remplir le selecteur d'utilisateurs
         const select = document.getElementById('userSelect');
         select.innerHTML = '<option value="">-- Sélectionner votre nom --</option>';
-        Array.from(users).sort().forEach(user => {
-            if(user) {
-                const opt = document.createElement('option');
-                opt.value = user;
-                opt.textContent = user;
-                select.appendChild(opt);
-            }
+        Array.from(users).sort().forEach(u => {
+            if(u) select.innerHTML += `<option value="${u}">${u}</option>`;
         });
     }
 
-    // Parser CSV robuste (gère les guillemets et sauts de ligne dans les cellules)
     function parseCSV(text) {
-        const rows = [];
-        let row = [];
-        let currentCell = '';
-        let inQuotes = false;
-        
+        // Parser robuste
+        const rows = []; let row = []; let cell = ''; let quote = false;
         for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            const nextChar = text[i + 1];
-
-            if (char === '"') {
-                if (inQuotes && nextChar === '"') {
-                    currentCell += '"'; i++;
-                } else {
-                    inQuotes = !inQuotes;
-                }
-            } else if (char === ',' && !inQuotes) {
-                row.push(currentCell); currentCell = '';
-            } else if ((char === '\r' || char === '\n') && !inQuotes) {
-                if (currentCell || row.length > 0) row.push(currentCell);
-                if (row.length > 0) rows.push(row);
-                row = []; currentCell = '';
-                if (char === '\r' && nextChar === '\n') i++;
-            } else {
-                currentCell += char;
-            }
+            let c = text[i], n = text[i+1];
+            if (c === '"') { if(quote && n === '"') { cell += '"'; i++; } else { quote = !quote; } }
+            else if (c === ',' && !quote) { row.push(cell); cell = ''; }
+            else if ((c === '\r' || c === '\n') && !quote) {
+                if (cell || row.length) row.push(cell);
+                if (row.length) rows.push(row);
+                row = []; cell = '';
+                if (c === '\r' && n === '\n') i++;
+            } else { cell += c; }
         }
-        if (currentCell || row.length > 0) row.push(currentCell);
-        if (row.length > 0) rows.push(row);
+        if (cell || row.length) row.push(cell);
+        if (row.length) rows.push(row);
         return rows;
     }
 
-    // ---------------------------------------------------------
-    // 3. AFFICHAGE (INTERFACE UTILISATEUR)
-    // ---------------------------------------------------------
+    // --- 3. UI LOGIC ---
     function filterTasks() {
-        const selectedUser = document.getElementById('userSelect').value;
-        const container = document.getElementById('taskListArea');
-        container.innerHTML = "";
+        const user = document.getElementById('userSelect').value;
+        const area = document.getElementById('taskListArea');
+        area.innerHTML = "";
+        
+        if(!user) return area.innerHTML = `<div class="col-12 text-center text-muted mt-5">Sélectionnez un utilisateur.</div>`;
+        
+        const myTasks = tasks.filter(t => t.assignedTo.includes(user));
+        if(myTasks.length === 0) return area.innerHTML = `<div class="alert alert-warning">Aucune tâche trouvée.</div>`;
 
-        if (!selectedUser) {
-            container.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h4>Veuillez sélectionner un utilisateur.</h4></div>`;
-            return;
-        }
-
-        const filtered = tasks.filter(t => t.assignedTo.includes(selectedUser));
-
-        if (filtered.length === 0) {
-            container.innerHTML = `<div class="alert alert-warning">Aucune tâche assignée à ${selectedUser}.</div>`;
-            return;
-        }
-
-        filtered.forEach(task => {
-            let html = `
-                <div class="col-12">
-                    <div class="card card-task p-3 ${task.isModified ? 'task-modified' : ''}">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <div class="mb-2">
-                                    <span class="badge bg-light text-dark border">#${task.id}</span>
-                                    <span class="badge bg-secondary status-badge">${task.status}</span>
-                                    ${task.priority ? `<span class="badge bg-info text-dark status-badge">${task.priority}</span>` : ''}
-                                </div>`;
+        myTasks.forEach(t => {
+            let content = t.isModified && t.subTasks.length === 0 
+                ? `<span class="old-title">${t.originalTitle}</span><span class="new-title">➝ ${t.title}</span>`
+                : (t.isModified && t.subTasks.length > 0 
+                    ? `<span class="old-title mb-2">${t.originalTitle} (Découpée)</span>` 
+                    : `<h5>${t.title}</h5>`);
             
-            // Logique d'affichage Titre / Sous-tâches
-            if (task.isModified && task.subTasks.length === 0) {
-                // Cas : Renommé
-                html += `<span class="old-title">${task.originalTitle}</span>
-                         <span class="new-title">➝ ${task.title}</span>`;
-            } else if (task.isModified && task.subTasks.length > 0) {
-                // Cas : Découpé
-                html += `<span class="old-title mb-2">${task.originalTitle} (Découpée)</span>`;
-            } else {
-                // Cas : Normal
-                html += `<h5 class="card-title text-dark">${task.title}</h5>`;
-            }
+            let subs = t.subTasks.map(s => `<span class="badge badge-subtask">↳ ${s}</span>`).join('');
 
-            // Affichage des sous-tâches
-            if (task.subTasks.length > 0) {
-                html += `<div class="mt-2">`;
-                task.subTasks.forEach(st => {
-                    html += `<span class="badge badge-subtask">↳ ${st}</span>`;
-                });
-                html += `</div>`;
-            }
-
-            html += `       </div>
-                            <button class="btn btn-primary btn-sm ms-3" onclick="openModal('${task.id}')">Modifier</button>
-                        </div>
+            area.innerHTML += `
+            <div class="col-12"><div class="card card-task p-3 ${t.isModified?'task-modified':''}">
+                <div class="d-flex justify-content-between">
+                    <div class="flex-grow-1">
+                        <div class="mb-2"><span class="badge bg-light text-dark border">#${t.id}</span> <span class="badge bg-secondary status-badge">${t.status}</span></div>
+                        ${content}
+                        <div class="mt-2">${subs}</div>
                     </div>
+                    <button class="btn btn-primary btn-sm ms-3" onclick="openModal('${t.id}')">Modifier</button>
                 </div>
-            `;
-            container.innerHTML += html;
+            </div></div>`;
         });
     }
 
-    // ---------------------------------------------------------
-    // 4. GESTION DU MODAL (POPUP D'ÉDITION)
-    // ---------------------------------------------------------
-    let currentTask = null;
+    // --- 4. MODAL LOGIC ---
     const modalEl = new bootstrap.Modal(document.getElementById('actionModal'));
+    let currentTask = null;
 
-    function openModal(taskId) {
-        currentTask = tasks.find(t => t.id === taskId);
-        document.getElementById('currentTaskId').value = taskId;
+    function openModal(id) {
+        currentTask = tasks.find(t => t.id === id);
+        document.getElementById('currentTaskId').value = id;
         document.getElementById('modalTaskTitle').textContent = currentTask.originalTitle;
+        document.getElementById('renameInput').value = currentTask.isModified && !currentTask.subTasks.length ? currentTask.title : currentTask.originalTitle;
         
-        // Pré-remplir le champ renommer
-        document.getElementById('renameInput').value = currentTask.isModified && currentTask.subTasks.length === 0 ? currentTask.title : currentTask.originalTitle;
-        
-        // Pré-remplir les sous-tâches
-        const container = document.getElementById('subtasksContainer');
-        container.innerHTML = "";
-        if(currentTask.subTasks.length > 0) {
-            currentTask.subTasks.forEach(st => addSubtaskField(st));
-        } else {
-            addSubtaskField(); // Au moins 2 champs par défaut
-            addSubtaskField();
-        }
-        
+        const cont = document.getElementById('subtasksContainer');
+        cont.innerHTML = "";
+        (currentTask.subTasks.length ? currentTask.subTasks : ["",""]).forEach(addSubtaskField);
         modalEl.show();
     }
 
-    function addSubtaskField(val = "") {
+    function addSubtaskField(val="") {
         const div = document.createElement('div');
         div.className = 'input-group mb-2';
-        div.innerHTML = `<input type="text" class="form-control subtask-input" value="${val}" placeholder="Nom de la sous-tâche">
-                         <button class="btn btn-outline-danger" onclick="this.parentElement.remove()">×</button>`;
+        div.innerHTML = `<input type="text" class="form-control sub-input" value="${val}" placeholder="Sous-tâche"><button class="btn btn-outline-danger" onclick="this.parentElement.remove()">×</button>`;
         document.getElementById('subtasksContainer').appendChild(div);
     }
 
     function saveRename() {
-        const newName = document.getElementById('renameInput').value;
-        if (!newName) return;
-        
-        currentTask.title = newName;
-        currentTask.isModified = true;
-        currentTask.subTasks = []; // On efface les sous-tâches si on choisit de renommer
-        
-        saveToLog(currentTask.id, 'rename', { newValue: newName });
-        modalEl.hide();
-        filterTasks();
+        const val = document.getElementById('renameInput').value;
+        if(!val) return;
+        currentTask.title = val; currentTask.subTasks = []; currentTask.isModified = true;
+        saveLog('rename', {newValue: val});
+        modalEl.hide(); filterTasks();
     }
 
     function saveSplit() {
-        const inputs = document.querySelectorAll('.subtask-input');
-        const subs = [];
-        inputs.forEach(input => {
-            if (input.value.trim() !== "") subs.push(input.value.trim());
-        });
-        
-        if (subs.length === 0) return alert("Saisissez au moins une sous-tâche.");
-        
-        currentTask.subTasks = subs;
-        currentTask.isModified = true;
-        
-        saveToLog(currentTask.id, 'split', { subTasks: subs });
-        modalEl.hide();
-        filterTasks();
+        const subs = Array.from(document.querySelectorAll('.sub-input')).map(i => i.value.trim()).filter(v => v);
+        if(!subs.length) return alert("Ajoutez au moins une sous-tâche");
+        currentTask.subTasks = subs; currentTask.isModified = true;
+        saveLog('split', {subTasks: subs});
+        modalEl.hide(); filterTasks();
     }
 
-    // ---------------------------------------------------------
-    // 5. SAUVEGARDE ET EXPORT FICHIER TEXTE
-    // ---------------------------------------------------------
-    function saveToLog(taskId, type, data) {
+    function saveLog(type, data) {
         const user = document.getElementById('userSelect').value;
-        const now = new Date().toLocaleString('fr-FR');
-        
-        // Mise à jour de la modification (on écrase l'ancienne pour la même tâche)
-        modifications = modifications.filter(m => m.taskId !== taskId);
-        
-        modifications.push({
-            taskId: taskId,
-            user: user,
-            date: now,
-            type: type,
-            ...data
-        });
-        
-        // Sauvegarde dans le navigateur
+        modifications = modifications.filter(m => m.taskId !== currentTask.id);
+        modifications.push({taskId: currentTask.id, user, date: new Date().toLocaleString(), type, ...data});
         localStorage.setItem('tattoo_mods', JSON.stringify(modifications));
     }
 
     function resetData() {
-        if(confirm("Voulez-vous effacer toutes les modifications locales ?")) {
-            localStorage.removeItem('tattoo_mods');
-            location.reload();
-        }
+        if(confirm("Effacer tout ?")) { localStorage.removeItem('tattoo_mods'); location.reload(); }
     }
 
     function downloadLogFile() {
-        if (modifications.length === 0) return alert("Aucune modification à sauvegarder.");
-        
-        let content = "JOURNAL DES MODIFICATIONS TATTOO\n================================\n\n";
+        if(!modifications.length) return alert("Rien à sauvegarder.");
+        let txt = "JOURNAL TATTOO\n================\n";
         modifications.forEach(m => {
-            content += `[${m.date}] Utilisateur: ${m.user}\n`;
-            content += `Tâche ID: ${m.taskId}\n`;
-            if (m.type === 'rename') {
-                content += `Action: Renommage -> "${m.newValue}"\n`;
-            } else {
-                content += `Action: Découpage -> \n   - ${m.subTasks.join('\n   - ')}\n`;
-            }
-            content += "--------------------------------\n";
+            txt += `[${m.date}] ${m.user} | ID:${m.taskId}\n${m.type === 'rename' ? 'Renommé: '+m.newValue : 'Découpé:\n - '+m.subTasks.join('\n - ')}\n----------------\n`;
         });
-
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `tattoo_modifications_${new Date().toISOString().slice(0,10)}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        a.href = URL.createObjectURL(new Blob([txt], {type: 'text/plain'}));
+        a.download = `tattoo_log_${Date.now()}.txt`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 
-    // ---------------------------------------------------------
-    // 6. DASHBOARD (TABLEAU DE BORD)
-    // ---------------------------------------------------------
     function renderDashboard() {
         const tbody = document.getElementById('dashboardTableBody');
         tbody.innerHTML = "";
-        
-        Array.from(users).sort().forEach(user => {
-            if(!user) return;
-            
-            const userTasks = tasks.filter(t => t.assignedTo.includes(user));
-            const total = userTasks.length;
-            const modified = userTasks.filter(t => t.isModified).length;
-            const percentage = total === 0 ? 0 : Math.round((modified / total) * 100);
-            
-            let colorClass = "bg-primary";
-            if (percentage === 100) colorClass = "bg-success";
-            else if (percentage > 0) colorClass = "bg-info";
-            
-            // Initiales pour l'avatar
-            const initials = user.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
-
-            const row = `
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <div class="avatar-circle">${initials}</div>
-                            <div>${user}</div>
-                        </div>
-                    </td>
-                    <td class="text-center fw-bold">${total}</td>
-                    <td class="text-center text-success">${modified > 0 ? '+' + modified : '0'}</td>
-                    <td style="width: 35%;">
-                        <div class="progress">
-                            <div class="progress-bar ${colorClass}" role="progressbar" style="width: ${percentage}%">
-                                ${percentage}%
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
+        Array.from(users).sort().forEach(u => {
+            if(!u) return;
+            const ut = tasks.filter(t => t.assignedTo.includes(u));
+            const mod = ut.filter(t => t.isModified).length;
+            const pct = ut.length ? Math.round((mod/ut.length)*100) : 0;
+            const cls = pct === 100 ? "bg-success" : (pct > 0 ? "bg-info" : "bg-primary");
+            tbody.innerHTML += `<tr><td><div class="d-flex align-items-center"><div class="avatar-circle">${u.substring(0,2).toUpperCase()}</div><div>${u}</div></div></td><td class="text-center fw-bold">${ut.length}</td><td class="text-center text-success">${mod}</td><td><div class="progress"><div class="progress-bar ${cls}" style="width:${pct}%">${pct}%</div></div></td></tr>`;
         });
     }
 
-    // Lancement de l'application
     window.addEventListener('DOMContentLoaded', init);
-
 </script>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
