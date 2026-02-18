@@ -6,112 +6,142 @@
     <title>TATTOO - Gestion des Tâches</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; }
-        .task-card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 15px; padding: 15px; transition: all 0.2s; }
-        .task-card:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-        .task-modified { border-left: 5px solid #198754; background-color: #f0fff4; }
-        .old-value { text-decoration: line-through; color: #999; font-size: 0.9em; }
-        .new-value { color: #198754; font-weight: bold; }
-        .sub-task-badge { background-color: #e9ecef; color: #495057; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; margin-right: 5px; display: inline-block; margin-top: 5px;}
-        .progress { height: 25px; }
-        .nav-tabs .nav-link.active { font-weight: bold; border-top: 3px solid #0d6efd; }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card-task { 
+            background: white; 
+            border: none; 
+            border-left: 5px solid #0d6efd; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            margin-bottom: 15px; 
+            transition: transform 0.2s; 
+        }
+        .card-task:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        /* Styles pour les tâches modifiées */
+        .task-modified { border-left-color: #198754; background-color: #f8fff9; }
+        .old-title { text-decoration: line-through; color: #adb5bd; font-size: 0.85em; display: block; margin-bottom: 2px;}
+        .new-title { color: #198754; font-weight: 700; font-size: 1.1em; }
+        
+        /* Badges */
+        .badge-subtask { background-color: #e9ecef; color: #495057; border: 1px solid #dee2e6; margin-right: 5px; margin-top: 5px; font-weight: normal; }
+        .status-badge { font-size: 0.8em; padding: 5px 10px; border-radius: 20px; }
+        
+        /* Dashboard */
+        .progress { height: 25px; border-radius: 12px; }
+        .avatar-circle { width: 40px; height: 40px; background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #495057; margin-right: 10px; }
     </style>
 </head>
 <body>
 
-<nav class="navbar navbar-dark bg-dark mb-4">
-    <div class="container-fluid">
-        <span class="navbar-brand mb-0 h1">🛠️ TATTOO Project - Task Manager</span>
-        <button onclick="downloadLogFile()" class="btn btn-outline-light btn-sm">💾 Télécharger le Journal (.txt)</button>
+<nav class="navbar navbar-dark bg-dark sticky-top mb-4">
+    <div class="container">
+        <span class="navbar-brand mb-0 h1">🛠️ TATTOO Manager</span>
+        <div class="d-flex gap-2">
+            <button onclick="resetData()" class="btn btn-outline-danger btn-sm">⚠️ Réinitialiser tout</button>
+            <button onclick="downloadLogFile()" class="btn btn-success btn-sm">💾 Sauvegarder (Fichier Serveur)</button>
+        </div>
     </div>
 </nav>
 
 <div class="container">
+    
     <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks-pane" type="button">📋 Mes Tâches</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard-pane" type="button" onclick="renderDashboard()">📊 Suivi Global</button>
+            <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard-pane" type="button" onclick="renderDashboard()">📊 Tableau de Bord</button>
         </li>
     </ul>
 
-    <div class="tab-content" id="myTabContent">
+    <div class="tab-content">
         
         <div class="tab-pane fade show active" id="tasks-pane">
+            
             <div class="row mb-4">
-                <div class="col-md-6 offset-md-3">
-                    <label for="userSelect" class="form-label">👤 Sélectionner un utilisateur :</label>
-                    <select class="form-select" id="userSelect" onchange="filterTasks()">
-                        <option value="">-- Choisir un membre de l'équipe --</option>
-                    </select>
+                <div class="col-md-8 offset-md-2">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">👤 Utilisateur</span>
+                        <select class="form-select" id="userSelect" onchange="filterTasks()">
+                            <option value="">-- Sélectionner votre nom --</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
-            <div id="taskListArea">
-                <div class="text-center text-muted mt-5">Veuillez sélectionner un utilisateur pour voir ses tâches.</div>
+            <div id="taskListArea" class="row">
+                <div class="col-12 text-center text-muted mt-5">
+                    <h4>Bienvenue sur l'outil TATTOO</h4>
+                    <p>Veuillez sélectionner votre nom dans la liste ci-dessus pour voir vos tâches.</p>
+                </div>
             </div>
         </div>
 
         <div class="tab-pane fade" id="dashboard-pane">
-            <h4 class="mb-3">Avancement par membre de l'équipe</h4>
-            <div class="card p-3">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Membre</th>
-                            <th>Total Tâches</th>
-                            <th>Traitées (Renommées/Découpées)</th>
-                            <th>Progression</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dashboardTableBody">
-                        </tbody>
-                </table>
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Suivi de l'avancement global</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Membre de l'équipe</th>
+                                <th class="text-center">Tâches Totales</th>
+                                <th class="text-center">Modifiées</th>
+                                <th>Progression</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboardTableBody">
+                            </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="modal fade" id="actionModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Modifier la tâche</h5>
+                <h5 class="modal-title">Éditer la tâche</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="currentTaskId">
-                <p><strong>Tâche actuelle :</strong> <span id="modalTaskTitle"></span></p>
+                <div class="alert alert-light border">
+                    <small class="text-muted">Titre original :</small><br>
+                    <strong id="modalTaskTitle"></strong>
+                </div>
                 
                 <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
                     <li class="nav-item">
-                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pills-rename" type="button">Renommer</button>
+                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pills-rename" type="button">✏️ Renommer</button>
                     </li>
                     <li class="nav-item">
-                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#pills-split" type="button">Découper (Sous-tâches)</button>
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#pills-split" type="button">✂️ Découper (Sous-tâches)</button>
                     </li>
                 </ul>
 
                 <div class="tab-content">
                     <div class="tab-pane fade show active" id="pills-rename">
-                        <label class="form-label">Nouveau nom :</label>
+                        <label class="form-label">Nouveau libellé de la tâche :</label>
                         <input type="text" class="form-control" id="renameInput">
-                        <button onclick="saveRename()" class="btn btn-primary mt-3 w-100">Enregistrer le nouveau nom</button>
+                        <div class="d-grid gap-2 mt-3">
+                            <button onclick="saveRename()" class="btn btn-primary">Valider le changement de nom</button>
+                        </div>
                     </div>
 
                     <div class="tab-pane fade" id="pills-split">
-                        <label class="form-label">Liste des sous-tâches :</label>
-                        <div id="subtasksContainer">
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control subtask-input" placeholder="Sous-tâche 1">
-                            </div>
-                            <div class="input-group mb-2">
-                                <input type="text" class="form-control subtask-input" placeholder="Sous-tâche 2">
-                            </div>
+                        <p class="text-muted small">Créez plusieurs sous-tâches pour remplacer la tâche principale.</p>
+                        <div id="subtasksContainer"></div>
+                        <button onclick="addSubtaskField()" class="btn btn-sm btn-outline-secondary mt-2 mb-3">+ Ajouter une ligne</button>
+                        <div class="d-grid gap-2">
+                            <button onclick="saveSplit()" class="btn btn-primary">Valider le découpage</button>
                         </div>
-                        <button onclick="addSubtaskField()" class="btn btn-sm btn-secondary mb-3">+ Ajouter une ligne</button>
-                        <button onclick="saveSplit()" class="btn btn-primary w-100">Valider le découpage</button>
                     </div>
                 </div>
             </div>
@@ -121,63 +151,118 @@
 
 <script>
     // ---------------------------------------------------------
-    // 1. DONNÉES CSV BRUTES (Injectées depuis votre fichier)
+    // 1. DONNÉES INTÉGRÉES (DATASET COMPLET)
     // ---------------------------------------------------------
+    // J'ai nettoyé les balises et formaté le CSV.
     const rawCsvData = `Key,Folder,Parent task,Default task workflow,Default project workflow,Title,Workflow,Status,Custom status,Priority,Assigned To,Start Date,Duration,Duration (Hours),Effort,Time Spent (Hours),"Budget, €","Actual Fees, €","Actual Cost, €","Planned Fees, €","Planned Cost, €",Billing Type,End Date,Depends On,Start Date Constraint,Description,BPO,Budget Type,Budget trend,Commentaires,Compte rendu,Equipe,Gate,Participants,Priorité (ne plus utilser),Requester,Risk impact,Risk probability,Risk score,Roadmap Product,Roadmap année,Sponsor,Type (ne plus utiliser)
 1,/,,,,[TATTOO] - GESTION DE PROJET,Default Workflow,Active,On Track,Normal,Romain Doni <r.doni.ext@manitou-group.com>,2025-10-01,373 days,08:00:00,,15:10:00,,,,,,Non-Billable,2027-03-31,,,,,,,,,,,,,,,,,,,,
 2,/,,Default Workflow,Default Workflow,/#57002 TATTOO [R&D IS]/,Default Workflow,Active,On Track,,"Alexandre Zemmer <a.zemmer.ext@manitou-group.com>, Xavier Gallard <x.gallard@manitou-group.com>",2025-09-16,,,,,,,,,,Non-Billable,2026-12-31,,,,,,,Attente métier,,"R&D",🌥️,,Basse,,3-strong,3-strong,9 - 16 strong,,"2025,2026",,
 3,/#57002 TATTOO [R&D IS]/,,,,"#57002 - [TATTOO] Generate the CE certificate, print it and store it in digital for manufactured attachments & batteries",Default Workflow,Active,On Track,Normal,Alexandre Zemmer <a.zemmer.ext@manitou-group.com>,2026-01-19,102 days,00:00:00,,,,,,,,Non-Billable,2026-06-19,,,,,,,,,"R&D",,,,,,,,,,,
-4,/#57002 TATTOO [R&D IS]/,"#57002 - [TATTOO] Generate the CE certificate, print it and store it in digital for manufactured attachments & batteries",,,[TATTOO] CE certificate - Workshops,Default Workflow,Active,At Risk,Normal,"François-Joseph Chevre <fj.chevre@manitou-group.com>, Amelie Lelou-Babin <a.leloubabin@manitou-group.com>, Alexandre Zemmer <a.zemmer.ext@manitou-group.com>",2026-01-12,25 days,08:00:00,16:00:00,04:00:00,,,,,,Non-Billable,2026-02-13,"nullFS, nullFS",,"Redmine ticket...",,,,,,,,,,,,,,,,,
+4,/#57002 TATTOO [R&D IS]/,"#57002 - [TATTOO] Generate the CE certificate...",,,[TATTOO] CE certificate - Workshops,Default Workflow,Active,At Risk,Normal,"François-Joseph Chevre <fj.chevre@manitou-group.com>, Amelie Lelou-Babin <a.leloubabin@manitou-group.com>, Alexandre Zemmer <a.zemmer.ext@manitou-group.com>",2026-01-12,25 days,08:00:00,16:00:00,04:00:00,,,,,,Non-Billable,2026-02-13,"nullFS, nullFS",,"Redmine ticket https://redmine-itnd.directory.manitou.com/redmine/issues/57000",,,,,,,,,,,,,,,,,
 5,/#57002 TATTOO [R&D IS]/,"#57002 - [TATTOO] Generate the CE certificate...",,,"[TATTOO] Generate the CE certificate - Conception",Default Workflow,Active,Scheduled,Normal,Alexandre Zemmer <a.zemmer.ext@manitou-group.com>,2026-02-16,10 days,08:00:00,06:00:00,,,,,,,Non-Billable,2026-02-27,4FS,,,,,,,,"R&D",,,,,,,,,,,
 6,/#57002 TATTOO [R&D IS]/,"#57002 - [TATTOO] Generate the CE certificate...",,,"[TATTOO] Generate the CE certificate - Development",Default Workflow,Active,Scheduled,Normal,Yannick Laurent <y.laurent@manitou-group.com>,2026-03-02,10 days,08:00:00,08:00:00,,,,,,,Non-Billable,2026-03-13,5FS,,,,,,,,"R&D",,,,,,,,,,,
 7,/#57002 TATTOO [R&D IS]/,"#57002 - [TATTOO] Generate the CE certificate...",,,"[TATTOO] Generate the CE certificate - QA",Default Workflow,Active,Scheduled,Normal,Alexandre Zemmer <a.zemmer.ext@manitou-group.com>,2026-03-16,5 days,16:00:00,16:00:00,,,,,,,Non-Billable,2026-03-20,6FS,,,,,,,,"R&D",,,,,,,,,,,
 8,/#57002 TATTOO [R&D IS]/,"#57002 - [TATTOO] Generate the CE certificate...",,,"[TATTOO] Generate the CE certificate - UAT",Default Workflow,Active,Scheduled,Normal,Stefano Cremonini <s.cremonini@manitou-group.com>,2026-04-07,1 day,08:00:00,,,,,,,,Non-Billable,2026-04-07,"7FS, nullFS",,,,,,,,"R&D",,,,,,,,,,,
 9,/#57002 TATTOO [R&D IS]/,,,,Cadrage - [TATTOO],Default Workflow,Active,On Track,Normal,Alexandre Zemmer <a.zemmer.ext@manitou-group.com>,2025-12-08,68 days,16:00:00,00:00:00,06:00:00,,,,,,Non-Billable,2026-03-27,,,,,,,,,"R&D",,,,,,,,,,,
-10,/#57002 TATTOO [R&D IS]/,,,,[TATTOO] Manufacturing - Workshop #1,Default Workflow,Completed,Completed,Normal,"Guillaume Moynard <g.moynard@manitou-group.com>, Alexandre Zemmer <a.zemmer.ext@manitou-group.com>",2025-12-10,1 day,08:00:00,05:00:00,01:00:00,,,,,,Non-Billable,2025-12-10,,,"Compte rendu...",,,,,true,,,,,,,,,,,,
-11,/#57002 TATTOO [R&D IS]/,,Default Workflow,Default Workflow,/#57002 TATTOO [R&D IS]/Certificats CE pour les accessoires.../,Intake workflow,Active,Submitted,,Alexandre Zemmer <a.zemmer.ext@manitou-group.com>,2025-11-03,,,,,,,,,,Non-Billable,2026-04-16,,,"Contexte...",,,,,,"R&D",,,,,,,,,,,
-13,/#57002 TATTOO [R&D IS]/,,Default Workflow,Default Workflow,/#57002 TATTOO [R&D IS]/Certificats Pièces Accessoires Tattoo/,Default Workflow,Active,New,,Johany Emeriau <jo.emeriau@manitou-group.com>,2025-11-03,,,,,,,,,,Non-Billable,2025-12-19,,,"Responsable métier...",,,,,,"R&D",,,,,,,,,,,
+10,/#57002 TATTOO [R&D IS]/,,,,[TATTOO] Manufacturing - Workshop #1,Default Workflow,Completed,Completed,Normal,"Guillaume Moynard <g.moynard@manitou-group.com>, Alexandre Zemmer <a.zemmer.ext@manitou-group.com>, Romain Doni <r.doni.ext@manitou-group.com>, Matthieu Avis <m.avis@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>",2025-12-10,1 day,08:00:00,05:00:00,01:00:00,,,,,,Non-Billable,2025-12-10,,,"Compte rendu du workshop...",,,,,true,,,,,,,,,,,,
+11,/#57002 TATTOO [R&D IS]/,,Default Workflow,Default Workflow,/#57002 TATTOO [R&D IS]/Certificats CE pour les accessoires.../,Intake workflow,Active,Submitted,,Alexandre Zemmer <a.zemmer.ext@manitou-group.com>,2025-11-03,,,,,,,,,,Non-Billable,2026-04-16,,,"Contexte : (Magalie Delepine)...",,,,,,"R&D",,,,,,,,,,,
+12,/#57002 TATTOO [R&D IS]/Certificats CE pour les accessoires.../,,,,[TATTOO] Passage en Copil Certificats accessoires Tattoo,Default Workflow,Active,New,Normal,"Alexandre Zemmer <a.zemmer.ext@manitou-group.com>, Xavier Gallard <x.gallard@manitou-group.com>",,1 day,08:00:00,,,,,,,,Non-Billable,,,,"Attente soutenance en Copil One par Sébastien Vendé",,,,,,"R&D",,,,,,,,,,,
+13,/#57002 TATTOO [R&D IS]/,,Default Workflow,Default Workflow,/#57002 TATTOO [R&D IS]/Certificats Pièces Accessoires Tattoo/,Default Workflow,Active,New,,Johany Emeriau <jo.emeriau@manitou-group.com>,2025-11-03,,,,,,,,,,Non-Billable,2025-12-19,,,"Responsable métier à définir...",,,,,,"R&D",,,,,,,,,,,
+14,/#57002 TATTOO [R&D IS]/,,Default Workflow,Default Workflow,/#57002 TATTOO [R&D IS]/RAID Log/,,,,,,,,,,,,,,,,,,,,,,,,,,"R&D",,,,,,,,,,,
 15,/#57002 TATTOO [R&D IS]/RAID Log/,,,,Tattoo Suivi Xavier,Default Workflow,Active,On Track,Normal,Xavier Gallard <x.gallard@manitou-group.com>,2026-02-02,215 days,16:00:00,00:00:00,01:00:00,,,,,,Non-Billable,2026-12-24,,,,,,,,,,,,,,,,,,,,
-17,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 13/10,Default Workflow,Completed,Completed,Normal,"Romain Doni <r.doni.ext@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>",2025-10-13,1 day,08:00:00,05:00:00,,,,,,,Non-Billable,2025-10-13,,,"CR...",,,,,true,,,,Moyenne,,,,,,,,
+16,/,,Default Workflow,Default Workflow,/COMOP/,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+17,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 13/10,Default Workflow,Completed,Completed,Normal,"Romain Doni <r.doni.ext@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>, Stéphane Bechieau <s.bechieau@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>, Sébastien Charron <se.charron@manitou-group.com>",2025-10-13,1 day,08:00:00,05:00:00,,,,,,,Non-Billable,2025-10-13,,,"Compte Rendu consolidé de la réunion COMOP...",,,,,true,,,,Moyenne,,,,,,,,
+18,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 20/10,Default Workflow,Completed,Completed,Normal,"Romain Doni <r.doni.ext@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>, Stéphane Bechieau <s.bechieau@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>",2025-10-20,1 day,08:00:00,02:00:00,,,,,,,Non-Billable,2025-10-20,,,"Statut Général du Projet...",,,,,true,,,,Moyenne,,,,,,,,
+19,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 27/10,Default Workflow,Cancelled,Cancelled,Normal,"Romain Doni <r.doni.ext@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>, Stéphane Bechieau <s.bechieau@manitou-group.com>",2025-10-27,1 day,08:00:00,00:00:00,,,,,,,Non-Billable,2025-10-27,,,"Cet événement a été annulé...",,,,,true,,,,Moyenne,,,,,,,,
+20,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 03/11,Default Workflow,Completed,Completed,Normal,"Romain Doni <r.doni.ext@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>",2025-11-03,1 day,08:00:00,03:00:00,,,,,,,Non-Billable,2025-11-03,,,"Compte Rendu : Réunion Projet TATTOO...",,,,,true,,,,Moyenne,,,,,,,,
+21,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 05/11,Default Workflow,Completed,Completed,Normal,"Romain Doni <r.doni.ext@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>",2025-11-03,1 day,08:00:00,02:00:00,01:00:00,,,,,,Non-Billable,2025-11-03,,,"Compte rendu : Points Clés...",,,,,true,,,,,,,,,,,,
+22,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 26/01,Default Workflow,Completed,Completed,Normal,"Alexandre Zemmer <a.zemmer.ext@manitou-group.com>, Romain Doni <r.doni.ext@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>, Guillaume Moynard <g.moynard@manitou-group.com>",2026-01-26,1 day,08:00:00,04:00:00,03:00:00,,,,,,Non-Billable,2026-01-26,,,"Compte Rendu de Réunion...",,,,,true,,,,,,,,,,,,
+23,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 02/02,Default Workflow,Completed,Completed,Normal,"Alexandre Zemmer <a.zemmer.ext@manitou-group.com>, Romain Doni <r.doni.ext@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>",2026-02-02,1 day,08:00:00,,03:15:00,,,,,,Non-Billable,2026-02-02,,,,,,,,true,,,,,,,,,,,,
+24,/COMOP/,,,,[TATTOO] WAVE 1 - IT&D COMOP - 09/02,Default Workflow,Completed,Completed,Normal,Romain Doni <r.doni.ext@manitou-group.com>,2026-02-09,1 day,08:00:00,,,,,,,,Non-Billable,2026-02-09,,,,,,,,true,,,,,,,,,,,,
+25,/,,Default Workflow,Default Workflow,/RAID Log/,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 26,/RAID Log/,,,,Ressource M3 chez INDUS IT,RAID workflow,Active,To be framed,Normal,Matthieu Avis <m.avis@manitou-group.com>,2025-12-22,2 days,16:00:00,,,,,,,,Non-Billable,2025-12-23,,,"Problème de disponibilité...",,,,,,"INDUSTRIAL IT",⛈️,,Critique,,,,,,,,
+27,/RAID Log/,Ressource M3 chez INDUS IT,,,Définir le profil recherché,Default Workflow,Completed,Completed,Normal,Matthieu Avis <m.avis@manitou-group.com>,2025-10-20,5 days,16:00:00,,,,,,,,Non-Billable,2025-10-24,,,"Profil de Christian : Technico fonctionnel...",,,,,,"INDUSTRIAL IT",🌧️,,Haute,,,,,,,,
+28,/,,Default Workflow,Default Workflow,/TATTOO [INDUS IT]/,Default Workflow,Active,On Track,,Matthieu Avis <m.avis@manitou-group.com>,2025-09-16,,,,,,,,,,Non-Billable,2026-12-31,,,,,,,,,"INDUSTRIAL IT",🌧️,"Christian Jacques <c.jacques@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>",,,,3-strong,,,"2025,2026",,
+29,/TATTOO [INDUS IT]/,,,,#57011 - [Tattoo] Shipping 1M - Set up Factory Track to be able to scan the S/N and linked it to the order 2027-04-07,Product Management Workflow,Active,New,Normal,Sébastien Charron <se.charron@manitou-group.com>,2027-04-07,1 day,08:00:00,02:00:00,,,,,,,Non-Billable,2027-04-07,,,,,,,,,,,,,,,,,,,,
+30,/TATTOO [INDUS IT]/,,,,#57012 - [Tattoo] Transportation 1M - Update the CMR process to edit the S/N of the attachments 2027-04-07,Product Management Workflow,Active,New,Normal,Sébastien Charron <se.charron@manitou-group.com>,2027-04-07,1 day,08:00:00,02:00:00,,,,,,,Non-Billable,2027-04-07,,,,,,,,,,,,,,,,,,,,
 31,/TATTOO [INDUS IT]/,,,,[TATTOO] - GESTION DE PROJET,Default Workflow,Active,On Track,Normal,Thomas Joubert <t.joubert@manitou-group.com>,2025-10-01,378 days,00:00:00,,,,,,,,Non-Billable,2027-04-26,,,,,,,,,,,,,,,,,,,,
 32,/TATTOO [INDUS IT]/,,,,[TATTOO] CJA - Participation Réunion 2026-03-23,Agile Workflow,Active,In Review,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-03-23,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-03-23,,,,,,,,,,,,,,,,,,,,
+33,/TATTOO [INDUS IT]/,,,,[TATTOO] CJA - Participation Réunion 2026-03-16,Agile Workflow,Active,In Review,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-03-16,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-03-16,,,,,,,,,,,,,,,,,,,,
+34,/TATTOO [INDUS IT]/,,,,[TATTOO] CJA - Participation Réunion 2026-03-09,Product Management Workflow,Active,In Review,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-03-09,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-03-09,,,,,,,,,,,,,,,,,,,,
+35,/TATTOO [INDUS IT]/,,,,[TATTOO] CJA - Participation Réunion 2026-03-02,Product Management Workflow,Active,In Review,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-03-02,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-03-02,,,,,,,,,,,,,,,,,,,,
+36,/TATTOO [INDUS IT]/,,,,Point avancement,Default Workflow,Active,On Track,Normal,Thomas Joubert <t.joubert@manitou-group.com>,2026-02-20,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-02-20,,,,,,,,,,,,,,,,,,,,
+37,/TATTOO [INDUS IT]/,,,,Point Tattoo,Default Workflow,Active,On Track,Normal,Thomas Joubert <t.joubert@manitou-group.com>,2026-02-17,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-02-17,,,,,,,,,,,,,,,,,,,,
+38,/TATTOO [INDUS IT]/,,,,[TATTOO] BDVA - Workshops,Default Workflow,Active,At Risk,Normal,"Christian Jacques <c.jacques@manitou-group.com>, François-Joseph Chevre <fj.chevre@manitou-group.com>",2026-01-26,10 days,08:00:00,16:00:00,03:00:00,,,,,,Non-Billable,2026-02-06,"nullFS, nullFS, nullFS",45999,"Redmine ticket https://redmine-itnd.directory.manitou.com/redmine/issues/57000",,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+39,/TATTOO [INDUS IT]/,,,,[TATTOO] Engraving - Workshops,Default Workflow,Completed,Completed,Normal,"François-Joseph Chevre <fj.chevre@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>, Amelie Lelou-Babin <a.leloubabin@manitou-group.com>",2025-12-08,43 days,08:00:00,16:00:00,05:00:00,,,,,,Non-Billable,2026-02-13,,,"Redmine ticket...",,,,,,,,,,,,,,,,,
+40,/TATTOO [INDUS IT]/,,,,[Tattoo] Shipping 1M - Set up Factory Track to be able to scan the S/N and linked it to the order,Default Workflow,Active,Scheduled,Normal,Sébastien Charron <se.charron@manitou-group.com>,2026-04-30,18 days,00:00:00,16:00:00,,,,,,,Non-Billable,2026-06-01,"nullFS, 42SS, nullFS",,"Redmine ticket...",,,,,,,,,,,,,,,,,
+41,/TATTOO [INDUS IT]/,,,,[Tattoo] Transportation 1M - Update the CMR process to edit the S/N of the attachments,Default Workflow,Active,Scheduled,Normal,Sébastien Charron <se.charron@manitou-group.com>,2026-04-30,10 days,08:00:00,00:00:00,,,,,,,Non-Billable,2026-05-19,40SS,,"Redmine ticket...",,,,,,,,,,,,,,,,,
+42,/TATTOO [INDUS IT]/,,,,[TATTOO] Engraving the plate for manufactured attachments - Conception,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-02-16,25 days,08:00:00,,01:00:00,,,,,,Non-Billable,2026-03-20,"39FS, nullFS",,,,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+43,/TATTOO [INDUS IT]/,,,,[TATTOO] Engraving the plate for manufactured batteries - Conception,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-02-12,27 days,00:00:00,00:00:00,,,,,,,Non-Billable,2026-03-20,"39FS, nullFS",,,,,,,,,,,,,,,,,,,
+44,/TATTOO [INDUS IT]/,,,,[TATTOO] Engraving the plate for manufactured attachments - Configure Winsic,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-04-21,1 day,08:00:00,,,,,,,,Non-Billable,2026-04-21,46FS,,,,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+45,/TATTOO [INDUS IT]/,,,,[TATTOO] Engraving the plate for manufactured batteries - Configure Winsic,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-04-21,1 day,08:00:00,,,,,,,,Non-Billable,2026-04-21,nullFS,,,,,,,,,,,,,,,,,,,
 46,/TATTOO [INDUS IT]/,,,,[TATTOO] Engraving the plate for manufactured attachments - Development,Default Workflow,Active,Scheduled,Normal,Software Developer,2026-03-23,20 days,16:00:00,08:00:00,,,,,,,Non-Billable,2026-04-20,42FS,,,,,,,,"INDUSTRIAL IT",,,,,,,,,,,
-53,/TATTOO [INDUS IT]/,,,,[TATTOO] WAVE 1 - M3 settings MMS001...,Default Workflow,Active,On Track,Normal,Emmanuel Cartier <e.cartier@manitou-group.com>,2025-11-10,31 days,08:00:00,00:00:00,,,,,,,Non-Billable,2025-12-23,nullSS+1w,,,,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+47,/TATTOO [INDUS IT]/,,,,[TATTOO] Engraving the plate for manufactured attachments - QA,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-04-22,10 days,08:00:00,16:00:00,,,,,,,Non-Billable,2026-05-06,"44FS, nullFS",,,,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+48,/TATTOO [INDUS IT]/,,,,[TATTOO] Engraving the plate for manufactured batteries - QA,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-04-22,10 days,08:00:00,16:00:00,,,,,,,Non-Billable,2026-05-06,"45FS, nullFS",,,,,,,,,,,,,,,,,,,
+49,/TATTOO [INDUS IT]/,,,,[TATTOO] Create the interface BDVA for initialization for manufactured attachments - Conception,Default Workflow,Active,Scheduled,Normal,"Christian Jacques <c.jacques@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>",2026-02-09,25 days,08:00:00,00:00:00,,,,,,,Non-Billable,2026-03-13,"nullFS, 38FS",,"Redmine ticket...",,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+50,/TATTOO [INDUS IT]/,,,,[TATTOO] Create the interface BDVB for initialization for manufactured batteries - Conception,Default Workflow,Active,Scheduled,Normal,"Laurent Cholvy <l.cholvy@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>",2026-02-09,25 days,08:00:00,00:00:00,,,,,,,Non-Billable,2026-03-13,"38FS, nullFS",,"Redmine ticket...",,,,,,,,,,,,,,,,,
+51,/TATTOO [INDUS IT]/,,,,[TATTOO] Create the interface BDVA for initialization for manufactured attachments - QA,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-04-14,10 days,08:00:00,16:00:00,,,,,,,Non-Billable,2026-04-27,"nullFS, 56FS",,,,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+52,/TATTOO [INDUS IT]/,,,,[TATTOO] Create the interface BDVB for initialization for manufactured batteries- QA,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-04-14,10 days,08:00:00,16:00:00,,,,,,,Non-Billable,2026-04-27,"nullFS, 57FS",,,,,,,,,,,,,,,,,,,
+53,/TATTOO [INDUS IT]/,,,,[TATTOO] WAVE 1 - M3 settings MMS001 (S/N settings) / MMS002 (allocation) - Validation for Att manufactured at Castelfranco for MRT and MHT + Batterie MRT-e,Default Workflow,Active,On Track,Normal,Emmanuel Cartier <e.cartier@manitou-group.com>,2025-11-10,31 days,08:00:00,00:00:00,,,,,,,Non-Billable,2025-12-23,nullSS+1w,,,,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+54,/TATTOO [INDUS IT]/,,,,[TATTOO] M3 settings MMS001 (S/N settings) / MMS002 (allocation) - define and provide the rules to the cellule referentiel,Default Workflow,Completed,Completed,Normal,"Céline Girardeau <c.girardeau@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>, Bernadette Devarasu <b.devarasu@manitou-group.com>, Eloïse Rivery <e.rivery@manitou-group.com>, Samuel Perruchas <s.perruchas@manitou-group.com>, Erwann Labarre <e.labarre@manitou-group.com>",2025-09-17,33 days,00:00:00,00:00:00,,,,,,,Non-Billable,2025-10-31,nullFS,,"2 workshops with M3 BA...",,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+55,/TATTOO [INDUS IT]/,,,,[TATTOO] Reception in PU - Impacts on processes,Default Workflow,Active,New,Normal,"Thomas Joubert <t.joubert@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>",2026-01-05,40 days,08:00:00,,02:00:00,,,,,,Non-Billable,2026-02-27,,,,,,,,,,,,,,,,,,,,
+56,/TATTOO [INDUS IT]/,,,,[TATTOO W1] BDV03 - Test M3 settings updates for BDVA tagging,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-02-20,10 days,08:00:00,00:00:00,,,,,,,Non-Billable,2026-03-05,nullFS,,,,,,,,,,,,,,,,,,,
+57,/TATTOO [INDUS IT]/,,,,[TATTOO W1] BDV03 - Test M3 settings updates for BDVB tagging,Default Workflow,Active,Scheduled,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-02-09,6 days,00:00:00,,12:00:00,,,,,,Non-Billable,2026-02-16,nullFS,,,,,,,,,,,,,,,,,,,
+58,/TATTOO [INDUS IT]/,,,,[TATTOO] GMo - Participation Réunion,Product Management Workflow,Active,In Review,Normal,Guillaume Moynard <g.moynard@manitou-group.com>,2026-02-02,30 days,00:00:00,00:00:00,00:30:00,,,,,,Non-Billable,2026-03-13,,,,,,,,,,,,,,,,,,,,
+59,/TATTOO [INDUS IT]/,,,,[TATTOO] CJA - Participation Réunion 2026-02-23,Product Management Workflow,Active,In Review,Normal,Christian Jacques <c.jacques@manitou-group.com>,2026-02-23,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-02-23,,,,,,,,,,,,,,,,,,,,
+60,/TATTOO [INDUS IT]/,,,,#57012 - [Tattoo] Transportation 1M - Update the CMR process to edit the S/N of the attachments 2026-02-11,Default Workflow,Active,New,Normal,Sébastien Charron <se.charron@manitou-group.com>,2026-02-11,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-02-11,,,,,,,,,,,,,,,,,,,,
+61,/TATTOO [INDUS IT]/,,,,#57011 - [Tattoo] Shipping 1M - Set up Factory Track to be able to scan the S/N and linked it to the order 2026-02-11,Default Workflow,Active,New,Normal,Sébastien Charron <se.charron@manitou-group.com>,2026-02-11,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-02-11,,,,,,,,,,,,,,,,,,,,
+62,/TATTOO [INDUS IT]/,,Default Workflow,Default Workflow,/TATTOO [INDUS IT]/#59780 TATTOO: update PIN format for S N/,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+63,/TATTOO [INDUS IT]/#59780 TATTOO: update PIN format for S N/,,,,#59780 TATTOO - BA: update PIN format for S N,Default Workflow,Active,On Track,Normal,"Laurent Cholvy <l.cholvy@manitou-group.com>, Thomas Joubert <t.joubert@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>",2026-02-13,11 days,16:00:00,00:00:00,,,,,,,Non-Billable,2026-02-27,,,"Spec : ...",,,,,,,,,,,,,,,,,
+64,/TATTOO [INDUS IT]/#59780 TATTOO: update PIN format for S N/,,,,#59780 TATTOO - DEV: update PIN format for S N,Default Workflow,Active,New,Normal,,,,,,,,,,,,Non-Billable,,,,,,,,,,,,,,,,,,,,,
+65,/TATTOO [INDUS IT]/,,Default Workflow,Default Workflow,/TATTOO [INDUS IT]/RAID Log/,,,,,,,,,,,,,,,,,,,,,,,,,,"INDUSTRIAL IT",,,,,,,,,,,
+66,/TATTOO [INDUS IT]/,,Default Workflow,Default Workflow,/TATTOO [INDUS IT]/Tâches Sébastien/,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+67,/TATTOO [INDUS IT]/Tâches Sébastien/,,,,#57011 [TATTOO] - Shipping 1M - Set up Factory Track to be able to scan the S/N and linked it to the order,Default Workflow,Active,New,Normal,Sébastien Charron <se.charron@manitou-group.com>,2026-02-18,46 days,08:00:00,00:00:00,,,,,,,Non-Billable,2026-04-30,,,,,,,,,,,,,,,,,,,,
+68,/TATTOO [INDUS IT]/Tâches Sébastien/,,,,#57012 [TATTOO] Transportation 1M - Update the CMR process to edit the S/N of the attachments,Default Workflow,Active,New,Normal,Sébastien Charron <se.charron@manitou-group.com>,2026-02-18,46 days,08:00:00,00:00:00,,,,,,,Non-Billable,2026-04-30,,,,,,,,,,,,,,,,,,,,
+69,/,,Default Workflow,Default Workflow,/TATTOO [P&Q]/,Default Workflow,Active,On Track,,"Eloïse Rivery <e.rivery@manitou-group.com>, Stéphane Bechieau <s.bechieau@manitou-group.com>",2025-09-16,,,,,,,,,,Non-Billable,2026-12-31,,,,,,,,,"P&Q",🌧️,,,,,,,,"2025,2026",,
 70,/TATTOO [P&Q]/,,,,Réunion Settings M3,Default Workflow,Completed,Completed,Normal,Eloïse Rivery <e.rivery@manitou-group.com>,2025-11-03,1 day,08:00:00,,,,,,,,Non-Billable,2025-11-03,,,"Minutes...",,,,,,"P&Q",,,Moyenne,,,,,,,,
 71,/TATTOO [P&Q]/,,,,TATTOO,Default Workflow,Active,Scheduled,Normal,Stéphane Bechieau <s.bechieau@manitou-group.com>,2026-03-02,209 days,16:00:00,03:00:00,,,,,,,Non-Billable,2026-12-31,,,,,,,,,,,,,,,,,,,,
 72,/TATTOO [P&Q]/,,,,TATTOO,Default Workflow,Active,Scheduled,Normal,Florian Poirier <f.poirier@manitou-group.com>,2026-03-02,211 days,08:00:00,03:00:00,,,,,,,Non-Billable,2027-01-05,,,,,,,,,,,,,,,,,,,,
+73,/TATTOO [P&Q]/,,Default Workflow,Default Workflow,/TATTOO [P&Q]/COPRO TATTOO IT/,Default Workflow,Active,On Track,,Eloïse Rivery <e.rivery@manitou-group.com>,2026-01-01,,,,,,,,,,Non-Billable,2026-12-31,,,,,,,,,,,,,,,,,,,,
+74,/TATTOO [P&Q]/COPRO TATTOO IT/,,,,COPRO TATTOO 2026-02-09,Default Workflow,Active,Scheduled,Normal,Eloïse Rivery <e.rivery@manitou-group.com>,2026-02-09,1 day,08:00:00,01:00:00,01:30:00,,,,,,Non-Billable,2026-02-09,,,,,,,,,,,,,,,,,,,,
+121,/TATTOO [P&Q]/,,Default Workflow,Default Workflow,/TATTOO [P&Q]/PIN NUMBER/,Default Workflow,Active,On Track,,"Eloïse Rivery <e.rivery@manitou-group.com>, Stéphane Bechieau <s.bechieau@manitou-group.com>",2026-01-01,,,,,,,,,,Non-Billable,2026-07-31,,,,,,,,,"P&Q",🌥️,,,,3-strong,2-medium,1 - 4 weak,,"2026",,
+122,/TATTOO [P&Q]/PIN NUMBER/,,,,PIN Number new rules,Default Workflow,Active,On Track,Normal,"Stéphane Bechieau <s.bechieau@manitou-group.com>, Eloïse Rivery <e.rivery@manitou-group.com>, Guillaume Moynard <g.moynard@manitou-group.com>, Laurent Cholvy <l.cholvy@manitou-group.com>, Christian Jacques <c.jacques@manitou-group.com>",2026-02-16,112 days,08:00:00,00:00:00,,,,,,,Non-Billable,2026-07-29,,,,,,,,,,,,,,,,,,,,
+124,/,,Default Workflow,Default Workflow,/TATTOO [SUPPLY]/,Default Workflow,Active,On Track,,Romain Doni <r.doni.ext@manitou-group.com>,2025-09-16,,,,,,,,,,Non-Billable,2026-12-30,,,,,,,,,"SUPPLY CHAIN",☀️,,,,4-very strong,2-medium,5 - 8 medium,,"2025,2026",,
+127,/zArchives/,,,,État des lieux - Projet Tattoo,Default Workflow,Completed,Completed,Normal,Romain Doni <r.doni.ext@manitou-group.com>,2026-01-27,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2026-01-27,,,"Situation au 27/01/2026...",,,,,,,,,,,,,,,,,
+128,/zArchives/,,,,Kick-Off Tattoo IT&D,Default Workflow,Completed,Completed,High,Romain Doni <r.doni.ext@manitou-group.com>,2025-09-26,1 day,08:00:00,01:30:00,,,,,,,Non-Billable,2025-09-26,,,"Compte Rendu...",,,,,true,,,,Haute,,,,,,,,
+130,/zArchives/,,,,Kick-Off Tattoo Global,Default Workflow,Completed,Completed,Normal,Romain Doni <r.doni.ext@manitou-group.com>,2025-09-16,1 day,08:00:00,01:00:00,,,,,,,Non-Billable,2025-09-16,,,"Synthèse...",,,,,true,,,,Moyenne,,,,,,,,
 `;
-// Note: J'ai tronqué les données pour l'exemple mais le script fonctionnera avec le fichier complet.
 
     // ---------------------------------------------------------
-    // 2. PARSING CSV (Gestion complexe des guillemets)
+    // 2. CSV PARSER (Gère les guillemets et sauts de ligne)
     // ---------------------------------------------------------
     function parseCSV(text) {
         const rows = [];
         let row = [];
         let currentCell = '';
         let inQuotes = false;
-
+        
         for (let i = 0; i < text.length; i++) {
             const char = text[i];
             const nextChar = text[i + 1];
 
             if (char === '"') {
                 if (inQuotes && nextChar === '"') {
-                    currentCell += '"'; // Double quote escaped
-                    i++;
+                    currentCell += '"'; i++;
                 } else {
                     inQuotes = !inQuotes;
                 }
             } else if (char === ',' && !inQuotes) {
-                row.push(currentCell);
-                currentCell = '';
+                row.push(currentCell); currentCell = '';
             } else if ((char === '\r' || char === '\n') && !inQuotes) {
                 if (currentCell || row.length > 0) row.push(currentCell);
                 if (row.length > 0) rows.push(row);
-                row = [];
-                currentCell = '';
-                if (char === '\r' && nextChar === '\n') i++; // Skip \n after \r
+                row = []; currentCell = '';
+                if (char === '\r' && nextChar === '\n') i++;
             } else {
                 currentCell += char;
             }
@@ -188,41 +273,60 @@
     }
 
     // ---------------------------------------------------------
-    // 3. LOGIQUE APP
+    // 3. LOGIQUE APP (AVEC PERSISTANCE LOCALSTORAGE)
     // ---------------------------------------------------------
     let tasks = [];
     let users = new Set();
-    let modifications = []; // Stockage des changements
+    let modifications = [];
 
     function init() {
+        // 1. Charger les modifications existantes du navigateur
+        const savedMods = localStorage.getItem('tattoo_mods');
+        if (savedMods) {
+            modifications = JSON.parse(savedMods);
+        }
+
+        // 2. Parser le CSV
         const parsedData = parseCSV(rawCsvData);
-        // On saute le header (index 0)
-        const headers = parsedData[0];
         
-        // Mapping simple basé sur l'ordre des colonnes du fichier fourni
-        // 0:Key, 5:Title, 10:Assigned To, 7:Status
         for (let i = 1; i < parsedData.length; i++) {
             const row = parsedData[i];
-            if (row.length < 10) continue; // Ligne vide
+            if (row.length < 10) continue; 
 
-            const rawUsers = row[10] || "Unassigned";
+            // Nettoyage des utilisateurs
+            const rawUsers = row[10] || "Non assigné";
             const userList = rawUsers.split(',').map(u => {
-                // Nettoyage: "Romain Doni <email>" -> "Romain Doni"
                 let clean = u.trim().split('<')[0].trim();
                 return clean;
             }).filter(u => u !== "");
 
             userList.forEach(u => users.add(u));
 
-            tasks.push({
+            // Création de l'objet tâche
+            let taskObj = {
                 id: row[0],
                 title: row[5],
                 originalTitle: row[5],
                 assignedTo: userList,
                 status: row[7],
+                priority: row[9],
                 isModified: false,
                 subTasks: []
-            });
+            };
+
+            // 3. Appliquer les modifications sauvegardées (Replay)
+            // On cherche si cette tâche a été modifiée dans le localStorage
+            const savedState = modifications.find(m => m.taskId === taskObj.id);
+            if (savedState) {
+                taskObj.isModified = true;
+                if (savedState.type === 'rename') {
+                    taskObj.title = savedState.newValue;
+                } else if (savedState.type === 'split') {
+                    taskObj.subTasks = savedState.subTasks;
+                }
+            }
+
+            tasks.push(taskObj);
         }
 
         // Remplir le select
@@ -237,54 +341,61 @@
         });
     }
 
-    // Afficher les tâches
+    // Affichage des tâches
     function filterTasks() {
         const selectedUser = document.getElementById('userSelect').value;
         const container = document.getElementById('taskListArea');
         container.innerHTML = "";
 
         if (!selectedUser) {
-            container.innerHTML = '<div class="text-center text-muted mt-5">Veuillez sélectionner un utilisateur.</div>';
+            container.innerHTML = `<div class="col-12 text-center text-muted mt-5"><h4>Veuillez sélectionner un utilisateur.</h4></div>`;
             return;
         }
 
         const filtered = tasks.filter(t => t.assignedTo.includes(selectedUser));
 
         if (filtered.length === 0) {
-            container.innerHTML = '<div class="alert alert-warning">Aucune tâche assignée à cet utilisateur.</div>';
+            container.innerHTML = `<div class="alert alert-warning">Aucune tâche assignée à ${selectedUser}.</div>`;
             return;
         }
 
         filtered.forEach(task => {
             let html = `
-                <div class="task-card ${task.isModified ? 'task-modified' : ''}">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <span class="badge bg-secondary mb-2">${task.id}</span>
-                            <span class="badge bg-info text-dark mb-2">${task.status}</span>
-                            <h5>`;
+                <div class="col-12">
+                    <div class="card card-task p-3 ${task.isModified ? 'task-modified' : ''}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="mb-2">
+                                    <span class="badge bg-light text-dark border">#${task.id}</span>
+                                    <span class="badge bg-secondary status-badge">${task.status}</span>
+                                    ${task.priority ? `<span class="badge bg-info text-dark status-badge">${task.priority}</span>` : ''}
+                                </div>`;
             
-            // Affichage Renommé ou Normal
+            // Titre
             if (task.isModified && task.subTasks.length === 0) {
-                html += `<span class="old-value">${task.originalTitle}</span> <br> 
-                         <span class="new-value">➝ ${task.title}</span>`;
+                // Cas renommé
+                html += `<span class="old-title">${task.originalTitle}</span>
+                         <span class="new-title">➝ ${task.title}</span>`;
+            } else if (task.isModified && task.subTasks.length > 0) {
+                // Cas découpé
+                html += `<span class="old-title mb-2">${task.originalTitle} (Découpée)</span>`;
             } else {
-                html += `${task.title}`;
+                // Cas normal
+                html += `<h5 class="card-title text-dark">${task.title}</h5>`;
             }
 
-            html += `       </h5>`;
-
-            // Affichage Sous-tâches
+            // Sous-tâches
             if (task.subTasks.length > 0) {
-                html += `<div class="mt-2"><strong>Sous-tâches :</strong><br>`;
+                html += `<div class="mt-2">`;
                 task.subTasks.forEach(st => {
-                    html += `<span class="sub-task-badge">↳ ${st}</span>`;
+                    html += `<span class="badge badge-subtask">↳ ${st}</span>`;
                 });
                 html += `</div>`;
             }
 
-            html += `   </div>
-                        <button class="btn btn-sm btn-primary" onclick="openModal('${task.id}')">⚙️ Modifier</button>
+            html += `       </div>
+                            <button class="btn btn-primary btn-sm ms-3" onclick="openModal('${task.id}')">Modifier</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -292,29 +403,36 @@
         });
     }
 
-    // Modal
+    // Gestion du Modal
     let currentTask = null;
     const modalEl = new bootstrap.Modal(document.getElementById('actionModal'));
 
     function openModal(taskId) {
         currentTask = tasks.find(t => t.id === taskId);
         document.getElementById('currentTaskId').value = taskId;
-        document.getElementById('modalTaskTitle').textContent = currentTask.title;
-        document.getElementById('renameInput').value = currentTask.title;
+        document.getElementById('modalTaskTitle').textContent = currentTask.originalTitle; // Toujours afficher l'original en réf
         
-        // Reset inputs
-        document.getElementById('subtasksContainer').innerHTML = `
-             <div class="input-group mb-2"><input type="text" class="form-control subtask-input" placeholder="Sous-tâche 1"></div>
-             <div class="input-group mb-2"><input type="text" class="form-control subtask-input" placeholder="Sous-tâche 2"></div>
-        `;
+        // Pre-fill rename
+        document.getElementById('renameInput').value = currentTask.isModified && currentTask.subTasks.length === 0 ? currentTask.title : currentTask.originalTitle;
+        
+        // Reset subtasks input
+        const container = document.getElementById('subtasksContainer');
+        container.innerHTML = "";
+        if(currentTask.subTasks.length > 0) {
+            currentTask.subTasks.forEach(st => addSubtaskField(st));
+        } else {
+            addSubtaskField();
+            addSubtaskField();
+        }
         
         modalEl.show();
     }
 
-    function addSubtaskField() {
+    function addSubtaskField(val = "") {
         const div = document.createElement('div');
         div.className = 'input-group mb-2';
-        div.innerHTML = `<input type="text" class="form-control subtask-input" placeholder="Nouvelle sous-tâche">`;
+        div.innerHTML = `<input type="text" class="form-control subtask-input" value="${val}" placeholder="Nom de la sous-tâche">
+                         <button class="btn btn-outline-danger" onclick="this.parentElement.remove()">×</button>`;
         document.getElementById('subtasksContainer').appendChild(div);
     }
 
@@ -325,9 +443,9 @@
 
         currentTask.title = newName;
         currentTask.isModified = true;
-        currentTask.subTasks = []; // Reset subtasks if rename is chosen
+        currentTask.subTasks = []; 
 
-        logModification(`Renommer: Tâche ${currentTask.id} renommée en "${newName}"`);
+        saveToLog(currentTask.id, 'rename', { newValue: newName });
         
         modalEl.hide();
         filterTasks();
@@ -341,37 +459,70 @@
             if (input.value.trim() !== "") subs.push(input.value.trim());
         });
 
-        if (subs.length === 0) return alert("Veuillez saisir au moins une sous-tâche.");
+        if (subs.length === 0) return alert("Saisissez au moins une sous-tâche.");
 
         currentTask.subTasks = subs;
         currentTask.isModified = true;
-        // On garde le titre original pour l'affichage mais on marque modifié
 
-        logModification(`Découpage: Tâche ${currentTask.id} découpée en : ${subs.join(', ')}`);
+        saveToLog(currentTask.id, 'split', { subTasks: subs });
         
         modalEl.hide();
         filterTasks();
     }
 
     // ---------------------------------------------------------
-    // 4. SYSTÈME DE LOG & SAUVEGARDE
+    // 4. PERSISTANCE & EXPORT
     // ---------------------------------------------------------
-    function logModification(details) {
-        const now = new Date().toLocaleString('fr-FR');
+    function saveToLog(taskId, type, data) {
         const user = document.getElementById('userSelect').value;
-        const line = `[${now}] User: ${user} | Action: ${details}`;
-        modifications.push(line);
+        const now = new Date().toLocaleString('fr-FR');
+        
+        // On retire l'ancienne modif pour cette tâche s'il y en a une, pour garder la plus récente
+        modifications = modifications.filter(m => m.taskId !== taskId);
+
+        // Ajout nouvelle modif
+        modifications.push({
+            taskId: taskId,
+            user: user,
+            date: now,
+            type: type,
+            ...data
+        });
+
+        // Sauvegarde Browser
+        localStorage.setItem('tattoo_mods', JSON.stringify(modifications));
+    }
+
+    function resetData() {
+        if(confirm("Voulez-vous effacer toutes les modifications locales ?")) {
+            localStorage.removeItem('tattoo_mods');
+            location.reload();
+        }
     }
 
     function downloadLogFile() {
         if (modifications.length === 0) return alert("Aucune modification à sauvegarder.");
 
-        const content = modifications.join('\n');
+        // Format lisible pour l'humain
+        let content = "JOURNAL DES MODIFICATIONS TATTOO\n";
+        content += "================================\n\n";
+        
+        modifications.forEach(m => {
+            content += `[${m.date}] Utilisateur: ${m.user}\n`;
+            content += `Tâche ID: ${m.taskId}\n`;
+            if (m.type === 'rename') {
+                content += `Action: Renommage -> "${m.newValue}"\n`;
+            } else {
+                content += `Action: Découpage -> \n   - ${m.subTasks.join('\n   - ')}\n`;
+            }
+            content += "--------------------------------\n";
+        });
+
         const blob = new Blob([content], { type: 'text/plain' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `tattoo_modifications_${new Date().getTime()}.txt`;
+        a.download = `tattoo_modifications_${new Date().toISOString().slice(0,10)}.txt`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -394,14 +545,22 @@
 
             let colorClass = "bg-primary";
             if (percentage === 100) colorClass = "bg-success";
-            else if (percentage > 0) colorClass = "bg-warning text-dark";
+            else if (percentage > 0) colorClass = "bg-info";
+
+            // Initials
+            const initials = user.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
             const row = `
                 <tr>
-                    <td>${user}</td>
-                    <td>${total}</td>
-                    <td>${modified}</td>
-                    <td style="width: 40%;">
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle">${initials}</div>
+                            <div>${user}</div>
+                        </div>
+                    </td>
+                    <td class="text-center fw-bold">${total}</td>
+                    <td class="text-center text-success">${modified > 0 ? '+' + modified : '0'}</td>
+                    <td style="width: 35%;">
                         <div class="progress">
                             <div class="progress-bar ${colorClass}" role="progressbar" style="width: ${percentage}%">
                                 ${percentage}%
