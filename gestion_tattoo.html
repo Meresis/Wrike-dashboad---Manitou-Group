@@ -3,361 +3,473 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TATTOO - Gestion des Tâches (Import Excel)</title>
+    <title>TATTOO Manager - Gestion & Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
         
-        /* Styles Tâches */
-        .card-task { background: white; border-left: 5px solid #0d6efd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 15px; transition: transform 0.2s; }
-        .card-task:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .task-modified { border-left-color: #198754; background-color: #f8fff9; }
-        .old-title { text-decoration: line-through; color: #adb5bd; font-size: 0.85em; display: block; margin-bottom: 2px;}
-        .new-title { color: #198754; font-weight: 700; font-size: 1.1em; }
-        .badge-subtask { background-color: #e9ecef; color: #495057; border: 1px solid #dee2e6; margin-right: 5px; margin-top: 5px; font-weight: normal; }
-        .progress { height: 25px; border-radius: 12px; }
-        .avatar-circle { width: 40px; height: 40px; background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #495057; margin-right: 10px; }
+        /* Ecran Import */
+        #importScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .drop-zone { border: 3px dashed #cbd5e0; padding: 40px; border-radius: 10px; background: #f8f9fa; cursor: pointer; text-align: center; transition: 0.3s; }
+        .drop-zone:hover { border-color: #0d6efd; background: #e9ecef; }
+        
+        /* Cartes Tâches */
+        .card-task { border: none; border-left: 5px solid #6c757d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; background: white; border-radius: 8px; }
+        .card-task.modified { border-left-color: #198754; background-color: #f8fff9; }
+        
+        /* Boutons Actions */
+        .btn-action-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn-rename { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .btn-split { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .btn-rename:hover { background-color: #ffe8a1; }
+        .btn-split:hover { background-color: #c3e6cb; }
 
-        /* Zone d'import */
-        #importScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
-        .drop-zone { border: 3px dashed #cbd5e0; border-radius: 10px; padding: 50px; text-align: center; background-color: #f8f9fa; transition: all 0.3s; cursor: pointer; width: 100%; max-width: 600px; }
-        .drop-zone:hover { border-color: #0d6efd; background-color: #e9ecef; }
-        .drop-zone.dragover { border-color: #198754; background-color: #d1e7dd; }
+        /* Champs [TATTOO] */
+        .input-group-text-prefix { background-color: #e9ecef; color: #495057; font-weight: bold; font-size: 0.85rem; }
+        
+        /* Admin */
+        .admin-zone { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div id="importScreen">
-    <div class="text-center mb-5">
-        <h1 class="display-4 fw-bold text-primary">TATTOO Manager</h1>
-        <p class="lead text-muted">Gestion et découpage des tâches projet</p>
-    </div>
-
-    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-        <div class="mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-file-earmark-spreadsheet text-success" viewBox="0 0 16 16">
-                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V9H3V2a1 1 0 0 1 1-1h5.5v2zM3 12v-2h2v2H3zm0 1h2v2H4a1 1 0 0 1-1-1v-1zm3 2v-2h3v2H6zm4 0v-2h3v1a1 1 0 0 1-1 1h-2zm3-3h-3v-2h3v2zm-7 0v-2h3v2H6z"/>
-            </svg>
-        </div>
-        <h4>Glissez votre fichier Excel ici</h4>
-        <p class="text-muted">ou cliquez pour sélectionner (.xlsx, .xls, .csv)</p>
-        <input type="file" id="fileInput" class="d-none" accept=".xlsx, .xls, .csv">
-    </div>
-    
-    <div id="loadingMsg" class="mt-4 hidden">
-        <div class="spinner-border text-primary" role="status"></div>
-        <span class="ms-2">Lecture du fichier en cours...</span>
+    <h1 class="mb-4 text-primary fw-bold">TATTOO Manager</h1>
+    <div class="drop-zone" onclick="document.getElementById('excelInput').click()">
+        <h4 class="mb-3">📂 Ouvrir le fichier Excel du projet</h4>
+        <p class="text-muted small">Cliquez ou glissez le fichier ici (.xlsx)</p>
+        <input type="file" id="excelInput" class="d-none" accept=".xlsx, .xls">
     </div>
 </div>
 
 <div id="mainApp" class="hidden">
-    <nav class="navbar navbar-dark bg-dark sticky-top mb-4">
-        <div class="container">
-            <span class="navbar-brand mb-0 h1">🛠️ TATTOO Manager</span>
-            <div class="d-flex gap-2">
-                <button onclick="location.reload()" class="btn btn-outline-light btn-sm">📂 Changer de fichier</button>
-                <button onclick="resetData()" class="btn btn-outline-danger btn-sm">⚠️ Reset</button>
-                <button onclick="downloadLogFile()" class="btn btn-success btn-sm">💾 Sauvegarder (Log)</button>
-            </div>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 px-3">
+        <span class="navbar-brand">🛠️ TATTOO Manager</span>
+        <div class="ms-auto d-flex gap-2">
+            <button class="btn btn-outline-light btn-sm" onclick="location.reload()">🔄 Changer Excel</button>
+            <button class="btn btn-success btn-sm fw-bold" onclick="exportUserWork()">💾 TERMINER (Sauvegarder)</button>
         </div>
     </nav>
 
     <div class="container">
-        <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
-            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tasks-pane">📋 Mes Tâches</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#dashboard-pane" onclick="renderDashboard()">📊 Tableau de Bord</button></li>
+        <ul class="nav nav-tabs mb-4" id="mainTabs">
+            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#user-panel">👤 Espace Utilisateur</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#admin-panel" onclick="renderAdminStats()">⚙️ Espace Admin</button></li>
         </ul>
 
         <div class="tab-content">
-            <div class="tab-pane fade show active" id="tasks-pane">
+            
+            <div class="tab-pane fade show active" id="user-panel">
                 <div class="row mb-4">
-                    <div class="col-md-8 offset-md-2">
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text bg-white">👤 Utilisateur</span>
-                            <select class="form-select" id="userSelect" onchange="filterTasks()">
-                                <option value="">-- Sélectionnez votre nom --</option>
-                            </select>
-                        </div>
+                    <div class="col-md-6 offset-md-3">
+                        <select class="form-select form-select-lg shadow-sm" id="userSelect" onchange="renderUserTasks()">
+                            <option value="">-- Qui êtes-vous ? --</option>
+                        </select>
                     </div>
                 </div>
-                <div id="taskListArea" class="row"></div>
+                <div id="taskListArea"></div>
             </div>
 
-            <div class="tab-pane fade" id="dashboard-pane">
+            <div class="tab-pane fade" id="admin-panel">
+                <div class="admin-zone mb-4">
+                    <h4>📥 Importer les sauvegardes utilisateurs</h4>
+                    <p class="text-muted">Sélectionnez les fichiers textes (.json) envoyés par les utilisateurs pour mettre à jour l'avancement global.</p>
+                    <input type="file" id="adminImportInput" class="form-control mb-3" multiple accept=".json,.txt">
+                    <div class="alert alert-info py-2 small">
+                        Les données Admin sont stockées dans votre navigateur. Vous n'avez pas besoin de réimporter à chaque fois, sauf pour mettre à jour.
+                        <button class="btn btn-link p-0 align-baseline" onclick="clearAdminData()">Effacer les données Admin</button>
+                    </div>
+                </div>
+
                 <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">📊 Avancement Global Consolidé</div>
                     <div class="card-body p-0">
-                        <table class="table table-hover align-middle mb-0">
+                        <table class="table table-hover mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="ps-4">Membre</th><th class="text-center">Total</th><th class="text-center">Modifiées</th><th>Progression</th>
+                                    <th>Collaborateur</th>
+                                    <th class="text-center">Tâches Excel</th>
+                                    <th class="text-center">Traitées (Admin DB)</th>
+                                    <th>Progression</th>
                                 </tr>
                             </thead>
-                            <tbody id="dashboardTableBody"></tbody>
+                            <tbody id="adminStatsBody"></tbody>
                         </table>
                     </div>
                 </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="renameModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning-subtle">
+                <h5 class="modal-title">✏️ Renommer la tâche</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="renameTaskId">
+                <label class="form-label text-muted small">Titre original : <span id="renameOriginalTitle" class="fw-bold"></span></label>
+                <div class="input-group">
+                    <input type="text" class="form-control fw-bold" id="renameInput">
+                </div>
+                <div class="form-text text-muted">Le préfixe [TATTOO] est ajouté par défaut.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary w-100" onclick="confirmRename()">Valider</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="actionModal" tabindex="-1">
+<div class="modal fade" id="splitModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Éditer la tâche</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header bg-success-subtle">
+                <h5 class="modal-title">✂️ Découper en sous-tâches</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
-                <input type="hidden" id="currentTaskId">
-                <div class="alert alert-light border"><small class="text-muted">Original :</small><br><strong id="modalTaskTitle"></strong></div>
-                <ul class="nav nav-pills mb-3"><li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#pills-rename">Renommer</button></li><li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#pills-split">Découper</button></li></ul>
-                <div class="tab-content">
-                    <div class="tab-pane fade show active" id="pills-rename">
-                        <input type="text" class="form-control" id="renameInput">
-                        <button onclick="saveRename()" class="btn btn-primary mt-3 w-100">Valider</button>
+                <input type="hidden" id="splitTaskId">
+                <p class="mb-3">Tâche mère : <strong id="splitOriginalTitle"></strong></p>
+                
+                <div id="splitInputsContainer">
                     </div>
-                    <div class="tab-pane fade" id="pills-split">
-                        <div id="subtasksContainer"></div>
-                        <button onclick="addSubtaskField()" class="btn btn-sm btn-secondary mt-2">+ Ligne</button>
-                        <button onclick="saveSplit()" class="btn btn-primary mt-3 w-100">Valider</button>
-                    </div>
-                </div>
+
+                <button class="btn btn-outline-success btn-sm mt-2" onclick="addSplitLine()">
+                    ➕ Ajouter une ligne
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary w-100" onclick="confirmSplit()">Valider le découpage</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    let tasks = [];
+    // --- VARIABLES GLOBALES ---
+    let excelTasks = []; // Tâches venant de l'Excel (Source de vérité pour la liste)
     let users = new Set();
-    let modifications = [];
+    let currentUser = "";
+    
+    // Données de travail de l'utilisateur courant
+    let userModifications = {}; // Format: { taskId: { type: 'rename'|'split', data: ... } }
 
-    // --- 1. GESTION DU DRAG & DROP ET INPUT FILE ---
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.getElementById('fileInput');
+    const PREFIX = "[TATTOO] ";
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
+    // --- 1. IMPORT EXCEL ---
+    document.getElementById('excelInput').addEventListener('change', handleExcelUpload);
 
-    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+    function handleExcelUpload(e) {
+        const file = e.target.files[0];
+        if(!file) return;
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
-    });
-
-    dropZone.addEventListener('drop', handleDrop, false);
-    fileInput.addEventListener('change', (e) => handleFiles(e.target.files), false);
-
-    function handleDrop(e) {
-        const dt = e.dataTransfer;
-        handleFiles(dt.files);
-    }
-
-    function handleFiles(files) {
-        if(files.length === 0) return;
-        const file = files[0];
-        
-        document.getElementById('loadingMsg').classList.remove('hidden');
-        
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            try {
-                // Utilisation de SheetJS pour lire le fichier
-                const workbook = XLSX.read(data, {type: 'array'});
-                
-                // On prend la première feuille
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                
-                // Conversion en tableau de tableaux (header: 1)
-                // Cela imite la structure d'un CSV parsé : [ ['Key', 'Title'...], [1, 'Tache 1'...] ]
-                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                
-                processData(jsonData);
-                
-                // Transition UI
-                document.getElementById('importScreen').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
-                
-            } catch (err) {
-                alert("Erreur lors de la lecture du fichier Excel : " + err.message);
-                document.getElementById('loadingMsg').classList.add('hidden');
-            }
+        reader.onload = function(evt) {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+            
+            processExcelData(jsonData);
+            
+            document.getElementById('importScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
         };
         reader.readAsArrayBuffer(file);
     }
 
-    // --- 2. TRAITEMENT DES DONNÉES ---
-    function processData(rows) {
-        // Charger historique local
-        const savedMods = localStorage.getItem('tattoo_mods');
-        if (savedMods) modifications = JSON.parse(savedMods);
-
-        tasks = [];
+    function processExcelData(rows) {
+        excelTasks = [];
         users = new Set();
 
-        // On suppose que la ligne 0 est le header, on commence à 1
-        for (let i = 1; i < rows.length; i++) {
+        // i=1 pour sauter le header
+        for(let i=1; i<rows.length; i++) {
             const row = rows[i];
-            // Sécurité : ignorer les lignes vides
-            if (!row || row.length < 5) continue; 
+            if(!row || row.length < 5) continue;
 
-            // Mapping basé sur les colonnes de votre fichier exporté
-            // 0:Key, 5:Title, 7:Status, 9:Priority, 10:Assigned To
-            // Note : SheetJS gère les types, donc row[0] peut être un nombre, on force en string pour l'ID
+            // Mapping colonnes (selon votre CSV précédent)
+            // 0:Key, 5:Title, 10:Assigned To
             const id = String(row[0] || "");
             const title = row[5] || "Sans titre";
-            const status = row[7] || "";
-            const priority = row[9] || "";
-            const rawUsers = row[10] || "";
+            const assignedRaw = row[10] || "";
 
-            const userList = rawUsers.split(',').map(u => u.trim().split('<')[0].trim()).filter(u => u !== "");
-            userList.forEach(u => users.add(u));
+            // Nettoyage users
+            const assignedList = assignedRaw.split(',').map(u => u.trim().split('<')[0].trim()).filter(u => u !== "");
+            assignedList.forEach(u => users.add(u));
 
-            let taskObj = {
+            excelTasks.push({
                 id: id,
-                title: title,
                 originalTitle: title,
-                assignedTo: userList,
-                status: status,
-                priority: priority,
-                isModified: false,
-                subTasks: []
-            };
-
-            // Ré-appliquer modifs
-            const savedState = modifications.find(m => m.taskId === taskObj.id);
-            if (savedState) {
-                taskObj.isModified = true;
-                if (savedState.type === 'rename') taskObj.title = savedState.newValue;
-                else if (savedState.type === 'split') taskObj.subTasks = savedState.subTasks;
-            }
-            tasks.push(taskObj);
+                assignedTo: assignedList
+            });
         }
 
+        // Remplir Select Utilisateur
         const select = document.getElementById('userSelect');
-        select.innerHTML = '<option value="">-- Sélectionnez votre nom --</option>';
+        select.innerHTML = '<option value="">-- Qui êtes-vous ? --</option>';
         Array.from(users).sort().forEach(u => {
-            if(u) select.innerHTML += `<option value="${u}">${u}</option>`;
+            select.innerHTML += `<option value="${u}">${u}</option>`;
         });
     }
 
-    // --- 3. UI LOGIC ---
-    function filterTasks() {
-        const user = document.getElementById('userSelect').value;
-        const area = document.getElementById('taskListArea');
-        area.innerHTML = "";
-        
-        if(!user) return area.innerHTML = `<div class="col-12 text-center text-muted mt-5">Sélectionnez un utilisateur.</div>`;
-        
-        const myTasks = tasks.filter(t => t.assignedTo.includes(user));
-        if(myTasks.length === 0) return area.innerHTML = `<div class="alert alert-warning">Aucune tâche trouvée.</div>`;
+    // --- 2. GESTION TÂCHES UTILISATEUR ---
+    function renderUserTasks() {
+        currentUser = document.getElementById('userSelect').value;
+        const container = document.getElementById('taskListArea');
+        container.innerHTML = "";
 
-        myTasks.forEach(t => {
-            let content = t.isModified && t.subTasks.length === 0 
-                ? `<span class="old-title">${t.originalTitle}</span><span class="new-title">➝ ${t.title}</span>`
-                : (t.isModified && t.subTasks.length > 0 
-                    ? `<span class="old-title mb-2">${t.originalTitle} (Découpée)</span>` 
-                    : `<h5>${t.title}</h5>`);
-            
-            let subs = t.subTasks.map(s => `<span class="badge badge-subtask">↳ ${s}</span>`).join('');
+        if(!currentUser) return;
 
-            area.innerHTML += `
-            <div class="col-12"><div class="card card-task p-3 ${t.isModified?'task-modified':''}">
-                <div class="d-flex justify-content-between">
+        // Filtrer les tâches de l'utilisateur
+        const myTasks = excelTasks.filter(t => t.assignedTo.includes(currentUser));
+
+        if(myTasks.length === 0) {
+            container.innerHTML = `<div class="alert alert-warning text-center">Aucune tâche assignée.</div>`;
+            return;
+        }
+
+        myTasks.forEach(task => {
+            // Vérifier si modifiée localement dans la session
+            const mod = userModifications[task.id];
+            const isModified = !!mod;
+
+            let contentHtml = "";
+            let badgeHtml = "";
+
+            if(isModified && mod.type === 'rename') {
+                contentHtml = `<div class="text-decoration-line-through text-muted small">${task.originalTitle}</div>
+                               <div class="fw-bold text-primary">➝ ${mod.value}</div>`;
+                badgeHtml = `<span class="badge bg-warning text-dark">Renommée</span>`;
+            } else if (isModified && mod.type === 'split') {
+                contentHtml = `<div class="text-muted small mb-2">${task.originalTitle} (Découpée)</div>`;
+                mod.lines.forEach(line => {
+                    contentHtml += `<div class="badge bg-light text-dark border me-1 mb-1">↳ ${line}</div>`;
+                });
+                badgeHtml = `<span class="badge bg-success">Découpée (${mod.lines.length})</span>`;
+            } else {
+                contentHtml = `<div class="fw-bold">${task.originalTitle}</div>`;
+            }
+
+            const card = document.createElement('div');
+            card.className = `card card-task p-3 ${isModified ? 'modified' : ''}`;
+            card.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1">
-                        <div class="mb-2"><span class="badge bg-light text-dark border">#${t.id}</span> <span class="badge bg-secondary status-badge">${t.status}</span></div>
-                        ${content}
-                        <div class="mt-2">${subs}</div>
+                        <span class="badge bg-secondary mb-2">#${task.id}</span> ${badgeHtml}
+                        ${contentHtml}
                     </div>
-                    <button class="btn btn-primary btn-sm ms-3" onclick="openModal('${t.id}')">Modifier</button>
                 </div>
-            </div></div>`;
+                <div class="btn-action-group">
+                    <button class="btn btn-sm btn-rename flex-fill" onclick="openRename('${task.id}')">✏️ Renommer</button>
+                    <button class="btn btn-sm btn-split flex-fill" onclick="openSplit('${task.id}')">✂️ Découper</button>
+                </div>
+            `;
+            container.appendChild(card);
         });
     }
 
-    // --- 4. MODAL & SAUVEGARDE ---
-    const modalEl = new bootstrap.Modal(document.getElementById('actionModal'));
-    let currentTask = null;
+    // --- 3. LOGIQUE RENOMMER ---
+    const renameModal = new bootstrap.Modal(document.getElementById('renameModal'));
+    
+    function openRename(id) {
+        const task = excelTasks.find(t => t.id === id);
+        const mod = userModifications[id]; // Reprendre modif existante si y'a
 
-    function openModal(id) {
-        currentTask = tasks.find(t => t.id === id);
-        document.getElementById('currentTaskId').value = id;
-        document.getElementById('modalTaskTitle').textContent = currentTask.originalTitle;
-        document.getElementById('renameInput').value = currentTask.isModified && !currentTask.subTasks.length ? currentTask.title : currentTask.originalTitle;
-        const cont = document.getElementById('subtasksContainer');
-        cont.innerHTML = "";
-        (currentTask.subTasks.length ? currentTask.subTasks : ["",""]).forEach(addSubtaskField);
-        modalEl.show();
+        document.getElementById('renameTaskId').value = id;
+        document.getElementById('renameOriginalTitle').innerText = task.originalTitle;
+        
+        // Si déjà renommé, on reprend la valeur, sinon on prépare avec [TATTOO] + titre original
+        let val = (mod && mod.type === 'rename') ? mod.value : (PREFIX + task.originalTitle);
+        // S'assurer que le prefixe est là
+        if(!val.startsWith(PREFIX)) val = PREFIX + val;
+        
+        document.getElementById('renameInput').value = val;
+        renameModal.show();
     }
 
-    function addSubtaskField(val="") {
+    function confirmRename() {
+        const id = document.getElementById('renameTaskId').value;
+        let val = document.getElementById('renameInput').value.trim();
+        
+        // Force prefix
+        if(!val.startsWith(PREFIX)) val = PREFIX + val;
+
+        userModifications[id] = { type: 'rename', value: val, date: new Date().toISOString() };
+        renameModal.hide();
+        renderUserTasks();
+    }
+
+    // --- 4. LOGIQUE DÉCOUPER ---
+    const splitModal = new bootstrap.Modal(document.getElementById('splitModal'));
+
+    function openSplit(id) {
+        const task = excelTasks.find(t => t.id === id);
+        const mod = userModifications[id];
+
+        document.getElementById('splitTaskId').value = id;
+        document.getElementById('splitOriginalTitle').innerText = task.originalTitle;
+        
+        const container = document.getElementById('splitInputsContainer');
+        container.innerHTML = "";
+
+        // Si déjà découpé, on charge les lignes, sinon 2 lignes vides par défaut
+        const lines = (mod && mod.type === 'split') ? mod.lines : ["", ""];
+        lines.forEach(line => addSplitLine(line));
+
+        splitModal.show();
+    }
+
+    function addSplitLine(value = "") {
+        // Ajoute le préfixe si la ligne est vide ou nouvelle
+        if(value === "") value = PREFIX;
+        
         const div = document.createElement('div');
-        div.className = 'input-group mb-2';
-        div.innerHTML = `<input type="text" class="form-control sub-input" value="${val}" placeholder="Sous-tâche"><button class="btn btn-outline-danger" onclick="this.parentElement.remove()">×</button>`;
-        document.getElementById('subtasksContainer').appendChild(div);
+        div.className = "input-group mb-2";
+        div.innerHTML = `
+            <input type="text" class="form-control split-line-input" value="${value}">
+            <button class="btn btn-outline-danger" onclick="this.parentElement.remove()">×</button>
+        `;
+        document.getElementById('splitInputsContainer').appendChild(div);
     }
 
-    function saveRename() {
-        const val = document.getElementById('renameInput').value;
-        if(!val) return;
-        currentTask.title = val; currentTask.subTasks = []; currentTask.isModified = true;
-        saveLog('rename', {newValue: val});
-        modalEl.hide(); filterTasks();
-    }
-
-    function saveSplit() {
-        const subs = Array.from(document.querySelectorAll('.sub-input')).map(i => i.value.trim()).filter(v => v);
-        if(!subs.length) return alert("Ajoutez au moins une sous-tâche");
-        currentTask.subTasks = subs; currentTask.isModified = true;
-        saveLog('split', {subTasks: subs});
-        modalEl.hide(); filterTasks();
-    }
-
-    function saveLog(type, data) {
-        const user = document.getElementById('userSelect').value;
-        modifications = modifications.filter(m => m.taskId !== currentTask.id);
-        modifications.push({taskId: currentTask.id, user, date: new Date().toLocaleString(), type, ...data});
-        localStorage.setItem('tattoo_mods', JSON.stringify(modifications));
-    }
-
-    function resetData() {
-        if(confirm("Effacer les modifications locales ?")) { localStorage.removeItem('tattoo_mods'); location.reload(); }
-    }
-
-    function downloadLogFile() {
-        if(!modifications.length) return alert("Rien à sauvegarder.");
-        let txt = "JOURNAL TATTOO\n================\n";
-        modifications.forEach(m => {
-            txt += `[${m.date}] ${m.user} | ID:${m.taskId}\n${m.type === 'rename' ? 'Renommé: '+m.newValue : 'Découpé:\n - '+m.subTasks.join('\n - ')}\n----------------\n`;
+    function confirmSplit() {
+        const id = document.getElementById('splitTaskId').value;
+        const inputs = document.querySelectorAll('.split-line-input');
+        let lines = [];
+        
+        inputs.forEach(input => {
+            let val = input.value.trim();
+            if(val.length > 0 && val !== PREFIX.trim()) {
+                 // Force prefix
+                if(!val.startsWith(PREFIX)) val = PREFIX + val;
+                lines.push(val);
+            }
         });
+
+        if(lines.length === 0) return alert("Veuillez saisir au moins une sous-tâche.");
+
+        userModifications[id] = { type: 'split', lines: lines, date: new Date().toISOString() };
+        splitModal.hide();
+        renderUserTasks();
+    }
+
+    // --- 5. EXPORT / SAUVEGARDE (Bouton TERMINER) ---
+    function exportUserWork() {
+        if(Object.keys(userModifications).length === 0) return alert("Aucune modification à enregistrer.");
+        if(!currentUser) return alert("Aucun utilisateur sélectionné.");
+
+        // Structure du fichier de sauvegarde
+        const exportData = {
+            user: currentUser,
+            timestamp: new Date().toISOString(),
+            modifications: userModifications
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([txt], {type: 'text/plain'}));
-        a.download = `tattoo_log_${Date.now()}.txt`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        a.href = url;
+        // Nom de fichier standardisé
+        a.download = `TATTOO_SAUVEGARDE_${currentUser.replace(/\s+/g, '_')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
     }
 
-    function renderDashboard() {
-        const tbody = document.getElementById('dashboardTableBody');
+    // --- 6. ADMIN & IMPORT ---
+    // Clé localStorage pour la base de données admin
+    const ADMIN_DB_KEY = 'tattoo_admin_db';
+
+    // Charger/Fusionner les sauvegardes
+    document.getElementById('adminImportInput').addEventListener('change', async function(e) {
+        const files = e.target.files;
+        if(files.length === 0) return;
+
+        let adminDB = JSON.parse(localStorage.getItem(ADMIN_DB_KEY) || "{}");
+        let count = 0;
+
+        for (let file of files) {
+            try {
+                const text = await file.text();
+                const json = JSON.parse(text);
+                
+                if(json.user && json.modifications) {
+                    // On écrase les données de cet utilisateur avec sa version la plus récente
+                    adminDB[json.user] = json.modifications;
+                    count++;
+                }
+            } catch (err) {
+                console.error("Erreur lecture fichier", file.name, err);
+            }
+        }
+
+        localStorage.setItem(ADMIN_DB_KEY, JSON.stringify(adminDB));
+        alert(`${count} fichiers de sauvegarde importés avec succès.`);
+        renderAdminStats();
+        // Reset input pour permettre de réimporter le même fichier si besoin
+        e.target.value = '';
+    });
+
+    function renderAdminStats() {
+        const tbody = document.getElementById('adminStatsBody');
         tbody.innerHTML = "";
-        Array.from(users).sort().forEach(u => {
-            if(!u) return;
-            const ut = tasks.filter(t => t.assignedTo.includes(u));
-            const mod = ut.filter(t => t.isModified).length;
-            const pct = ut.length ? Math.round((mod/ut.length)*100) : 0;
-            const cls = pct === 100 ? "bg-success" : (pct > 0 ? "bg-info" : "bg-primary");
-            tbody.innerHTML += `<tr><td><div class="d-flex align-items-center"><div class="avatar-circle">${u.substring(0,2).toUpperCase()}</div><div>${u}</div></div></td><td class="text-center fw-bold">${ut.length}</td><td class="text-center text-success">${mod}</td><td><div class="progress"><div class="progress-bar ${cls}" style="width:${pct}%">${pct}%</div></div></td></tr>`;
+
+        // Récupérer la DB Admin
+        const adminDB = JSON.parse(localStorage.getItem(ADMIN_DB_KEY) || "{}");
+
+        // Si l'Excel n'est pas chargé, on ne peut pas faire de stats précises
+        if(users.size === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Veuillez d'abord charger le fichier Excel principal à l'accueil.</td></tr>`;
+            return;
+        }
+
+        Array.from(users).sort().forEach(user => {
+            // 1. Total tâches dans l'Excel
+            const userTotalTasks = excelTasks.filter(t => t.assignedTo.includes(user)).length;
+            
+            // 2. Tâches traitées dans la DB Admin
+            const userMods = adminDB[user] || {};
+            // On compte combien de tâches de l'Excel ont une entrée dans les modifications
+            // Attention : l'utilisateur a pu modifier des tâches qui ne sont plus dans l'Excel (si l'Excel a changé),
+            // mais on se base sur l'Excel chargé comme référence.
+            const excelIds = excelTasks.filter(t => t.assignedTo.includes(user)).map(t => t.id);
+            const modifiedCount = excelIds.filter(id => userMods[id]).length;
+
+            const pct = userTotalTasks > 0 ? Math.round((modifiedCount / userTotalTasks) * 100) : 0;
+            let color = pct === 100 ? 'bg-success' : (pct > 0 ? 'bg-info' : 'bg-secondary');
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user}</td>
+                <td class="text-center fw-bold">${userTotalTasks}</td>
+                <td class="text-center">${modifiedCount}</td>
+                <td>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar ${color}" role="progressbar" style="width: ${pct}%">${pct}%</div>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
         });
     }
+
+    function clearAdminData() {
+        if(confirm("Effacer toutes les données consolidées du navigateur ?")) {
+            localStorage.removeItem(ADMIN_DB_KEY);
+            renderAdminStats();
+        }
+    }
+
 </script>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
