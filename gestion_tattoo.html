@@ -8,6 +8,8 @@
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        /* Cartes de tâches */
         .card-task { 
             background: white; 
             border: none; 
@@ -26,11 +28,16 @@
         .badge-subtask { background-color: #e9ecef; color: #495057; border: 1px solid #dee2e6; margin-right: 5px; margin-top: 5px; font-weight: normal; }
         .status-badge { font-size: 0.8em; padding: 5px 10px; border-radius: 20px; }
         
+        /* Dashboard */
         .progress { height: 25px; border-radius: 12px; }
         .avatar-circle { width: 40px; height: 40px; background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #495057; margin-right: 10px; }
 
         /* Loader */
-        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #loader { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255,255,255,0.95); z-index: 9999; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+        }
     </style>
 </head>
 <body>
@@ -38,7 +45,7 @@
 <div id="loader">
     <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
     <h5>Chargement des données TATTOO...</h5>
-    <p class="text-muted small">Connexion à meresis.github.io</p>
+    <p class="text-muted small">Récupération depuis GitHub Pages...</p>
 </div>
 
 <nav class="navbar navbar-dark bg-dark sticky-top mb-4">
@@ -79,7 +86,7 @@
             <div id="taskListArea" class="row">
                 <div class="col-12 text-center text-muted mt-5">
                     <h4>Bienvenue sur l'outil TATTOO</h4>
-                    <p>Les données sont chargées depuis le serveur distant.</p>
+                    <p>Veuillez attendre la fin du chargement des données, puis sélectionnez votre nom.</p>
                 </div>
             </div>
         </div>
@@ -154,7 +161,9 @@
 </div>
 
 <script>
-    // URL DU FICHIER DE DONNÉES EXTERNE
+    // ---------------------------------------------------------
+    // CONFIGURATION : URL DU FICHIER DONNÉES
+    // ---------------------------------------------------------
     const DATA_URL = "https://meresis.github.io/Wrike-dashboad---Manitou-Group/data_tattoo.txt";
 
     let tasks = [];
@@ -162,55 +171,71 @@
     let modifications = [];
 
     // ---------------------------------------------------------
-    // 1. INITIALISATION & FETCH (CHARGEMENT ASYNCHRONE)
+    // 1. INITIALISATION & FETCH (CHARGEMENT)
     // ---------------------------------------------------------
     async function init() {
         try {
-            // Chargement des sauvegardes locales
+            // 1. Chargement des sauvegardes locales (Persistance)
             const savedMods = localStorage.getItem('tattoo_mods');
             if (savedMods) {
                 modifications = JSON.parse(savedMods);
             }
 
-            // Récupération du fichier CSV distant
-            const response = await fetch(DATA_URL);
+            // 2. Récupération du fichier CSV distant
+            // Ajout d'un timestamp pour éviter le cache du navigateur
+            const noCacheUrl = `${DATA_URL}?t=${new Date().getTime()}`;
+            
+            const response = await fetch(noCacheUrl);
             
             if (!response.ok) {
-                throw new Error(`Erreur HTTP: ${response.status}`);
+                throw new Error(`Erreur HTTP: ${response.status} - Impossible de lire le fichier.`);
             }
 
             const rawCsvData = await response.text();
             
-            // Traitement des données
+            // 3. Traitement des données
             processData(rawCsvData);
             
-            // Masquer le loader
+            // 4. Masquer le loader
             document.getElementById('loader').style.display = 'none';
 
         } catch (error) {
-            console.error("Erreur de chargement:", error);
+            console.error("Erreur critique:", error);
             document.getElementById('loader').innerHTML = `
-                <div class="alert alert-danger text-center">
-                    <h4>Erreur de chargement</h4>
-                    <p>Impossible de récupérer le fichier de données.<br>
-                    URL: ${DATA_URL}</p>
-                    <small>${error.message}</small>
+                <div class="alert alert-danger text-center shadow p-4" style="max-width: 500px;">
+                    <h4 class="alert-heading">🚫 Erreur de chargement</h4>
+                    <p>Impossible de récupérer le fichier de données à l'adresse suivante :</p>
+                    <code class="d-block mb-3 bg-light p-2 rounded text-break">${DATA_URL}</code>
+                    <hr>
+                    <p class="mb-0 small">${error.message}</p>
+                    <button class="btn btn-outline-danger btn-sm mt-3" onclick="location.reload()">Réessayer</button>
                 </div>
             `;
         }
     }
 
     // ---------------------------------------------------------
-    // 2. PARSING & PROCESSING
+    // 2. PARSING & PROCESSING DES DONNÉES
     // ---------------------------------------------------------
     function processData(csvText) {
         const parsedData = parseCSV(csvText);
         
+        // On suppose que la ligne 0 est l'en-tête
         for (let i = 1; i < parsedData.length; i++) {
             const row = parsedData[i];
-            if (row.length < 10) continue; 
+            
+            // Vérification basique pour ignorer les lignes vides
+            if (row.length < 5) continue; 
 
+            // Mapping des colonnes basé sur l'ordre standard du fichier
+            // 0:Key, 5:Title, 7:Status, 9:Priority, 10:Assigned To
+            const taskId = row[0];
+            const taskTitle = row[5];
+            const taskStatus = row[7];
+            const taskPriority = row[9];
             const rawUsers = row[10] || "Non assigné";
+
+            // Nettoyage des utilisateurs (enlève les emails)
             const userList = rawUsers.split(',').map(u => {
                 let clean = u.trim().split('<')[0].trim();
                 return clean;
@@ -219,17 +244,17 @@
             userList.forEach(u => users.add(u));
 
             let taskObj = {
-                id: row[0],
-                title: row[5],
-                originalTitle: row[5],
+                id: taskId,
+                title: taskTitle,
+                originalTitle: taskTitle,
                 assignedTo: userList,
-                status: row[7],
-                priority: row[9],
+                status: taskStatus,
+                priority: taskPriority,
                 isModified: false,
                 subTasks: []
             };
 
-            // Ré-appliquer les modifications
+            // Ré-appliquer les modifications sauvegardées localement
             const savedState = modifications.find(m => m.taskId === taskObj.id);
             if (savedState) {
                 taskObj.isModified = true;
@@ -243,7 +268,7 @@
             tasks.push(taskObj);
         }
 
-        // Remplir le select
+        // Remplir le selecteur d'utilisateurs
         const select = document.getElementById('userSelect');
         select.innerHTML = '<option value="">-- Sélectionner votre nom --</option>';
         Array.from(users).sort().forEach(user => {
@@ -256,6 +281,7 @@
         });
     }
 
+    // Parser CSV robuste (gère les guillemets et sauts de ligne dans les cellules)
     function parseCSV(text) {
         const rows = [];
         let row = [];
@@ -289,7 +315,7 @@
     }
 
     // ---------------------------------------------------------
-    // 3. AFFICHAGE (UI)
+    // 3. AFFICHAGE (INTERFACE UTILISATEUR)
     // ---------------------------------------------------------
     function filterTasks() {
         const selectedUser = document.getElementById('userSelect').value;
@@ -320,15 +346,20 @@
                                     ${task.priority ? `<span class="badge bg-info text-dark status-badge">${task.priority}</span>` : ''}
                                 </div>`;
             
+            // Logique d'affichage Titre / Sous-tâches
             if (task.isModified && task.subTasks.length === 0) {
+                // Cas : Renommé
                 html += `<span class="old-title">${task.originalTitle}</span>
                          <span class="new-title">➝ ${task.title}</span>`;
             } else if (task.isModified && task.subTasks.length > 0) {
+                // Cas : Découpé
                 html += `<span class="old-title mb-2">${task.originalTitle} (Découpée)</span>`;
             } else {
+                // Cas : Normal
                 html += `<h5 class="card-title text-dark">${task.title}</h5>`;
             }
 
+            // Affichage des sous-tâches
             if (task.subTasks.length > 0) {
                 html += `<div class="mt-2">`;
                 task.subTasks.forEach(st => {
@@ -348,7 +379,7 @@
     }
 
     // ---------------------------------------------------------
-    // 4. GESTION MODAL
+    // 4. GESTION DU MODAL (POPUP D'ÉDITION)
     // ---------------------------------------------------------
     let currentTask = null;
     const modalEl = new bootstrap.Modal(document.getElementById('actionModal'));
@@ -358,14 +389,16 @@
         document.getElementById('currentTaskId').value = taskId;
         document.getElementById('modalTaskTitle').textContent = currentTask.originalTitle;
         
+        // Pré-remplir le champ renommer
         document.getElementById('renameInput').value = currentTask.isModified && currentTask.subTasks.length === 0 ? currentTask.title : currentTask.originalTitle;
         
+        // Pré-remplir les sous-tâches
         const container = document.getElementById('subtasksContainer');
         container.innerHTML = "";
         if(currentTask.subTasks.length > 0) {
             currentTask.subTasks.forEach(st => addSubtaskField(st));
         } else {
-            addSubtaskField();
+            addSubtaskField(); // Au moins 2 champs par défaut
             addSubtaskField();
         }
         
@@ -383,9 +416,11 @@
     function saveRename() {
         const newName = document.getElementById('renameInput').value;
         if (!newName) return;
+        
         currentTask.title = newName;
         currentTask.isModified = true;
-        currentTask.subTasks = []; 
+        currentTask.subTasks = []; // On efface les sous-tâches si on choisit de renommer
+        
         saveToLog(currentTask.id, 'rename', { newValue: newName });
         modalEl.hide();
         filterTasks();
@@ -397,21 +432,27 @@
         inputs.forEach(input => {
             if (input.value.trim() !== "") subs.push(input.value.trim());
         });
+        
         if (subs.length === 0) return alert("Saisissez au moins une sous-tâche.");
+        
         currentTask.subTasks = subs;
         currentTask.isModified = true;
+        
         saveToLog(currentTask.id, 'split', { subTasks: subs });
         modalEl.hide();
         filterTasks();
     }
 
     // ---------------------------------------------------------
-    // 5. SAUVEGARDE ET LOGS
+    // 5. SAUVEGARDE ET EXPORT FICHIER TEXTE
     // ---------------------------------------------------------
     function saveToLog(taskId, type, data) {
         const user = document.getElementById('userSelect').value;
         const now = new Date().toLocaleString('fr-FR');
+        
+        // Mise à jour de la modification (on écrase l'ancienne pour la même tâche)
         modifications = modifications.filter(m => m.taskId !== taskId);
+        
         modifications.push({
             taskId: taskId,
             user: user,
@@ -419,6 +460,8 @@
             type: type,
             ...data
         });
+        
+        // Sauvegarde dans le navigateur
         localStorage.setItem('tattoo_mods', JSON.stringify(modifications));
     }
 
@@ -431,6 +474,7 @@
 
     function downloadLogFile() {
         if (modifications.length === 0) return alert("Aucune modification à sauvegarder.");
+        
         let content = "JOURNAL DES MODIFICATIONS TATTOO\n================================\n\n";
         modifications.forEach(m => {
             content += `[${m.date}] Utilisateur: ${m.user}\n`;
@@ -442,6 +486,7 @@
             }
             content += "--------------------------------\n";
         });
+
         const blob = new Blob([content], { type: 'text/plain' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -453,20 +498,25 @@
     }
 
     // ---------------------------------------------------------
-    // 6. DASHBOARD
+    // 6. DASHBOARD (TABLEAU DE BORD)
     // ---------------------------------------------------------
     function renderDashboard() {
         const tbody = document.getElementById('dashboardTableBody');
         tbody.innerHTML = "";
+        
         Array.from(users).sort().forEach(user => {
             if(!user) return;
+            
             const userTasks = tasks.filter(t => t.assignedTo.includes(user));
             const total = userTasks.length;
             const modified = userTasks.filter(t => t.isModified).length;
             const percentage = total === 0 ? 0 : Math.round((modified / total) * 100);
+            
             let colorClass = "bg-primary";
             if (percentage === 100) colorClass = "bg-success";
             else if (percentage > 0) colorClass = "bg-info";
+            
+            // Initiales pour l'avatar
             const initials = user.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
 
             const row = `
@@ -492,7 +542,7 @@
         });
     }
 
-    // Lancement
+    // Lancement de l'application
     window.addEventListener('DOMContentLoaded', init);
 
 </script>
