@@ -76,10 +76,10 @@
             <div class="tab-pane fade" id="admin-panel">
                 <div class="admin-zone mb-4">
                     <h4>📥 Importer les sauvegardes utilisateurs</h4>
-                    <p class="text-muted">Sélectionnez les fichiers textes (.json) envoyés par les utilisateurs pour mettre à jour l'avancement global.</p>
+                    <p class="text-muted">Sélectionnez les fichiers (.json) envoyés par les utilisateurs.</p>
                     <input type="file" id="adminImportInput" class="form-control mb-3" multiple accept=".json,.txt">
                     <div class="alert alert-info py-2 small">
-                        Les données Admin sont stockées dans votre navigateur. Vous n'avez pas besoin de réimporter à chaque fois, sauf pour mettre à jour.
+                        Les données Admin sont stockées dans votre navigateur.
                         <button class="btn btn-link p-0 align-baseline" onclick="clearAdminData()">Effacer les données Admin</button>
                     </div>
                 </div>
@@ -91,8 +91,8 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Collaborateur</th>
-                                    <th class="text-center">Tâches Excel</th>
-                                    <th class="text-center">Traitées (Admin DB)</th>
+                                    <th class="text-center">Tâches Excel (Actives)</th>
+                                    <th class="text-center">Traitées</th>
                                     <th>Progression</th>
                                 </tr>
                             </thead>
@@ -114,12 +114,11 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="renameTaskId">
-                <label class="form-label text-muted small">Titre original : <span id="renameOriginalTitle" class="fw-bold"></span></label>
+                <input type="hidden" id="renameTaskIndex"> <label class="form-label text-muted small">Titre original : <span id="renameOriginalTitle" class="fw-bold"></span></label>
                 <div class="input-group">
+                    <span class="input-group-text">[TATTOO]</span>
                     <input type="text" class="form-control fw-bold" id="renameInput">
                 </div>
-                <div class="form-text text-muted">Le préfixe [TATTOO] est ajouté par défaut.</div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary w-100" onclick="confirmRename()">Valider</button>
@@ -136,11 +135,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="splitTaskId">
-                <p class="mb-3">Tâche mère : <strong id="splitOriginalTitle"></strong></p>
+                <input type="hidden" id="splitTaskIndex"> <p class="mb-3">Tâche mère : <strong id="splitOriginalTitle"></strong></p>
                 
-                <div id="splitInputsContainer">
-                    </div>
+                <div id="splitInputsContainer"></div>
 
                 <button class="btn btn-outline-success btn-sm mt-2" onclick="addSplitLine()">
                     ➕ Ajouter une ligne
@@ -155,12 +152,12 @@
 
 <script>
     // --- VARIABLES GLOBALES ---
-    let excelTasks = []; // Tâches venant de l'Excel (Source de vérité pour la liste)
+    let excelTasks = []; 
     let users = new Set();
     let currentUser = "";
     
-    // Données de travail de l'utilisateur courant
-    let userModifications = {}; // Format: { taskId: { type: 'rename'|'split', data: ... } }
+    // Données de travail (Format: { taskId: { type: 'rename'|'split', data: ... } })
+    let userModifications = {}; 
 
     const PREFIX = "[TATTOO] ";
 
@@ -190,13 +187,18 @@
         excelTasks = [];
         users = new Set();
 
-        // i=1 pour sauter le header
+        // On démarre à i=1 pour sauter les en-têtes
         for(let i=1; i<rows.length; i++) {
             const row = rows[i];
             if(!row || row.length < 5) continue;
 
-            // Mapping colonnes (selon votre CSV précédent)
-            // 0:Key, 5:Title, 10:Assigned To
+            // --- FILTRAGE : STATUS "COMPLETED" ---
+            // Colonne 7 = Status (Index H)
+            const status = String(row[7] || "").trim().toLowerCase();
+            if(status === "completed") {
+                continue; // On ignore cette ligne
+            }
+
             const id = String(row[0] || "");
             const title = row[5] || "Sans titre";
             const assignedRaw = row[10] || "";
@@ -206,13 +208,13 @@
             assignedList.forEach(u => users.add(u));
 
             excelTasks.push({
+                index: i-1, // Identifiant unique interne
                 id: id,
                 originalTitle: title,
                 assignedTo: assignedList
             });
         }
 
-        // Remplir Select Utilisateur
         const select = document.getElementById('userSelect');
         select.innerHTML = '<option value="">-- Qui êtes-vous ? --</option>';
         Array.from(users).sort().forEach(u => {
@@ -228,16 +230,14 @@
 
         if(!currentUser) return;
 
-        // Filtrer les tâches de l'utilisateur
         const myTasks = excelTasks.filter(t => t.assignedTo.includes(currentUser));
 
         if(myTasks.length === 0) {
-            container.innerHTML = `<div class="alert alert-warning text-center">Aucune tâche assignée.</div>`;
+            container.innerHTML = `<div class="alert alert-warning text-center">Aucune tâche assignée (ou toutes terminées).</div>`;
             return;
         }
 
         myTasks.forEach(task => {
-            // Vérifier si modifiée localement dans la session
             const mod = userModifications[task.id];
             const isModified = !!mod;
 
@@ -260,6 +260,8 @@
 
             const card = document.createElement('div');
             card.className = `card card-task p-3 ${isModified ? 'modified' : ''}`;
+            
+            // NOTE IMPORTANTE: on utilise task.index pour identifier la tâche dans l'array global
             card.innerHTML = `
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1">
@@ -268,8 +270,8 @@
                     </div>
                 </div>
                 <div class="btn-action-group">
-                    <button class="btn btn-sm btn-rename flex-fill" onclick="openRename('${task.id}')">✏️ Renommer</button>
-                    <button class="btn btn-sm btn-split flex-fill" onclick="openSplit('${task.id}')">✂️ Découper</button>
+                    <button class="btn btn-sm btn-rename flex-fill" onclick="openRename(${task.index})">✏️ Renommer</button>
+                    <button class="btn btn-sm btn-split flex-fill" onclick="openSplit(${task.index})">✂️ Découper</button>
                 </div>
             `;
             container.appendChild(card);
@@ -279,30 +281,31 @@
     // --- 3. LOGIQUE RENOMMER ---
     const renameModal = new bootstrap.Modal(document.getElementById('renameModal'));
     
-    function openRename(id) {
-        const task = excelTasks.find(t => t.id === id);
-        const mod = userModifications[id]; // Reprendre modif existante si y'a
+    function openRename(index) {
+        // On récupère la tâche via son index dans le tableau global
+        const task = excelTasks.find(t => t.index === index);
+        const mod = userModifications[task.id];
 
-        document.getElementById('renameTaskId').value = id;
+        document.getElementById('renameTaskIndex').value = index;
         document.getElementById('renameOriginalTitle').innerText = task.originalTitle;
         
-        // Si déjà renommé, on reprend la valeur, sinon on prépare avec [TATTOO] + titre original
-        let val = (mod && mod.type === 'rename') ? mod.value : (PREFIX + task.originalTitle);
-        // S'assurer que le prefixe est là
-        if(!val.startsWith(PREFIX)) val = PREFIX + val;
+        let cleanVal = task.originalTitle;
+        if (mod && mod.type === 'rename') {
+            cleanVal = mod.value.replace(PREFIX, '');
+        }
         
-        document.getElementById('renameInput').value = val;
+        document.getElementById('renameInput').value = cleanVal;
         renameModal.show();
     }
 
     function confirmRename() {
-        const id = document.getElementById('renameTaskId').value;
-        let val = document.getElementById('renameInput').value.trim();
+        const index = parseInt(document.getElementById('renameTaskIndex').value);
+        const task = excelTasks.find(t => t.index === index);
         
-        // Force prefix
-        if(!val.startsWith(PREFIX)) val = PREFIX + val;
+        let val = document.getElementById('renameInput').value.trim();
+        const fullValue = PREFIX + val;
 
-        userModifications[id] = { type: 'rename', value: val, date: new Date().toISOString() };
+        userModifications[task.id] = { type: 'rename', value: fullValue, date: new Date().toISOString() };
         renameModal.hide();
         renderUserTasks();
     }
@@ -310,30 +313,30 @@
     // --- 4. LOGIQUE DÉCOUPER ---
     const splitModal = new bootstrap.Modal(document.getElementById('splitModal'));
 
-    function openSplit(id) {
-        const task = excelTasks.find(t => t.id === id);
-        const mod = userModifications[id];
+    function openSplit(index) {
+        const task = excelTasks.find(t => t.index === index);
+        const mod = userModifications[task.id];
 
-        document.getElementById('splitTaskId').value = id;
+        document.getElementById('splitTaskIndex').value = index;
         document.getElementById('splitOriginalTitle').innerText = task.originalTitle;
         
         const container = document.getElementById('splitInputsContainer');
         container.innerHTML = "";
 
-        // Si déjà découpé, on charge les lignes, sinon 2 lignes vides par défaut
-        const lines = (mod && mod.type === 'split') ? mod.lines : ["", ""];
+        let lines = ["", ""];
+        if (mod && mod.type === 'split') {
+            lines = mod.lines.map(l => l.replace(PREFIX, ''));
+        }
+        
         lines.forEach(line => addSplitLine(line));
-
         splitModal.show();
     }
 
     function addSplitLine(value = "") {
-        // Ajoute le préfixe si la ligne est vide ou nouvelle
-        if(value === "") value = PREFIX;
-        
         const div = document.createElement('div');
         div.className = "input-group mb-2";
         div.innerHTML = `
+            <span class="input-group-text">[TATTOO]</span>
             <input type="text" class="form-control split-line-input" value="${value}">
             <button class="btn btn-outline-danger" onclick="this.parentElement.remove()">×</button>
         `;
@@ -341,22 +344,22 @@
     }
 
     function confirmSplit() {
-        const id = document.getElementById('splitTaskId').value;
+        const index = parseInt(document.getElementById('splitTaskIndex').value);
+        const task = excelTasks.find(t => t.index === index);
+
         const inputs = document.querySelectorAll('.split-line-input');
         let lines = [];
         
         inputs.forEach(input => {
             let val = input.value.trim();
-            if(val.length > 0 && val !== PREFIX.trim()) {
-                 // Force prefix
-                if(!val.startsWith(PREFIX)) val = PREFIX + val;
-                lines.push(val);
+            if(val.length > 0) {
+                lines.push(PREFIX + val);
             }
         });
 
         if(lines.length === 0) return alert("Veuillez saisir au moins une sous-tâche.");
 
-        userModifications[id] = { type: 'split', lines: lines, date: new Date().toISOString() };
+        userModifications[task.id] = { type: 'split', lines: lines, date: new Date().toISOString() };
         splitModal.hide();
         renderUserTasks();
     }
@@ -366,7 +369,6 @@
         if(Object.keys(userModifications).length === 0) return alert("Aucune modification à enregistrer.");
         if(!currentUser) return alert("Aucun utilisateur sélectionné.");
 
-        // Structure du fichier de sauvegarde
         const exportData = {
             user: currentUser,
             timestamp: new Date().toISOString(),
@@ -377,18 +379,15 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        // Nom de fichier standardisé
         a.download = `TATTOO_SAUVEGARDE_${currentUser.replace(/\s+/g, '_')}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
     }
 
-    // --- 6. ADMIN & IMPORT ---
-    // Clé localStorage pour la base de données admin
+    // --- 6. ADMIN ---
     const ADMIN_DB_KEY = 'tattoo_admin_db';
 
-    // Charger/Fusionner les sauvegardes
     document.getElementById('adminImportInput').addEventListener('change', async function(e) {
         const files = e.target.files;
         if(files.length === 0) return;
@@ -402,46 +401,36 @@
                 const json = JSON.parse(text);
                 
                 if(json.user && json.modifications) {
-                    // On écrase les données de cet utilisateur avec sa version la plus récente
                     adminDB[json.user] = json.modifications;
                     count++;
                 }
             } catch (err) {
-                console.error("Erreur lecture fichier", file.name, err);
+                console.error("Erreur fichier", file.name, err);
             }
         }
 
         localStorage.setItem(ADMIN_DB_KEY, JSON.stringify(adminDB));
-        alert(`${count} fichiers de sauvegarde importés avec succès.`);
+        alert(`${count} sauvegardes importées.`);
         renderAdminStats();
-        // Reset input pour permettre de réimporter le même fichier si besoin
         e.target.value = '';
     });
 
     function renderAdminStats() {
         const tbody = document.getElementById('adminStatsBody');
         tbody.innerHTML = "";
-
-        // Récupérer la DB Admin
         const adminDB = JSON.parse(localStorage.getItem(ADMIN_DB_KEY) || "{}");
 
-        // Si l'Excel n'est pas chargé, on ne peut pas faire de stats précises
         if(users.size === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Veuillez d'abord charger le fichier Excel principal à l'accueil.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Veuillez charger l'Excel principal d'abord.</td></tr>`;
             return;
         }
 
         Array.from(users).sort().forEach(user => {
-            // 1. Total tâches dans l'Excel
             const userTotalTasks = excelTasks.filter(t => t.assignedTo.includes(user)).length;
-            
-            // 2. Tâches traitées dans la DB Admin
             const userMods = adminDB[user] || {};
-            // On compte combien de tâches de l'Excel ont une entrée dans les modifications
-            // Attention : l'utilisateur a pu modifier des tâches qui ne sont plus dans l'Excel (si l'Excel a changé),
-            // mais on se base sur l'Excel chargé comme référence.
-            const excelIds = excelTasks.filter(t => t.assignedTo.includes(user)).map(t => t.id);
-            const modifiedCount = excelIds.filter(id => userMods[id]).length;
+            // On compte les tâches de l'Excel qui ont une modification
+            const userTasksIds = excelTasks.filter(t => t.assignedTo.includes(user)).map(t => t.id);
+            const modifiedCount = userTasksIds.filter(id => userMods[id]).length;
 
             const pct = userTotalTasks > 0 ? Math.round((modifiedCount / userTotalTasks) * 100) : 0;
             let color = pct === 100 ? 'bg-success' : (pct > 0 ? 'bg-info' : 'bg-secondary');
@@ -462,12 +451,11 @@
     }
 
     function clearAdminData() {
-        if(confirm("Effacer toutes les données consolidées du navigateur ?")) {
+        if(confirm("Effacer les données admin ?")) {
             localStorage.removeItem(ADMIN_DB_KEY);
             renderAdminStats();
         }
     }
-
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
