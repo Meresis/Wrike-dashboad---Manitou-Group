@@ -50,14 +50,14 @@
         <span class="navbar-brand">🛠️ TATTOO Manager</span>
         <div class="ms-auto d-flex gap-2">
             <button class="btn btn-outline-light btn-sm" onclick="location.reload()">🔄 Changer Excel</button>
-            <button class="btn btn-success btn-sm fw-bold" onclick="exportUserWork()">💾 TERMINER (Sauvegarder)</button>
+            <button class="btn btn-success btn-sm fw-bold" onclick="window.exportUserWork()">💾 TERMINER (Sauvegarder)</button>
         </div>
     </nav>
 
     <div class="container">
         <ul class="nav nav-tabs mb-4" id="mainTabs">
             <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#user-panel">👤 Espace Utilisateur</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#admin-panel" onclick="renderAdminStats()">⚙️ Espace Admin</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#admin-panel" onclick="window.renderAdminStats()">⚙️ Espace Admin</button></li>
         </ul>
 
         <div class="tab-content">
@@ -65,7 +65,7 @@
             <div class="tab-pane fade show active" id="user-panel">
                 <div class="row mb-4">
                     <div class="col-md-6 offset-md-3">
-                        <select class="form-select form-select-lg shadow-sm" id="userSelect" onchange="renderUserTasks()">
+                        <select class="form-select form-select-lg shadow-sm" id="userSelect" onchange="window.renderUserTasks()">
                             <option value="">-- Qui êtes-vous ? --</option>
                         </select>
                     </div>
@@ -80,7 +80,7 @@
                     <input type="file" id="adminImportInput" class="form-control mb-3" multiple accept=".json,.txt">
                     <div class="alert alert-info py-2 small">
                         Les données Admin sont stockées dans votre navigateur.
-                        <button class="btn btn-link p-0 align-baseline" onclick="clearAdminData()">Effacer les données Admin</button>
+                        <button class="btn btn-link p-0 align-baseline" onclick="window.clearAdminData()">Effacer les données Admin</button>
                     </div>
                 </div>
 
@@ -114,14 +114,15 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="renameTaskIndex"> <label class="form-label text-muted small">Titre original : <span id="renameOriginalTitle" class="fw-bold"></span></label>
+                <input type="hidden" id="renameTaskIndex">
+                <label class="form-label text-muted small">Titre original : <span id="renameOriginalTitle" class="fw-bold"></span></label>
                 <div class="input-group">
                     <span class="input-group-text">[TATTOO]</span>
                     <input type="text" class="form-control fw-bold" id="renameInput">
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary w-100" onclick="confirmRename()">Valider</button>
+                <button type="button" class="btn btn-primary w-100" onclick="window.confirmRename()">Valider</button>
             </div>
         </div>
     </div>
@@ -135,16 +136,17 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" id="splitTaskIndex"> <p class="mb-3">Tâche mère : <strong id="splitOriginalTitle"></strong></p>
+                <input type="hidden" id="splitTaskIndex">
+                <p class="mb-3">Tâche mère : <strong id="splitOriginalTitle"></strong></p>
                 
                 <div id="splitInputsContainer"></div>
 
-                <button class="btn btn-outline-success btn-sm mt-2" onclick="addSplitLine()">
+                <button class="btn btn-outline-success btn-sm mt-2" onclick="window.addSplitLine()">
                     ➕ Ajouter une ligne
                 </button>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary w-100" onclick="confirmSplit()">Valider le découpage</button>
+                <button type="button" class="btn btn-primary w-100" onclick="window.confirmSplit()">Valider le découpage</button>
             </div>
         </div>
     </div>
@@ -155,11 +157,17 @@
     let excelTasks = []; 
     let users = new Set();
     let currentUser = "";
-    
-    // Données de travail (Format: { taskId: { type: 'rename'|'split', data: ... } })
     let userModifications = {}; 
-
     const PREFIX = "[TATTOO] ";
+
+    // Initialisation des Modals Bootstrap
+    let renameModalInstance;
+    let splitModalInstance;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renameModalInstance = new bootstrap.Modal(document.getElementById('renameModal'));
+        splitModalInstance = new bootstrap.Modal(document.getElementById('splitModal'));
+    });
 
     // --- 1. IMPORT EXCEL ---
     document.getElementById('excelInput').addEventListener('change', handleExcelUpload);
@@ -187,28 +195,23 @@
         excelTasks = [];
         users = new Set();
 
-        // On démarre à i=1 pour sauter les en-têtes
         for(let i=1; i<rows.length; i++) {
             const row = rows[i];
             if(!row || row.length < 5) continue;
 
-            // --- FILTRAGE : STATUS "COMPLETED" ---
-            // Colonne 7 = Status (Index H)
+            // Filtre Status "Completed"
             const status = String(row[7] || "").trim().toLowerCase();
-            if(status === "completed") {
-                continue; // On ignore cette ligne
-            }
+            if(status === "completed") continue;
 
             const id = String(row[0] || "");
             const title = row[5] || "Sans titre";
             const assignedRaw = row[10] || "";
 
-            // Nettoyage users
             const assignedList = assignedRaw.split(',').map(u => u.trim().split('<')[0].trim()).filter(u => u !== "");
             assignedList.forEach(u => users.add(u));
 
             excelTasks.push({
-                index: i-1, // Identifiant unique interne
+                index: i-1, 
                 id: id,
                 originalTitle: title,
                 assignedTo: assignedList
@@ -222,8 +225,8 @@
         });
     }
 
-    // --- 2. GESTION TÂCHES UTILISATEUR ---
-    function renderUserTasks() {
+    // --- 2. GESTION TÂCHES (Attachée à window pour être accessible) ---
+    window.renderUserTasks = function() {
         currentUser = document.getElementById('userSelect').value;
         const container = document.getElementById('taskListArea');
         container.innerHTML = "";
@@ -261,7 +264,7 @@
             const card = document.createElement('div');
             card.className = `card card-task p-3 ${isModified ? 'modified' : ''}`;
             
-            // NOTE IMPORTANTE: on utilise task.index pour identifier la tâche dans l'array global
+            // Notez l'utilisation de window.openRename
             card.innerHTML = `
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1">
@@ -270,8 +273,8 @@
                     </div>
                 </div>
                 <div class="btn-action-group">
-                    <button class="btn btn-sm btn-rename flex-fill" onclick="openRename(${task.index})">✏️ Renommer</button>
-                    <button class="btn btn-sm btn-split flex-fill" onclick="openSplit(${task.index})">✂️ Découper</button>
+                    <button class="btn btn-sm btn-rename flex-fill" onclick="window.openRename(${task.index})">✏️ Renommer</button>
+                    <button class="btn btn-sm btn-split flex-fill" onclick="window.openSplit(${task.index})">✂️ Découper</button>
                 </div>
             `;
             container.appendChild(card);
@@ -279,10 +282,7 @@
     }
 
     // --- 3. LOGIQUE RENOMMER ---
-    const renameModal = new bootstrap.Modal(document.getElementById('renameModal'));
-    
-    function openRename(index) {
-        // On récupère la tâche via son index dans le tableau global
+    window.openRename = function(index) {
         const task = excelTasks.find(t => t.index === index);
         const mod = userModifications[task.id];
 
@@ -295,10 +295,10 @@
         }
         
         document.getElementById('renameInput').value = cleanVal;
-        renameModal.show();
+        renameModalInstance.show();
     }
 
-    function confirmRename() {
+    window.confirmRename = function() {
         const index = parseInt(document.getElementById('renameTaskIndex').value);
         const task = excelTasks.find(t => t.index === index);
         
@@ -306,14 +306,12 @@
         const fullValue = PREFIX + val;
 
         userModifications[task.id] = { type: 'rename', value: fullValue, date: new Date().toISOString() };
-        renameModal.hide();
-        renderUserTasks();
+        renameModalInstance.hide();
+        window.renderUserTasks();
     }
 
     // --- 4. LOGIQUE DÉCOUPER ---
-    const splitModal = new bootstrap.Modal(document.getElementById('splitModal'));
-
-    function openSplit(index) {
+    window.openSplit = function(index) {
         const task = excelTasks.find(t => t.index === index);
         const mod = userModifications[task.id];
 
@@ -328,11 +326,11 @@
             lines = mod.lines.map(l => l.replace(PREFIX, ''));
         }
         
-        lines.forEach(line => addSplitLine(line));
-        splitModal.show();
+        lines.forEach(line => window.addSplitLine(line));
+        splitModalInstance.show();
     }
 
-    function addSplitLine(value = "") {
+    window.addSplitLine = function(value = "") {
         const div = document.createElement('div');
         div.className = "input-group mb-2";
         div.innerHTML = `
@@ -343,7 +341,7 @@
         document.getElementById('splitInputsContainer').appendChild(div);
     }
 
-    function confirmSplit() {
+    window.confirmSplit = function() {
         const index = parseInt(document.getElementById('splitTaskIndex').value);
         const task = excelTasks.find(t => t.index === index);
 
@@ -360,12 +358,12 @@
         if(lines.length === 0) return alert("Veuillez saisir au moins une sous-tâche.");
 
         userModifications[task.id] = { type: 'split', lines: lines, date: new Date().toISOString() };
-        splitModal.hide();
-        renderUserTasks();
+        splitModalInstance.hide();
+        window.renderUserTasks();
     }
 
-    // --- 5. EXPORT / SAUVEGARDE (Bouton TERMINER) ---
-    function exportUserWork() {
+    // --- 5. EXPORT / SAUVEGARDE ---
+    window.exportUserWork = function() {
         if(Object.keys(userModifications).length === 0) return alert("Aucune modification à enregistrer.");
         if(!currentUser) return alert("Aucun utilisateur sélectionné.");
 
@@ -411,11 +409,11 @@
 
         localStorage.setItem(ADMIN_DB_KEY, JSON.stringify(adminDB));
         alert(`${count} sauvegardes importées.`);
-        renderAdminStats();
+        window.renderAdminStats();
         e.target.value = '';
     });
 
-    function renderAdminStats() {
+    window.renderAdminStats = function() {
         const tbody = document.getElementById('adminStatsBody');
         tbody.innerHTML = "";
         const adminDB = JSON.parse(localStorage.getItem(ADMIN_DB_KEY) || "{}");
@@ -428,7 +426,6 @@
         Array.from(users).sort().forEach(user => {
             const userTotalTasks = excelTasks.filter(t => t.assignedTo.includes(user)).length;
             const userMods = adminDB[user] || {};
-            // On compte les tâches de l'Excel qui ont une modification
             const userTasksIds = excelTasks.filter(t => t.assignedTo.includes(user)).map(t => t.id);
             const modifiedCount = userTasksIds.filter(id => userMods[id]).length;
 
@@ -450,10 +447,10 @@
         });
     }
 
-    function clearAdminData() {
+    window.clearAdminData = function() {
         if(confirm("Effacer les données admin ?")) {
             localStorage.removeItem(ADMIN_DB_KEY);
-            renderAdminStats();
+            window.renderAdminStats();
         }
     }
 </script>
