@@ -6,11 +6,8 @@
     <title>Dashboard COPIL - TATTOO</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
 
     <script>
@@ -18,149 +15,157 @@
             theme: {
                 extend: {
                     colors: { brand: { 50: '#f0fdfa', 500: '#14b8a6', 600: '#0d9488' } },
-                    boxShadow: { 'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)' }
+                    boxShadow: { 'premium': '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)' }
                 }
             }
         }
     </script>
 
     <style>
-        .chart-container { position: relative; height: 220px; width: 100%; display: flex; justify-content: center; align-items: center; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        .chart-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; align-items: center; }
         .chart-center-text { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
         
         @keyframes pulse-rag {
-            0% { box-shadow: 0 0 0 0 currentcolor; }
-            70% { box-shadow: 0 0 0 10px rgba(0,0,0,0); }
-            100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 currentcolor; }
+            70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(0,0,0,0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0,0,0,0); }
         }
-        .rag-indicator { border-radius: 50%; display: inline-block; }
-        .rag-green { background-color: #22c55e; color: rgba(34, 197, 94, 0.4); animation: pulse-rag 2s infinite; }
+        .rag-indicator { border-radius: 50%; display: inline-block; border: 3px solid white; }
+        .rag-green { background-color: #10b981; color: rgba(16, 185, 129, 0.4); animation: pulse-rag 2s infinite; }
         .rag-amber { background-color: #f59e0b; color: rgba(245, 158, 11, 0.4); animation: pulse-rag 2s infinite; }
         .rag-red { background-color: #ef4444; color: rgba(239, 68, 68, 0.4); animation: pulse-rag 2s infinite; }
 
         .tooltip-icon:hover + .tooltip-text { display: block; }
-        
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen p-4 md:p-8">
+<body class="bg-[#F8FAFC] text-slate-800 antialiased min-h-screen p-4 md:p-8">
 
-    <div class="max-w-[1200px] mx-auto">
+    <div class="max-w-[1250px] mx-auto">
         
-        <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-soft border border-slate-100">
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
             <div>
-                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight text-brand-600">Projet TATTOO</h1>
-                <p class="text-slate-500 mt-1 text-sm font-medium">Suivi automatisé • Vue filtrée Tattoo</p>
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Projet <span class="text-indigo-600">TATTOO</span></h1>
+                <p class="text-slate-500 font-medium flex items-center gap-2">
+                    <span class="w-2 h-2 bg-indigo-400 rounded-full"></span>
+                    Analyse des performances COPIL
+                </p>
             </div>
             
-            <div class="mt-4 md:mt-0 flex items-center bg-slate-50 py-3 px-5 rounded-xl border border-slate-100">
-                <div class="mr-4 text-right">
-                    <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">État de Santé Global</p>
-                    <p id="healthText" class="text-lg font-bold text-slate-700">Calcul...</p>
+            <div id="healthCard" class="flex items-center bg-white py-3 px-6 rounded-2xl shadow-premium border-l-8 transition-all duration-500">
+                <div class="mr-6">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Santé du Projet</p>
+                    <p id="healthText" class="text-xl font-extrabold text-slate-700">Chargement...</p>
                 </div>
-                <div id="healthDot" class="w-6 h-6 rag-indicator bg-slate-300"></div>
+                <div id="healthDot" class="w-5 h-5 rag-indicator bg-slate-200"></div>
             </div>
         </header>
 
-        <section class="bg-white p-6 rounded-2xl shadow-soft border border-slate-100 mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        <section class="bg-white p-6 rounded-3xl shadow-premium border border-slate-100 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 transition-all hover:shadow-lg">
             <div class="flex-1 w-full">
-                <label class="block text-sm font-bold text-slate-700 mb-2">📁 Fichier Global (Export Wrike fusionné)</label>
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="bg-indigo-100 p-1.5 rounded-lg text-indigo-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <label class="text-sm font-bold text-slate-700">Importation des données (.xlsx)</label>
+                </div>
                 <div class="flex items-center gap-4">
-                    <input type="file" id="fileGlobal" accept=".xlsx, .xls, .csv" class="block w-full max-w-md text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-brand-50 file:text-brand-600 cursor-pointer hover:file:bg-brand-100 transition">
-                    <span id="statusGlobal" class="text-sm font-semibold text-amber-500">Prêt</span>
+                    <input type="file" id="fileGlobal" accept=".xlsx, .xls, .csv" class="block w-full max-w-sm text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer transition-all">
+                    <span id="statusGlobal" class="text-xs font-bold text-amber-500 px-3 py-1 bg-amber-50 rounded-full">Prêt pour import</span>
                 </div>
             </div>
-            <button onclick="clearMemory()" class="text-sm text-red-600 hover:text-red-800 font-semibold px-4 py-2 bg-red-50 rounded-lg border border-red-100 transition">
-                🗑️ Réinitialiser la mémoire
+            <button onclick="clearMemory()" class="group text-xs text-slate-400 hover:text-red-500 font-bold flex items-center gap-2 transition-colors">
+                <svg class="w-4 h-4 group-hover:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Réinitialiser la mémoire
             </button>
         </section>
 
-        <div id="mainContainer" style="opacity: 0.3; pointer-events: none; transition: opacity 0.4s;" class="space-y-6">
+        <div id="mainContainer" style="opacity: 0.1; pointer-events: none; transition: opacity 0.6s;" class="space-y-8">
 
             <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                <div class="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 flex flex-col items-center relative">
-                    <div class="w-full flex justify-between items-start mb-2 text-slate-600 font-semibold text-sm uppercase">
-                        <h3>Avancement</h3>
-                        <svg class="w-5 h-5 text-slate-300 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <div class="tooltip-text hidden absolute z-50 w-56 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-56 top-6 leading-relaxed normal-case font-normal">
-                            Pourcentage de tâches <b>clôturées</b> sur le total des tâches identifiées comme appartenant au projet Tattoo.
+                <div class="bg-white rounded-3xl shadow-premium border-t-4 border-indigo-500 p-6 flex flex-col items-center relative overflow-hidden group">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <span class="text-[11px] font-extrabold text-indigo-500 uppercase tracking-wider">Avancement Global</span>
+                        <div class="relative flex items-center">
+                            <svg class="w-5 h-5 text-slate-200 cursor-help tooltip-icon hover:text-indigo-400 transition-colors" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                            <div class="tooltip-text hidden absolute z-50 w-56 p-3 text-xs bg-slate-900 text-white rounded-xl shadow-xl -left-56 top-6 font-normal">Calculé sur les tâches clôturées uniquement.</div>
                         </div>
                     </div>
                     <div class="chart-container">
                         <canvas id="completionChart"></canvas>
                         <div class="chart-center-text">
-                            <span id="completionValueText" class="text-4xl font-extrabold text-slate-800">0%</span>
-                            <span class="text-xs text-slate-400 mt-1 uppercase tracking-tighter">Complétion</span>
+                            <span id="completionValueText" class="text-5xl font-extrabold text-slate-900 tracking-tighter">0%</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 flex flex-col items-center relative font-semibold text-slate-600 text-sm uppercase">
-                    <div class="w-full flex justify-between items-start mb-2">
-                        <h3>Consommation Budget</h3>
-                        <svg class="w-5 h-5 text-slate-300 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <div class="tooltip-text hidden absolute z-50 w-56 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-56 top-6 leading-relaxed normal-case font-normal">
-                            Rapport entre le <b>Temps passé saisi</b> et l'<b>Effort budgété</b> total sur Tattoo.
-                        </div>
+                <div class="bg-white rounded-3xl shadow-premium border-t-4 border-emerald-500 p-6 flex flex-col items-center relative group">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <span class="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider text-center">Consommation Effort</span>
+                        <svg class="w-5 h-5 text-slate-200 cursor-help tooltip-icon hover:text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
                     </div>
                     <div class="chart-container">
                         <canvas id="spiGaugeChart"></canvas>
-                        <div class="chart-center-text" style="margin-top: 60px;">
-                            <span id="spiValueText" class="text-4xl font-extrabold text-slate-800">0%</span>
-                            <span class="text-xs text-slate-400 mt-1 uppercase tracking-tighter">Consommé</span>
+                        <div class="chart-center-text" style="margin-top: 55px;">
+                            <span id="spiValueText" class="text-5xl font-extrabold text-slate-900 tracking-tighter">0%</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 flex flex-col justify-between relative font-semibold text-slate-600 text-sm uppercase">
-                    <div class="w-full flex justify-between items-start mb-2">
-                        <h3>Retard Planning</h3>
-                        <svg class="w-5 h-5 text-slate-300 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <div class="tooltip-text hidden absolute z-50 w-56 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-56 top-6 leading-relaxed normal-case font-normal">
-                            Somme des jours de retard pour toutes les tâches Tattoo non terminées dont l'échéance est passée.
-                        </div>
+                <div class="bg-white rounded-3xl shadow-premium border-t-4 border-rose-500 p-6 flex flex-col justify-between relative group">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <span class="text-[11px] font-extrabold text-rose-500 uppercase tracking-wider">Dérive Planning</span>
+                        <svg class="w-5 h-5 text-slate-200 cursor-help tooltip-icon hover:text-rose-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
                     </div>
-                    <p class="text-[10px] text-slate-400 mb-4 normal-case">Cumul des jours sur échéances échues.</p>
-                    <div id="glissementBadge" class="px-4 py-8 text-center rounded-xl font-bold text-2xl bg-slate-100 text-slate-700 w-full flex flex-col items-center justify-center h-full">
-                        -
+                    <div id="glissementBadge" class="py-10 text-center rounded-2xl font-black text-4xl w-full flex items-center justify-center transition-all duration-700">
+                        0 j.
                     </div>
+                    <p class="text-[10px] text-slate-400 text-center font-bold uppercase mt-2">Jours de retard cumulés</p>
                 </div>
             </section>
 
-            <section class="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 relative w-full">
-                <div class="w-full flex justify-between items-start mb-4 border-b pb-2">
-                    <h3 class="text-sm font-bold text-slate-600 uppercase">👥 Charge par Collaborateur (Tattoo - Jours)</h3>
-                </div>
-                <div class="overflow-y-auto custom-scrollbar pr-2" style="max-height: 400px;">
-                    <div id="workloadChartWrapper" style="position: relative; width: 100%; min-height: 200px;">
+            <section class="bg-white rounded-3xl shadow-premium border border-slate-100 p-8">
+                <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-3">
+                    <span class="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center text-sm">👤</span>
+                    Charge Allouée par Mission (Jours)
+                </h3>
+                <div class="overflow-y-auto custom-scrollbar pr-2" style="max-height: 450px;">
+                    <div id="workloadChartWrapper" style="position: relative; width: 100%;">
                         <canvas id="workloadChart"></canvas>
                     </div>
                 </div>
             </section>
 
-            <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
                 
-                <div class="bg-white rounded-2xl shadow-soft border border-red-50 p-6 flex flex-col h-[450px]">
-                    <h3 class="text-sm font-bold text-red-600 border-b border-red-50 pb-3 mb-4 uppercase flex items-center gap-2">
-                        <span>🚨 Retards Tattoo</span>
-                        <span id="countLate" class="text-[10px] bg-red-100 px-2 py-0.5 rounded-full">0</span>
-                    </h3>
-                    <div id="lateTasksContainer" class="space-y-3 overflow-y-auto custom-scrollbar flex-grow pr-2">
-                        <p class="text-xs text-slate-400 italic">Aucune donnée.</p>
+                <div class="bg-white rounded-3xl shadow-premium border-b-8 border-rose-500 p-6 flex flex-col h-[500px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-black text-rose-600 uppercase tracking-tighter text-lg flex items-center gap-2">
+                            🚨 Retards Critique
+                            <span id="countLate" class="bg-rose-100 text-rose-600 text-xs px-2.5 py-0.5 rounded-full">0</span>
+                        </h3>
+                    </div>
+                    <div id="lateTasksContainer" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-3">
+                        <p class="text-sm text-slate-400 italic text-center mt-20 font-medium">Aucun retard détecté.</p>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-2xl shadow-soft border border-brand-50 p-6 flex flex-col h-[450px]">
-                    <h3 class="text-sm font-bold text-brand-600 border-b border-brand-50 pb-3 mb-4 uppercase flex items-center gap-2">
-                        <span>🎯 Échéances à venir Tattoo</span>
-                        <span id="countUpcoming" class="text-[10px] bg-brand-100 px-2 py-0.5 rounded-full">0</span>
-                    </h3>
-                    <div id="milestonesContainer" class="space-y-3 overflow-y-auto custom-scrollbar flex-grow pr-2">
-                        <p class="text-xs text-slate-400 italic">Aucune donnée.</p>
+                <div class="bg-white rounded-3xl shadow-premium border-b-8 border-indigo-500 p-6 flex flex-col h-[500px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-black text-indigo-600 uppercase tracking-tighter text-lg flex items-center gap-2">
+                            🎯 Prochains Jalons
+                            <span id="countUpcoming" class="bg-indigo-100 text-indigo-600 text-xs px-2.5 py-0.5 rounded-full">0</span>
+                        </h3>
+                    </div>
+                    <div id="milestonesContainer" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-3">
+                        <p class="text-sm text-slate-400 italic text-center mt-20 font-medium">Aucun jalon futur.</p>
                     </div>
                 </div>
 
@@ -169,7 +174,7 @@
     </div>
 
     <script>
-        const colors = { red: '#ef4444', amber: '#f59e0b', green: '#22c55e', brand: '#14b8a6', slate: '#cbd5e1' };
+        const colors = { red: '#f43f5e', amber: '#f59e0b', green: '#10b981', brand: '#4f46e5', slate: '#f1f5f9' };
         let rawTime = [], rawProject = []; 
         let charts = { spi: null, completion: null, workload: null };
 
@@ -187,10 +192,7 @@
         function parseExcelDate(val) {
             if (!val) return null;
             if (val instanceof Date) return val;
-            if (!isNaN(val) && typeof val === 'number') {
-                // Gestion des dates série Excel
-                return new Date((val - 25569) * 86400000);
-            }
+            if (!isNaN(val) && typeof val === 'number') return new Date((val - 25569) * 86400000);
             const d = new Date(String(val).split(' ')[0]);
             return isNaN(d.getTime()) ? null : d;
         }
@@ -203,23 +205,18 @@
             const reader = new FileReader();
             reader.onload = (event) => {
                 const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array', cellDates: true });
-                let allTasks = [];
-                let foundTime = [];
-
+                let allTasks = [], foundTime = [];
                 workbook.SheetNames.forEach(sheetName => {
                     const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
-                    if (json.length === 0) return;
+                    if (!json.length) return;
                     const keys = Object.keys(json[0] || {}).join(" ").toLowerCase();
-
                     if (keys.includes('utilisateur') || keys.includes('temps passé')) {
                         foundTime = foundTime.concat(json);
                     } else if (keys.includes('nom') || keys.includes('title')) {
                         allTasks = allTasks.concat(json);
                     }
                 });
-
-                rawProject = allTasks;
-                rawTime = foundTime;
+                rawProject = allTasks; rawTime = foundTime;
                 localforage.setItem('rawProject', allTasks);
                 localforage.setItem('rawTime', foundTime);
                 tryUpdateDashboard();
@@ -246,43 +243,33 @@
                 const title = String(t['Title'] || t['Nom'] || "").trim();
                 const folder = String(t['Folder'] || t['Projet ou dossier'] || "").toLowerCase();
                 const parent = String(t['Parent task'] || "").toLowerCase();
-                
-                // FILTRE TATTOO
+                const st = String(t['Status'] || t['Statut'] || "").toLowerCase();
+
+                // FILTRE TATTOO EXCLUSIF
                 const isTattoo = title.toLowerCase().includes('tattoo') || folder.includes('tattoo') || parent.includes('tattoo');
                 if(!isTattoo || !title || processed.has(title)) return;
+
+                // EXCLURE LES ANNULÉS
+                const isCancelled = ['annulé', 'cancelled', 'canceled'].some(s => st.includes(s));
+                if(isCancelled) return;
+
                 processed.add(title);
 
-                // Effort & Workload
+                // Calculations
                 let hrs = convertTimeToDecimal(t['Effort'] || t['Effort prévu']);
                 totalEffort += hrs;
                 let rawAss = String(t['Assigned To'] || t['Chargé de mission'] || "Non assigné");
                 let assArr = rawAss.split(',').map(a => a.split('<')[0].trim()).filter(a => a);
                 assArr.forEach(a => { workload[a] = (workload[a] || 0) + (hrs/8/assArr.length); });
 
-                // Avancement
                 totalT++;
-                const st = String(t['Status'] || t['Statut'] || "").toLowerCase();
-                const isDone = ['terminé', 'done', 'completed', 'complete', 'achevée', 'annulé'].some(s => st.includes(s));
+                const isDone = ['terminé', 'done', 'completed', 'complete', 'achevée'].some(s => st.includes(s));
                 if(isDone) done++;
 
-                // Dates & Liens
                 const due = parseExcelDate(t['End Date'] || t['Date d’échéance']);
                 if(due && !isDone) {
-                    // Re-calcul du lien Wrike basé sur ID ou Key si le lien direct manque
-                    let link = t['Permalink'] || t['Lien'] || t['URL'] || t['Link'];
-                    if (!link) {
-                        const id = t['ID'] || t['Key'];
-                        link = id ? `https://www.wrike.com/open.htm?id=${id}` : "#";
-                    }
-
-                    const taskObj = { 
-                        title, 
-                        date: due, 
-                        assignee: assArr.join(', '), 
-                        link, 
-                        dateStr: due.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) 
-                    };
-                    
+                    let link = t['Permalink'] || t['Lien'] || t['URL'] || (t['ID'] ? `https://www.wrike.com/open.htm?id=${t['ID']}` : t['Key'] ? `https://www.wrike.com/open.htm?id=${t['Key']}` : "#");
+                    const taskObj = { title, date: due, assignee: assArr.join(', '), link, dateStr: due.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) };
                     if(due < today) {
                         slip += Math.ceil(Math.abs(today - due) / 86400000);
                         lateTasks.push(taskObj);
@@ -292,7 +279,6 @@
                 }
             });
 
-            // Temps Passé
             rawTime.forEach(r => {
                 const taskRef = String(r['Nom de la tâche'] || r['Nom'] || "").toLowerCase();
                 const projRef = String(r['Projet ou dossier'] || "").toLowerCase();
@@ -305,69 +291,74 @@
         }
 
         function updateUI(comp, cons, slip, lates, upcomings, wl) {
-            document.getElementById('healthText').innerText = (cons > 110 || slip > 30) ? "Alerte" : (cons > 90 || slip > 0) ? "Suivi" : "Sain";
-            document.getElementById('healthDot').className = "w-6 h-6 rag-indicator " + ((cons > 110 || slip > 30) ? "rag-red" : (cons > 90 || slip > 0) ? "rag-amber" : "rag-green");
+            const hCard = document.getElementById('healthCard');
+            const hText = document.getElementById('healthText');
+            const hDot = document.getElementById('healthDot');
+            
+            if (cons > 110 || slip > 30) {
+                hText.innerText = "Alerte Retard"; hCard.style.borderColor = colors.red; hDot.className = "w-5 h-5 rag-indicator rag-red";
+            } else if (cons > 90 || slip > 0) {
+                hText.innerText = "Suivi Requis"; hCard.style.borderColor = colors.amber; hDot.className = "w-5 h-5 rag-indicator rag-amber";
+            } else {
+                hText.innerText = "Sous Contrôle"; hCard.style.borderColor = colors.green; hDot.className = "w-5 h-5 rag-indicator rag-green";
+            }
 
             document.getElementById('completionValueText').innerText = Math.round(comp) + "%";
             document.getElementById('spiValueText').innerText = Math.round(cons) + "%";
             
-            const b = document.getElementById('glissementBadge');
-            b.innerText = slip + " jours";
-            b.className = "px-4 py-8 text-center rounded-xl font-bold text-2xl w-full flex flex-col items-center justify-center h-full " + (slip > 30 ? "bg-red-50 text-red-700" : slip > 0 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700");
+            const badge = document.getElementById('glissementBadge');
+            badge.innerText = slip + " jours";
+            badge.className = "py-10 text-center rounded-2xl font-black text-4xl w-full flex items-center justify-center " + (slip > 30 ? "text-rose-600 bg-rose-50" : slip > 0 ? "text-amber-600 bg-amber-50" : "text-emerald-600 bg-emerald-50");
 
-            // Listes avec année et liens corrigés
-            const renderList = (contId, countId, list) => {
+            const renderL = (contId, countId, list, col) => {
                 const c = document.getElementById(contId);
                 document.getElementById(countId).innerText = list.length;
-                if(!list.length) { c.innerHTML = "<p class='text-xs text-slate-400 italic mt-10 text-center'>Tout est à jour.</p>"; return; }
+                if(!list.length) { c.innerHTML = "<p class='text-xs text-slate-400 italic mt-10 text-center'>Aucune tâche.</p>"; return; }
                 list.sort((a,b) => a.date - b.date);
                 c.innerHTML = list.map(t => `
-                    <div class="p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md hover:border-brand-200 transition-all group">
+                    <div class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md hover:border-brand-200 transition-all group">
                         <div class="flex justify-between items-start gap-4">
-                            <a href="${t.link}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-slate-800 group-hover:text-brand-600 leading-tight flex-1">
-                                ${t.title} <span class="opacity-0 group-hover:opacity-100 transition-opacity ml-1">↗</span>
+                            <a href="${t.link}" target="_blank" class="text-sm font-bold text-slate-800 group-hover:text-indigo-600 leading-tight flex-1">
+                                ${t.title} <span class="opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
                             </a>
-                            <span class="text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap ${contId.includes('late') ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-brand-50 text-brand-700 border border-brand-100'}">
+                            <span class="text-[10px] font-bold px-2.5 py-1 rounded-lg border ${col === 'red' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'} whitespace-nowrap">
                                 ${t.dateStr}
                             </span>
                         </div>
-                        <div class="text-[10px] text-slate-400 mt-2 flex items-center gap-1.5 font-medium italic">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                            ${t.assignee}
+                        <div class="flex items-center text-[10px] text-slate-400 font-bold uppercase tracking-wide mt-3">
+                            <span class="mr-2">👤</span> ${t.assignee}
                         </div>
                     </div>
                 `).join('');
             };
-            renderList('lateTasksContainer', 'countLate', lates);
-            renderList('milestonesContainer', 'countUpcoming', upcomings);
+            renderL('lateTasksContainer', 'countLate', lates, 'red');
+            renderL('milestonesContainer', 'countUpcoming', upcomings, 'brand');
 
-            // Chart
+            // WORKLOAD CHART
             const labels = Object.keys(wl).sort((a,b) => wl[b] - wl[a]);
-            const data = labels.map(l => wl[l].toFixed(1));
             const wrapper = document.getElementById('workloadChartWrapper');
-            wrapper.style.height = Math.max(200, labels.length * 35) + "px";
+            wrapper.style.height = Math.max(200, labels.length * 40) + "px";
 
             if(charts.workload) charts.workload.destroy();
             charts.workload = new Chart(document.getElementById('workloadChart').getContext('2d'), {
                 type: 'bar',
-                data: { labels, datasets: [{ data, backgroundColor: colors.brand, borderRadius: 4 }] },
+                data: { labels, datasets: [{ data: labels.map(l => wl[l].toFixed(1)), backgroundColor: '#6366f1', borderRadius: 10, barThickness: 20 }] },
                 options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
                     plugins: { legend: {display:false} },
-                    scales: { x: { title: {display:true, text:'Jours (8h)'}, beginAtZero:true }, y: { ticks: { autoSkip:false, font: {size:10, weight:'bold'} } } }
+                    scales: { x: { grid:{display:false}, ticks:{font:{weight:'bold'}}, title:{display:true, text:'Jours de travail'} }, y: { ticks: { autoSkip:false, font:{size:11, weight:'bold'} }, grid:{display:false} } }
                 }
             });
 
-            // Gauges
-            const configDoughnut = (id, val, max, col) => {
+            const drawD = (id, val, max, col) => {
                 if(charts[id]) charts[id].destroy();
                 charts[id] = new Chart(document.getElementById(id+'Chart').getContext('2d'), {
                     type: 'doughnut',
-                    data: { datasets: [{ data: [val, Math.max(0, max-val)], backgroundColor: [col, colors.slate], borderWidth:0, borderRadius:10 }] },
-                    options: { circumference: id === 'spi' ? 180 : 360, rotation: id === 'spi' ? -90 : 0, cutout:'80%', plugins:{tooltip:{enabled:false}} }
+                    data: { datasets: [{ data: [val, Math.max(0, max-val)], backgroundColor: [col, '#F1F5F9'], borderWidth:0, borderRadius:15 }] },
+                    options: { circumference: id === 'spi' ? 180 : 360, rotation: id === 'spi' ? -90 : 0, cutout:'82%', plugins:{tooltip:{enabled:false}} }
                 });
             };
-            configDoughnut('completion', Math.min(comp, 100), 100, colors.brand);
-            configDoughnut('spi', Math.min(cons, 120), 120, cons > 100 ? colors.red : cons > 85 ? colors.amber : colors.green);
+            drawD('completion', Math.min(comp, 100), 100, '#6366f1');
+            drawD('spi', Math.min(cons, 120), 120, cons > 110 ? colors.red : cons > 90 ? colors.amber : colors.green);
         }
     </script>
 </body>
