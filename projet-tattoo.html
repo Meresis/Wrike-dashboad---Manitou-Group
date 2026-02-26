@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Pilotage de Projet - TATTOO</title>
+    <title>Dashboard COPIL - TATTOO</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -11,257 +11,393 @@
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        brand: { 50: '#f0fdfa', 500: '#14b8a6', 600: '#0d9488' }
-                    }
+                    colors: { brand: { 50: '#f0fdfa', 500: '#14b8a6', 600: '#0d9488' } },
+                    boxShadow: { 'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)' }
                 }
             }
         }
     </script>
 
     <style>
-        .chart-container { position: relative; height: 200px; width: 100%; display: flex; justify-content: center; align-items: center; }
+        .chart-container { position: relative; height: 220px; width: 100%; display: flex; justify-content: center; align-items: center; }
         .chart-center-text { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
-        .gauge-text { margin-top: 60px; }
-        .tooltip-content { transition: opacity 0.2s; }
+        
+        @keyframes pulse-rag {
+            0% { box-shadow: 0 0 0 0 currentcolor; }
+            70% { box-shadow: 0 0 0 10px rgba(0,0,0,0); }
+            100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+        }
+        .rag-indicator { border-radius: 50%; display: inline-block; }
+        .rag-green { background-color: #22c55e; color: rgba(34, 197, 94, 0.4); animation: pulse-rag 2s infinite; }
+        .rag-amber { background-color: #f59e0b; color: rgba(245, 158, 11, 0.4); animation: pulse-rag 2s infinite; }
+        .rag-red { background-color: #ef4444; color: rgba(239, 68, 68, 0.4); animation: pulse-rag 2s infinite; }
+
+        /* Style pour les infobulles personnalisées */
+        .tooltip-icon:hover + .tooltip-text { display: block; }
+        
+        /* Personnaliser la barre de défilement des jalons */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen p-6 md:p-10">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen p-4 md:p-8">
 
-    <div class="max-w-7xl mx-auto">
-        <header class="mb-10">
-            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Pilotage de Projet - TATTOO</h1>
-            <p class="text-slate-500 mt-2">Indicateurs 100% basés sur les données réelles (4 fichiers connectés)</p>
+    <div class="max-w-[1200px] mx-auto">
+        
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-soft border border-slate-100">
+            <div>
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Pilotage Projet - TATTOO</h1>
+                <p class="text-slate-500 mt-1 text-sm">Dashboard automatisé COPIL</p>
+            </div>
+            
+            <div class="mt-4 md:mt-0 flex items-center bg-slate-50 py-3 px-5 rounded-xl border border-slate-100">
+                <div class="mr-4 text-right">
+                    <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider">État de Santé Global</p>
+                    <p id="healthText" class="text-lg font-bold text-slate-700">En attente...</p>
+                </div>
+                <div id="healthDot" class="w-6 h-6 rag-indicator bg-slate-300"></div>
+            </div>
         </header>
 
-        <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">📁 1. Export Tâches</label>
-                <input type="file" id="fileTasks" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 transition">
-                <span id="statusTasks" class="text-xs text-orange-500 mt-1 block">En attente...</span>
+        <section class="bg-white p-6 rounded-2xl shadow-soft border border-slate-100 mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex-1 w-full">
+                <label class="block text-sm font-bold text-slate-700 mb-2">📁 Importation globale (Fichier Excel fusionné)</label>
+                <div class="flex items-center gap-4">
+                    <input type="file" id="fileGlobal" accept=".xlsx, .xls, .csv" class="block w-full max-w-md text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-brand-50 file:text-brand-600 cursor-pointer hover:file:bg-brand-100 transition">
+                    <span id="statusGlobal" class="text-sm font-semibold text-amber-500">En attente d'un fichier...</span>
+                </div>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">📁 2. Temps Passé</label>
-                <input type="file" id="fileTime" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 transition">
-                <span id="statusTime" class="text-xs text-orange-500 mt-1 block">En attente...</span>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">📁 3. Workload</label>
-                <input type="file" id="fileWorkload" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 transition">
-                <span id="statusWorkload" class="text-xs text-orange-500 mt-1 block">En attente...</span>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">📁 4. Tableau Projet</label>
-                <input type="file" id="fileProject" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 transition">
-                <span id="statusProject" class="text-xs text-orange-500 mt-1 block">En attente...</span>
+                <button onclick="clearMemory()" class="text-sm text-red-600 hover:text-red-800 font-semibold px-4 py-2 bg-red-50 rounded-lg hover:bg-red-100 transition flex items-center gap-2 border border-red-100">
+                    🗑️ Vider la mémoire
+                </button>
             </div>
         </section>
 
-        <div id="dashboardContent" class="space-y-8" style="opacity: 0.5; pointer-events: none; transition: opacity 0.3s;">
+        <div id="mainContainer" style="opacity: 0.3; pointer-events: none; transition: opacity 0.4s;" class="space-y-6">
 
-            <section>
-                <h2 class="text-xl font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-6">Performance & Délais</h2>
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col items-center relative">
-                        <div class="w-full flex justify-between items-start mb-2">
-                            <h3 class="text-sm font-medium text-slate-500">Indice de Performance (SPI)</h3>
-                            <div class="group relative cursor-help">
-                                <svg class="w-5 h-5 text-slate-400 hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <div class="hidden group-hover:block absolute z-10 w-48 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-48 top-6">
-                                    Ratio : <b>Effort total prévu</b> (Fichier Tâches) / <b>Temps total saisi</b> (Fichier Temps). Un score < 1 indique qu'on a dépassé le budget temps initialement prévu.
-                                </div>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="spiGaugeChart"></canvas>
-                            <div class="chart-center-text gauge-text">
-                                <span id="spiValueText" class="text-3xl font-bold text-slate-800">0.0</span>
-                                <span class="text-xs text-slate-400 mt-1">Cible : > 1.0</span>
+                <div class="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 flex flex-col items-center relative">
+                    <div class="w-full flex justify-between items-start mb-2">
+                        <h3 class="text-sm font-semibold text-slate-600">Avancement des Tâches</h3>
+                        <div class="relative flex items-center">
+                            <svg class="w-5 h-5 text-slate-300 hover:text-brand-500 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="tooltip-text hidden absolute z-50 w-56 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-56 top-6">
+                                <b>Calcul :</b> Pourcentage de tâches dont le statut est assimilé à "Terminé" par rapport au nombre total de tâches uniques du projet.
                             </div>
                         </div>
                     </div>
-
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col items-center">
-                        <div class="w-full flex justify-between items-start mb-2">
-                            <h3 class="text-sm font-medium text-slate-500">Complétion des Tâches</h3>
-                            <div class="group relative cursor-help">
-                                <svg class="w-5 h-5 text-slate-400 hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <div class="hidden group-hover:block absolute z-10 w-48 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-48 top-6">
-                                    Pourcentage de tâches dont le statut est "Completed" ou "Terminé" par rapport au nombre total de tâches du <b>Fichier Tableau Projet</b>.
-                                </div>
-                            </div>
-                        </div>
-                        <div class="chart-container">
-                            <canvas id="completionChart"></canvas>
-                            <div class="chart-center-text">
-                                <span id="completionValueText" class="text-3xl font-bold text-slate-800">0%</span>
-                            </div>
+                    <div class="chart-container">
+                        <canvas id="completionChart"></canvas>
+                        <div class="chart-center-text">
+                            <span id="completionValueText" class="text-4xl font-extrabold text-slate-800">0%</span>
+                            <span class="text-xs text-slate-400 mt-1">Terminées vs Total</span>
                         </div>
                     </div>
-
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
-                        <div>
-                            <div class="w-full flex justify-between items-start mb-2">
-                                <h3 class="text-sm font-medium text-slate-500">Glissement de Planning</h3>
-                                <div class="group relative cursor-help">
-                                    <svg class="w-5 h-5 text-slate-400 hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <div class="hidden group-hover:block absolute z-10 w-48 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-48 top-6">
-                                        Somme cumulée des <b>jours de retard</b> pour les tâches non terminées dont la Date d'échéance (End Date) est antérieure à aujourd'hui, d'après le <b>Tableau Projet</b>.
-                                    </div>
-                                </div>
-                            </div>
-                            <p class="text-xs text-slate-400 mt-1 mb-4">Écart par rapport à la date d'échéance</p>
-                        </div>
-                        <div id="glissementBadge" class="px-4 py-6 text-center rounded-lg font-bold text-2xl bg-slate-100 text-slate-700 w-full">
-                            En attente...
-                        </div>
-                    </div>
-
                 </div>
+
+                <div class="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 flex flex-col items-center relative">
+                    <div class="w-full flex justify-between items-start mb-2">
+                        <h3 class="text-sm font-semibold text-slate-600">Consommation de l'Effort Prévu</h3>
+                        <div class="relative flex items-center">
+                            <svg class="w-5 h-5 text-slate-300 hover:text-brand-500 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="tooltip-text hidden absolute z-50 w-56 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-56 top-6">
+                                <b>Calcul :</b> Temps réellement saisi divisé par l'effort total budgété. Une valeur > 100% indique un dépassement de budget.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="spiGaugeChart"></canvas>
+                        <div class="chart-center-text" style="margin-top: 60px;">
+                            <span id="spiValueText" class="text-4xl font-extrabold text-slate-800">0%</span>
+                            <span class="text-xs text-slate-400 mt-1">Saisi / Effort Alloué</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 flex flex-col justify-between relative">
+                    <div class="w-full flex justify-between items-start mb-2">
+                        <h3 class="text-sm font-semibold text-slate-600">Glissement de Planning</h3>
+                        <div class="relative flex items-center">
+                            <svg class="w-5 h-5 text-slate-300 hover:text-brand-500 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="tooltip-text hidden absolute z-50 w-56 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-56 top-6">
+                                <b>Calcul :</b> Somme des jours de retard pour toutes les tâches <u>non terminées</u> dont la date d'échéance est dépassée par rapport à aujourd'hui.
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-4">Jours de retard cumulés sur les échéances dépassées.</p>
+                    <div id="glissementBadge" class="px-4 py-8 text-center rounded-xl font-bold text-2xl bg-slate-100 text-slate-700 w-full flex flex-col items-center justify-center h-full">
+                        En attente...
+                    </div>
+                </div>
+
             </section>
 
-            <section>
-                <h2 class="text-xl font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-6">Allocation des Ressources Humaines</h2>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
-                    <div class="flex justify-between items-start mb-4">
-                        <h3 class="text-sm font-medium text-slate-500">Charge de travail sur le Projet TATTOO</h3>
-                        <div class="group relative cursor-help">
-                            <svg class="w-5 h-5 text-slate-400 hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <div class="hidden group-hover:block absolute z-10 w-64 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg right-0 top-6">
-                                Issu du fichier Workload. Filtre sur "Tattoo" dans <i>Project name</i>. Affiche le ratio entre le <b>Total allocated effort</b> et la <b>capacité annuelle</b> (Daily capacity * 220 jours).
+            <section class="mb-6">
+                <div class="bg-white rounded-2xl shadow-soft border border-slate-100 p-6 flex flex-col relative w-full">
+                    <div class="w-full flex justify-between items-start mb-4 border-b pb-2">
+                        <h3 class="text-sm font-semibold text-slate-600">👥 Charge de travail allouée (Jours)</h3>
+                        <div class="relative flex items-center">
+                            <svg class="w-5 h-5 text-slate-300 hover:text-brand-500 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="tooltip-text hidden absolute z-50 w-64 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg right-0 top-6">
+                                <b>Calcul :</b> Cumul de l'effort estimé par collaborateur converti en jours de travail (1 jour = 8 heures).
                             </div>
                         </div>
                     </div>
-                    <div style="position: relative; height: 350px; width: 100%;">
-                        <canvas id="workloadChart"></canvas>
+                    <div class="overflow-y-auto custom-scrollbar pr-2" style="max-height: 400px; width: 100%;">
+                        <div id="workloadChartWrapper" style="position: relative; width: 100%; min-height: 250px;">
+                            <canvas id="workloadChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </section>
 
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
+                
+                <div class="bg-white rounded-2xl shadow-soft border border-red-100 p-6 relative flex flex-col">
+                    <div class="w-full flex justify-between items-start mb-4 border-b border-red-100 pb-2">
+                        <h3 class="text-sm font-bold text-red-600">🚨 Tâches en Retard</h3>
+                        <div class="relative flex items-center">
+                            <svg class="w-5 h-5 text-red-300 hover:text-red-500 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="tooltip-text hidden absolute z-50 w-64 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg right-0 top-6">
+                                <b>Calcul :</b> Tâches non clôturées dont l'échéance est antérieure à aujourd'hui.<br><i>Cliquez sur le nom pour ouvrir Wrike.</i>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="lateTasksContainer" class="space-y-3 overflow-y-auto flex-grow custom-scrollbar pr-2 max-h-[300px]">
+                        <p class="text-xs text-slate-400 italic">Chargement des retards...</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-soft border border-brand-100 p-6 relative flex flex-col">
+                    <div class="w-full flex justify-between items-start mb-4 border-b border-brand-100 pb-2">
+                        <h3 class="text-sm font-bold text-brand-600">🎯 Prochaines Échéances</h3>
+                        <div class="relative flex items-center">
+                            <svg class="w-5 h-5 text-brand-300 hover:text-brand-500 cursor-help tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="tooltip-text hidden absolute z-50 w-64 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg right-0 top-6">
+                                <b>Calcul :</b> Tâches non clôturées dont l'échéance est aujourd'hui ou dans le futur.<br><i>Cliquez sur le nom pour ouvrir Wrike.</i>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="milestonesContainer" class="space-y-3 overflow-y-auto flex-grow custom-scrollbar pr-2 max-h-[300px]">
+                        <p class="text-xs text-slate-400 italic">Chargement des échéances...</p>
+                    </div>
+                </div>
+
+            </section>
         </div>
     </div>
 
     <script>
-        const colors = { red: '#ef4444', orange: '#f97316', green: '#22c55e', brand: '#14b8a6', gray: '#e2e8f0' };
+        const colors = { red: '#ef4444', amber: '#f59e0b', green: '#22c55e', brand: '#14b8a6', slate: '#cbd5e1' };
         
-        let rawTasks = null;
-        let rawTime = null;
-        let rawWorkload = null;
-        let rawProject = null;
-        
+        let rawTime = null, rawProject = null; 
         let charts = { spi: null, completion: null, workload: null };
 
+        // --- FONCTIONS UTILITAIRES ---
         function convertTimeToDecimal(timeVal) {
-            if (!timeVal) return 0;
-            if (typeof timeVal === 'number') return timeVal * 24; 
-            const parts = String(timeVal).trim().split(':');
-            if (parts.length >= 2) {
-                const h = parseInt(parts[0], 10) || 0;
-                const m = parseInt(parts[1], 10) || 0;
-                return h + (m / 60);
+            if (!timeVal && timeVal !== 0) return 0;
+            if (typeof timeVal === 'number') return timeVal; 
+            
+            const timeStr = String(timeVal).trim();
+            if (timeStr.includes(':')) {
+                const parts = timeStr.split(':');
+                if (parts.length >= 2) {
+                    const h = parseInt(parts[0], 10) || 0;
+                    const m = parseInt(parts[1], 10) || 0;
+                    return h + (m / 60);
+                }
             }
-            return parseFloat(timeVal) || 0;
+            return parseFloat(timeStr.replace(',', '.')) || 0;
         }
 
-        function readExcel(file, callback) {
+        function parseExcelDate(val) {
+            if (!val) return null;
+            if (val instanceof Date) return val;
+            if (!isNaN(val) && typeof val === 'number') {
+                const excelEpoch = new Date(1899, 11, 30);
+                return new Date(excelEpoch.getTime() + val * 86400000);
+            }
+            const d = new Date(String(val).split(' ')[0]);
+            if (!isNaN(d.getTime())) return d;
+            return null;
+        }
+
+        function clearMemory() {
+            localforage.clear().then(() => {
+                alert("La mémoire a été vidée.");
+                location.reload(); 
+            });
+        }
+
+        // --- LECTURE DU FICHIER UNIQUE (INTELLIGENT) ---
+        document.getElementById('fileGlobal').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+
+            document.getElementById('statusGlobal').innerText = "⏳ Analyse en cours...";
+            document.getElementById('statusGlobal').className = "text-sm font-semibold text-brand-600";
+
             const reader = new FileReader();
-            reader.onload = (e) => {
-                const data = new Uint8Array(e.target.result);
+            reader.onload = (event) => {
+                const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true, raw: false });
-                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
-                callback(json);
+                
+                let allTasks = [];
+                let foundTime = null;
+
+                workbook.SheetNames.forEach(sheetName => {
+                    const sheet = workbook.Sheets[sheetName];
+                    const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+                    if(json.length === 0) return;
+
+                    const keysStr = Object.keys(json[0]).map(k => k.toLowerCase()).join(" ");
+
+                    // Onglet "Temps passé"
+                    if ((keysStr.includes('utilisateur') || keysStr.includes('user')) && 
+                        (keysStr.includes('temps passé') || keysStr.includes('time spent') || keysStr.includes('date'))) {
+                        foundTime = json;
+                    } 
+                    // Tout autre onglet contenant des Tâches / Projets 
+                    else if ((keysStr.includes('nom') || keysStr.includes('title') || keysStr.includes('task')) && 
+                             (keysStr.includes('statut') || keysStr.includes('status'))) {
+                        // On rassemble TOUTES les tâches dans un seul grand tableau (L'algorithme triera les doublons)
+                        allTasks = allTasks.concat(json);
+                    }
+                });
+
+                if (allTasks.length > 0) {
+                    rawProject = allTasks;
+                    rawTime = foundTime || []; // foundTime peut être vide, ce n'est pas bloquant
+
+                    Promise.all([
+                        localforage.setItem('rawProject', rawProject),
+                        localforage.setItem('rawTime', rawTime)
+                    ]).then(() => {
+                        document.getElementById('statusGlobal').innerHTML = "✅ Fichier importé et sauvegardé !";
+                        document.getElementById('statusGlobal').className = "text-sm font-bold text-green-600";
+                        tryUpdateDashboard();
+                    });
+                } else {
+                    document.getElementById('statusGlobal').innerHTML = "⚠️ Format incorrect.";
+                    document.getElementById('statusGlobal').className = "text-sm font-bold text-red-600";
+                    alert("Impossible de trouver des données exploitables (Nom, Statut, Date, Effort).");
+                }
             };
             reader.readAsArrayBuffer(file);
-        }
-
-        document.getElementById('fileTasks').addEventListener('change', (e) => {
-            if(!e.target.files[0]) return;
-            readExcel(e.target.files[0], (data) => {
-                rawTasks = data;
-                document.getElementById('statusTasks').innerText = "✅ Chargé";
-                document.getElementById('statusTasks').className = "text-xs text-green-600 mt-1 block";
-                tryUpdateDashboard();
-            });
         });
 
-        document.getElementById('fileTime').addEventListener('change', (e) => {
-            if(!e.target.files[0]) return;
-            readExcel(e.target.files[0], (data) => {
-                rawTime = data;
-                document.getElementById('statusTime').innerText = "✅ Chargé";
-                document.getElementById('statusTime').className = "text-xs text-green-600 mt-1 block";
-                tryUpdateDashboard();
-            });
+        // --- INITIALISATION MÉMOIRE LOCALE ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                rawProject = await localforage.getItem('rawProject');
+                rawTime = await localforage.getItem('rawTime');
+
+                if(rawProject) {
+                    document.getElementById('statusGlobal').innerHTML = "💾 Restitué depuis la mémoire";
+                    document.getElementById('statusGlobal').className = "text-sm font-bold text-blue-500";
+                    tryUpdateDashboard();
+                }
+            } catch (err) {}
         });
 
-        document.getElementById('fileWorkload').addEventListener('change', (e) => {
-            if(!e.target.files[0]) return;
-            readExcel(e.target.files[0], (data) => {
-                rawWorkload = data;
-                document.getElementById('statusWorkload').innerText = "✅ Chargé";
-                document.getElementById('statusWorkload').className = "text-xs text-green-600 mt-1 block";
-                tryUpdateDashboard();
-            });
-        });
-
-        document.getElementById('fileProject').addEventListener('change', (e) => {
-            if(!e.target.files[0]) return;
-            readExcel(e.target.files[0], (data) => {
-                rawProject = data;
-                document.getElementById('statusProject').innerText = "✅ Chargé";
-                document.getElementById('statusProject').className = "text-xs text-green-600 mt-1 block";
-                tryUpdateDashboard();
-            });
-        });
-
+        // --- CALCULS ET MISE À JOUR ---
         function tryUpdateDashboard() {
-            // Le dashboard s'affiche uniquement si les 4 fichiers sont chargés
-            if (!rawTasks || !rawTime || !rawWorkload || !rawProject) return;
+            if (!rawProject || rawProject.length === 0) return;
 
-            document.getElementById('dashboardContent').style.opacity = '1';
-            document.getElementById('dashboardContent').style.pointerEvents = 'auto';
+            document.getElementById('mainContainer').style.opacity = '1';
+            document.getElementById('mainContainer').style.pointerEvents = 'auto';
 
-            // 1. CALCUL DU SPI (Via fichier Tâches et fichier Temps passé)
             let totalEffort = 0;
-            rawTasks.forEach(t => { totalEffort += convertTimeToDecimal(t['Effort']); });
+            let completedCount = 0, activeTasksCount = 0, glissementJours = 0;
             
-            let totalTimeSpent = 0;
-            rawTime.forEach(t => { totalTimeSpent += convertTimeToDecimal(t['Temps passé']); });
+            let lateTasks = [];
+            let upcomingTasks = []; 
+            let workloadMap = {};
+            let processedTasks = new Set(); 
 
-            let spiValue = (totalTimeSpent > 0 && totalEffort > 0) ? (totalEffort / totalTimeSpent) : 1.0;
-            let displaySpi = Math.min(Math.max(spiValue, 0), 1.2);
-
-            // 2. COMPLÉTION ET GLISSEMENT (Via le nouveau fichier Tableau Projet)
-            const completedStatuses = ['Terminé', 'Done', 'Completed', 'Achevée', 'Complete'];
-            let completedCount = 0;
-            let activeTasksCount = 0;
-            let glissementJours = 0;
+            const completedStatuses = ['terminé', 'done', 'completed', 'achevée', 'complete', 'annulé', 'cancelled'];
             const today = new Date(); 
+            today.setHours(0,0,0,0);
 
             rawProject.forEach(t => {
-                if(!t['Title']) return; // Ignorer les lignes vides
+                const taskTitle = String(t['Title'] || t['Nom de la tâche'] || t['Nom'] || "").trim();
+                if(!taskTitle || taskTitle === "undefined" || taskTitle === "") return;
+                
+                // Filtre Anti-doublon strict basé sur le nom
+                if(processedTasks.has(taskTitle)) return;
+                processedTasks.add(taskTitle);
+
+                // --- EFFORT ET WORKLOAD ---
+                let effortHours = convertTimeToDecimal(t['Effort'] || t['Effort prévu']);
+                totalEffort += effortHours;
+
+                let rawAssignee = String(t['Assigned To'] || t['Chargé de mission'] || "Non assigné").trim();
+                
+                // Nettoyage des emails entre < > pour n'avoir que les noms et prénoms
+                let assigneesArray = rawAssignee.split(',')
+                    .map(a => a.split('<')[0].trim())
+                    .filter(a => a !== "");
+                
+                let assigneesList = assigneesArray.join(', ');
+                if (!assigneesList) {
+                    assigneesList = "Non assigné";
+                    assigneesArray = ["Non assigné"];
+                }
+
+                // Répartition de l'effort sur les assignés
+                let effortDaysPerPerson = (effortHours / 8) / assigneesArray.length;
+                assigneesArray.forEach(assignee => {
+                    if (!workloadMap[assignee]) workloadMap[assignee] = 0;
+                    workloadMap[assignee] += effortDaysPerPerson;
+                });
+
+                // --- AVANCEMENT ET JALONS ---
                 activeTasksCount++;
-                const status = String(t['Status'] || "");
-                const isCompleted = completedStatuses.some(s => status.toLowerCase().includes(s.toLowerCase()));
+                const status = String(t['Status'] || t['Statut'] || t['Groupe de statuts'] || "").toLowerCase().trim();
+                const isCompleted = completedStatuses.some(s => status === s || status.includes(s));
                 
                 if (isCompleted) {
                     completedCount++;
                 } else {
-                    // Utilise la colonne End Date du nouveau fichier
-                    if (t['End Date']) {
-                        const dueDateStr = String(t['End Date']).split(' ')[0];
-                        const dueDate = new Date(dueDateStr);
-                        if (!isNaN(dueDate) && dueDate < today) {
-                            const diffTime = Math.abs(today - dueDate);
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    const dueDate = parseExcelDate(t['End Date'] || t['Date d’échéance']);
+                    if (dueDate) {
+                        dueDate.setHours(0,0,0,0);
+                        
+                        // Création du lien dynamique (URL explicite ou génération automatique Wrike via ID/Key)
+                        let taskLink = t['Permalink'] || t['Lien'] || t['URL'] || t['Link'];
+                        if (!taskLink && t['ID']) {
+                            taskLink = `https://www.wrike.com/open.htm?id=${t['ID']}`;
+                        } else if (!taskLink && t['Key']) {
+                            taskLink = `https://www.wrike.com/open.htm?id=${t['Key']}`;
+                        }
+                        if (!taskLink) taskLink = "#";
+
+                        const taskObj = { 
+                            title: taskTitle, 
+                            date: dueDate, 
+                            assignee: assigneesList,
+                            link: taskLink,
+                            dateStr: dueDate.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) 
+                        };
+
+                        if (dueDate < today) {
+                            // En retard
+                            const diffDays = Math.ceil(Math.abs(today - dueDate) / (1000 * 60 * 60 * 24));
                             glissementJours += diffDays;
+                            lateTasks.push(taskObj);
+                        } else {
+                            // À venir
+                            upcomingTasks.push(taskObj);
                         }
                     }
                 }
@@ -269,66 +405,152 @@
 
             let completionPercent = activeTasksCount > 0 ? Math.round((completedCount / activeTasksCount) * 100) : 0;
 
-            // 3. CHARGE DE TRAVAIL (Via Fichier Workload, Filtre TATTOO)
-            const workloadMap = {};
-            
-            rawWorkload.forEach(row => {
-                const projectName = String(row['Project name'] || "").toLowerCase();
-                if (projectName.includes('tattoo')) {
-                    const assignee = row['Assignee'];
-                    if (!assignee) return;
+            // --- CALCUL CONSOMMATION BUDGET (SPI) ---
+            let totalTimeSpent = 0;
+            if (rawTime && rawTime.length > 0) {
+                rawTime.forEach(t => totalTimeSpent += convertTimeToDecimal(t['Temps passé'] || t['Time spent'] || t['Time Spent (Hours)']));
+            }
+            let consumptionPct = totalEffort > 0 ? (totalTimeSpent / totalEffort) * 100 : 0;
 
-                    const allocatedEffort = parseFloat(row['Total allocated effort (h)']) || 0;
-                    const dailyCapacity = parseFloat(row['Daily capacity (h)']) || 8;
-                    
-                    if (!workloadMap[assignee]) workloadMap[assignee] = { allocated: 0, capacity: dailyCapacity };
-                    workloadMap[assignee].allocated += allocatedEffort;
-                }
-            });
-
+            // --- PRÉPARATION WORKLOAD ---
             const workloadLabels = [];
             const workloadData = [];
             const workloadColors = [];
 
-            for (const [assignee, data] of Object.entries(workloadMap)) {
-                const annualCapacity = data.capacity * 220; 
-                const occupationPct = annualCapacity > 0 ? Math.round((data.allocated / annualCapacity) * 100) : 0;
-                
-                if (occupationPct > 0 || data.allocated > 0) {
-                    workloadLabels.push(assignee);
-                    workloadData.push(occupationPct);
-                    workloadColors.push(occupationPct > 100 ? colors.red : colors.brand);
-                }
-            }
+            // Trier par charge décroissante
+            const sortedWl = Object.keys(workloadMap).map(k => ({ name: k, days: workloadMap[k] })).sort((a,b) => b.days - a.days);
 
-            updateCharts(displaySpi, completionPercent, glissementJours, workloadLabels, workloadData, workloadColors);
+            sortedWl.forEach(item => {
+                if (item.days > 0 && item.name !== "" && item.name !== "Non assigné") {
+                    workloadLabels.push(item.name);
+                    workloadData.push(parseFloat(item.days.toFixed(1)));
+                    workloadColors.push(colors.brand);
+                }
+            });
+
+            updateKPIs(consumptionPct, glissementJours, upcomingTasks, lateTasks);
+            renderCharts(consumptionPct, completionPercent, workloadLabels, workloadData, workloadColors);
         }
 
-        function updateCharts(spi, completion, glissement, wlLabels, wlData, wlColors) {
-            // SPI
-            document.getElementById('spiValueText').innerText = spi.toFixed(2);
-            let spiColor = colors.green;
-            if (spi < 0.9) spiColor = colors.red;
-            else if (spi < 1.0) spiColor = colors.orange;
+        // --- AFFICHAGE HTML ---
+        function updateKPIs(consumptionPct, glissementJours, upcomingTasks, lateTasks) {
+            
+            // JAUGE ET SANTÉ GLOBALE
+            const dot = document.getElementById('healthDot');
+            const hText = document.getElementById('healthText');
+            
+            dot.className = "w-6 h-6 rag-indicator "; 
+            if (consumptionPct <= 90 && glissementJours < 15) {
+                dot.classList.add('rag-green');
+                hText.innerText = "Sain / Sous contrôle";
+                hText.className = "text-lg font-bold text-green-600";
+            } else if (consumptionPct <= 110 && glissementJours < 45) {
+                dot.classList.add('rag-amber');
+                hText.innerText = "À surveiller";
+                hText.className = "text-lg font-bold text-amber-500";
+            } else {
+                dot.classList.add('rag-red');
+                hText.innerText = "En difficulté (Alerte)";
+                hText.className = "text-lg font-bold text-red-600";
+            }
+
+            const badge = document.getElementById('glissementBadge');
+            if (glissementJours === 0) {
+                badge.innerHTML = `<span class="text-3xl mb-1">✅</span>Dans les temps<br><span class="text-sm font-normal mt-1">Aucun retard détecté</span>`;
+                badge.className = "px-4 py-8 text-center rounded-xl font-bold text-2xl bg-green-50 text-green-700 w-full flex flex-col items-center justify-center h-full border border-green-200";
+            } else if (glissementJours < 30) {
+                badge.innerHTML = `<span class="text-3xl mb-1">⚠️</span>+ ${glissementJours} jours cumulés<br><span class="text-sm font-normal mt-1">Léger glissement</span>`;
+                badge.className = "px-4 py-8 text-center rounded-xl font-bold text-2xl bg-amber-50 text-amber-700 w-full flex flex-col items-center justify-center h-full border border-amber-200";
+            } else {
+                badge.innerHTML = `<span class="text-3xl mb-1">🚨</span>+ ${glissementJours} jours cumulés<br><span class="text-sm font-normal mt-1">Retard important</span>`;
+                badge.className = "px-4 py-8 text-center rounded-xl font-bold text-2xl bg-red-50 text-red-700 w-full flex flex-col items-center justify-center h-full border border-red-200 shadow-sm";
+            }
+
+            // LISTE 1 : TÂCHES EN RETARD
+            const lateContainer = document.getElementById('lateTasksContainer');
+            lateTasks.sort((a,b) => a.date - b.date); 
+            
+            if (lateTasks.length === 0) {
+                lateContainer.innerHTML = '<p class="text-sm text-slate-500 mt-2">Aucune tâche en retard 🎉</p>';
+            } else {
+                lateContainer.innerHTML = '';
+                // Affiche toutes les tâches en retard (limitées à 30 pour la performance)
+                lateTasks.slice(0, 30).forEach((task) => {
+                    const targetAttr = task.link !== "#" ? 'target="_blank"' : '';
+                    
+                    lateContainer.innerHTML += `
+                        <div class="p-3 bg-red-50 rounded-lg border border-red-100 flex flex-col gap-1.5 transition hover:bg-red-100">
+                            <div class="flex justify-between items-start">
+                                <a href="${task.link}" ${targetAttr} class="text-sm font-semibold text-slate-700 pr-3 leading-tight ${task.link !== '#' ? 'hover:text-brand-600 hover:underline cursor-pointer' : 'cursor-default'}">
+                                    ${task.title}
+                                    ${task.link !== '#' ? '<svg class="w-3 h-3 inline-block ml-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>' : ''}
+                                </a>
+                                <span class="text-xs font-bold text-red-600 whitespace-nowrap bg-white px-2 py-1 rounded border border-red-200 shadow-sm">${task.dateStr}</span>
+                            </div>
+                            <div class="flex items-center text-xs text-slate-500 font-medium line-clamp-1" title="${task.assignee}">
+                                <svg class="w-3.5 h-3.5 mr-1.5 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                <span class="truncate">${task.assignee}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            // LISTE 2 : PROCHAINES ÉCHÉANCES
+            const msContainer = document.getElementById('milestonesContainer');
+            upcomingTasks.sort((a,b) => a.date - b.date);
+            
+            if (upcomingTasks.length === 0) {
+                msContainer.innerHTML = '<p class="text-sm text-slate-500 mt-2">Aucune tâche active à venir trouvée.</p>';
+            } else {
+                msContainer.innerHTML = '';
+                upcomingTasks.slice(0, 30).forEach((task) => {
+                    const targetAttr = task.link !== "#" ? 'target="_blank"' : '';
+
+                    msContainer.innerHTML += `
+                        <div class="p-3 bg-brand-50 rounded-lg border border-brand-100 flex flex-col gap-1.5 transition hover:bg-brand-100">
+                            <div class="flex justify-between items-start">
+                                <a href="${task.link}" ${targetAttr} class="text-sm font-semibold text-slate-700 pr-3 leading-tight ${task.link !== '#' ? 'hover:text-brand-600 hover:underline cursor-pointer' : 'cursor-default'}">
+                                    ${task.title}
+                                    ${task.link !== '#' ? '<svg class="w-3 h-3 inline-block ml-1 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>' : ''}
+                                </a>
+                                <span class="text-xs font-bold text-brand-600 whitespace-nowrap bg-white px-2 py-1 rounded border border-brand-200 shadow-sm">${task.dateStr}</span>
+                            </div>
+                            <div class="flex items-center text-xs text-slate-500 font-medium line-clamp-1" title="${task.assignee}">
+                                <svg class="w-3.5 h-3.5 mr-1.5 flex-shrink-0 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                <span class="truncate">${task.assignee}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // --- GRAPHIQUES ---
+        function renderCharts(consumptionPct, completion, wlLabels, wlData, wlColors) {
+            
+            document.getElementById('spiValueText').innerText = Math.round(consumptionPct) + '%';
+            let consColor = colors.green;
+            if (consumptionPct > 100) consColor = colors.red;
+            else if (consumptionPct > 85) consColor = colors.amber;
 
             if (charts.spi) charts.spi.destroy();
             charts.spi = new Chart(document.getElementById('spiGaugeChart').getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     datasets: [{
-                        data: [spi, Math.max(0, 1.2 - spi)],
-                        backgroundColor: [spiColor, colors.gray],
-                        borderWidth: 0, borderRadius: 5
+                        data: [Math.min(consumptionPct, 120), Math.max(0, 120 - consumptionPct)],
+                        backgroundColor: [consColor, colors.slate],
+                        borderWidth: 0, borderRadius: 10
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    circumference: 180, rotation: -90, cutout: '75%',
+                    circumference: 180, rotation: -90, cutout: '78%',
                     plugins: { tooltip: { enabled: false } }
                 }
             });
 
-            // Complétion
             document.getElementById('completionValueText').innerText = completion + '%';
             if (charts.completion) charts.completion.destroy();
             charts.completion = new Chart(document.getElementById('completionChart').getContext('2d'), {
@@ -336,41 +558,31 @@
                 data: {
                     datasets: [{
                         data: [completion, 100 - completion],
-                        backgroundColor: [colors.brand, colors.gray],
-                        borderWidth: 0, borderRadius: 5
+                        backgroundColor: [colors.brand, colors.slate],
+                        borderWidth: 0, borderRadius: 10
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    cutout: '75%', plugins: { tooltip: { enabled: false } }
+                    cutout: '78%', plugins: { tooltip: { enabled: false } }
                 }
             });
 
-            // Glissement
-            const badge = document.getElementById('glissementBadge');
-            if (glissement > 0) {
-                badge.innerText = `+ ${glissement} jours cumulés`;
-                badge.className = "px-4 py-6 text-center rounded-lg font-bold text-2xl bg-red-100 text-red-700 w-full";
-            } else {
-                badge.innerText = "Aucun retard 🎉";
-                badge.className = "px-4 py-6 text-center rounded-lg font-bold text-2xl bg-green-100 text-green-700 w-full";
-            }
+            const workloadWrapper = document.getElementById('workloadChartWrapper');
+            const dynamicHeight = Math.max(250, wlLabels.length * 40);
+            workloadWrapper.style.height = dynamicHeight + 'px';
 
-            // Workload
             if (charts.workload) charts.workload.destroy();
-            if (wlLabels.length === 0) {
-                wlLabels = ["Aucune charge trouvée"]; wlData = [0]; wlColors = [colors.gray];
-            }
+            if (wlLabels.length === 0) { wlLabels = ["Vide"]; wlData = [0]; wlColors = [colors.slate]; }
 
             charts.workload = new Chart(document.getElementById('workloadChart').getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: wlLabels,
                     datasets: [{
-                        label: 'Occupation Allouée (%)',
                         data: wlData,
                         backgroundColor: wlColors,
-                        borderRadius: 4, barThickness: 25
+                        borderRadius: 6, maxBarThickness: 40
                     }]
                 },
                 options: {
@@ -378,16 +590,17 @@
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => ctx.parsed.x + '% de charge allouée' } }
+                        tooltip: { callbacks: { label: (ctx) => ` Allocation: ${ctx.parsed.x} jours` } }
                     },
                     scales: {
                         x: { 
                             beginAtZero: true, 
-                            max: Math.max(100, ...wlData) + 10, 
-                            grid: { color: colors.gray, drawBorder: false },
-                            title: { display: true, text: '% de la capacité annuelle' }
+                            title: { display: true, text: 'Jours alloués (1j = 8h)' } 
                         },
-                        y: { grid: { display: false, drawBorder: false }, ticks: { font: { size: 12 } } }
+                        y: { 
+                            grid: { display: false, drawBorder: false }, 
+                            ticks: { autoSkip: false, font: { weight: '500', size: 12 } } 
+                        }
                     }
                 }
             });
