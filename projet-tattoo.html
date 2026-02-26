@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Pilotage de Projet - TATTOO</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#f0fdfa', 500: '#14b8a6', 600: '#0d9488' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .chart-container { position: relative; height: 200px; width: 100%; display: flex; justify-content: center; align-items: center; }
+        .chart-center-text { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
+        .gauge-text { margin-top: 60px; }
+        .tooltip-content { transition: opacity 0.2s; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen p-6 md:p-10">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-10">
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Pilotage de Projet - TATTOO</h1>
+            <p class="text-slate-500 mt-2">Indicateurs 100% basés sur les données réelles (4 fichiers connectés)</p>
+        </header>
+
+        <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">📁 1. Export Tâches</label>
+                <input type="file" id="fileTasks" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 transition">
+                <span id="statusTasks" class="text-xs text-orange-500 mt-1 block">En attente...</span>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">📁 2. Temps Passé</label>
+                <input type="file" id="fileTime" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 transition">
+                <span id="statusTime" class="text-xs text-orange-500 mt-1 block">En attente...</span>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">📁 3. Workload</label>
+                <input type="file" id="fileWorkload" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 transition">
+                <span id="statusWorkload" class="text-xs text-orange-500 mt-1 block">En attente...</span>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-2">📁 4. Tableau Projet</label>
+                <input type="file" id="fileProject" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-600 hover:file:bg-brand-100 transition">
+                <span id="statusProject" class="text-xs text-orange-500 mt-1 block">En attente...</span>
+            </div>
+        </section>
+
+        <div id="dashboardContent" class="space-y-8" style="opacity: 0.5; pointer-events: none; transition: opacity 0.3s;">
+
+            <section>
+                <h2 class="text-xl font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-6">Performance & Délais</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col items-center relative">
+                        <div class="w-full flex justify-between items-start mb-2">
+                            <h3 class="text-sm font-medium text-slate-500">Indice de Performance (SPI)</h3>
+                            <div class="group relative cursor-help">
+                                <svg class="w-5 h-5 text-slate-400 hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <div class="hidden group-hover:block absolute z-10 w-48 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-48 top-6">
+                                    Ratio : <b>Effort total prévu</b> (Fichier Tâches) / <b>Temps total saisi</b> (Fichier Temps). Un score < 1 indique qu'on a dépassé le budget temps initialement prévu.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="spiGaugeChart"></canvas>
+                            <div class="chart-center-text gauge-text">
+                                <span id="spiValueText" class="text-3xl font-bold text-slate-800">0.0</span>
+                                <span class="text-xs text-slate-400 mt-1">Cible : > 1.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col items-center">
+                        <div class="w-full flex justify-between items-start mb-2">
+                            <h3 class="text-sm font-medium text-slate-500">Complétion des Tâches</h3>
+                            <div class="group relative cursor-help">
+                                <svg class="w-5 h-5 text-slate-400 hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <div class="hidden group-hover:block absolute z-10 w-48 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-48 top-6">
+                                    Pourcentage de tâches dont le statut est "Completed" ou "Terminé" par rapport au nombre total de tâches du <b>Fichier Tableau Projet</b>.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="completionChart"></canvas>
+                            <div class="chart-center-text">
+                                <span id="completionValueText" class="text-3xl font-bold text-slate-800">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between">
+                        <div>
+                            <div class="w-full flex justify-between items-start mb-2">
+                                <h3 class="text-sm font-medium text-slate-500">Glissement de Planning</h3>
+                                <div class="group relative cursor-help">
+                                    <svg class="w-5 h-5 text-slate-400 hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    <div class="hidden group-hover:block absolute z-10 w-48 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg -left-48 top-6">
+                                        Somme cumulée des <b>jours de retard</b> pour les tâches non terminées dont la Date d'échéance (End Date) est antérieure à aujourd'hui, d'après le <b>Tableau Projet</b>.
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1 mb-4">Écart par rapport à la date d'échéance</p>
+                        </div>
+                        <div id="glissementBadge" class="px-4 py-6 text-center rounded-lg font-bold text-2xl bg-slate-100 text-slate-700 w-full">
+                            En attente...
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold text-slate-700 border-b border-slate-200 pb-2 mb-6">Allocation des Ressources Humaines</h2>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-sm font-medium text-slate-500">Charge de travail sur le Projet TATTOO</h3>
+                        <div class="group relative cursor-help">
+                            <svg class="w-5 h-5 text-slate-400 hover:text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <div class="hidden group-hover:block absolute z-10 w-64 p-3 text-xs bg-slate-800 text-white rounded-lg shadow-lg right-0 top-6">
+                                Issu du fichier Workload. Filtre sur "Tattoo" dans <i>Project name</i>. Affiche le ratio entre le <b>Total allocated effort</b> et la <b>capacité annuelle</b> (Daily capacity * 220 jours).
+                            </div>
+                        </div>
+                    </div>
+                    <div style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="workloadChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script>
+        const colors = { red: '#ef4444', orange: '#f97316', green: '#22c55e', brand: '#14b8a6', gray: '#e2e8f0' };
+        
+        let rawTasks = null;
+        let rawTime = null;
+        let rawWorkload = null;
+        let rawProject = null;
+        
+        let charts = { spi: null, completion: null, workload: null };
+
+        function convertTimeToDecimal(timeVal) {
+            if (!timeVal) return 0;
+            if (typeof timeVal === 'number') return timeVal * 24; 
+            const parts = String(timeVal).trim().split(':');
+            if (parts.length >= 2) {
+                const h = parseInt(parts[0], 10) || 0;
+                const m = parseInt(parts[1], 10) || 0;
+                return h + (m / 60);
+            }
+            return parseFloat(timeVal) || 0;
+        }
+
+        function readExcel(file, callback) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true, raw: false });
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+                callback(json);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        document.getElementById('fileTasks').addEventListener('change', (e) => {
+            if(!e.target.files[0]) return;
+            readExcel(e.target.files[0], (data) => {
+                rawTasks = data;
+                document.getElementById('statusTasks').innerText = "✅ Chargé";
+                document.getElementById('statusTasks').className = "text-xs text-green-600 mt-1 block";
+                tryUpdateDashboard();
+            });
+        });
+
+        document.getElementById('fileTime').addEventListener('change', (e) => {
+            if(!e.target.files[0]) return;
+            readExcel(e.target.files[0], (data) => {
+                rawTime = data;
+                document.getElementById('statusTime').innerText = "✅ Chargé";
+                document.getElementById('statusTime').className = "text-xs text-green-600 mt-1 block";
+                tryUpdateDashboard();
+            });
+        });
+
+        document.getElementById('fileWorkload').addEventListener('change', (e) => {
+            if(!e.target.files[0]) return;
+            readExcel(e.target.files[0], (data) => {
+                rawWorkload = data;
+                document.getElementById('statusWorkload').innerText = "✅ Chargé";
+                document.getElementById('statusWorkload').className = "text-xs text-green-600 mt-1 block";
+                tryUpdateDashboard();
+            });
+        });
+
+        document.getElementById('fileProject').addEventListener('change', (e) => {
+            if(!e.target.files[0]) return;
+            readExcel(e.target.files[0], (data) => {
+                rawProject = data;
+                document.getElementById('statusProject').innerText = "✅ Chargé";
+                document.getElementById('statusProject').className = "text-xs text-green-600 mt-1 block";
+                tryUpdateDashboard();
+            });
+        });
+
+        function tryUpdateDashboard() {
+            // Le dashboard s'affiche uniquement si les 4 fichiers sont chargés
+            if (!rawTasks || !rawTime || !rawWorkload || !rawProject) return;
+
+            document.getElementById('dashboardContent').style.opacity = '1';
+            document.getElementById('dashboardContent').style.pointerEvents = 'auto';
+
+            // 1. CALCUL DU SPI (Via fichier Tâches et fichier Temps passé)
+            let totalEffort = 0;
+            rawTasks.forEach(t => { totalEffort += convertTimeToDecimal(t['Effort']); });
+            
+            let totalTimeSpent = 0;
+            rawTime.forEach(t => { totalTimeSpent += convertTimeToDecimal(t['Temps passé']); });
+
+            let spiValue = (totalTimeSpent > 0 && totalEffort > 0) ? (totalEffort / totalTimeSpent) : 1.0;
+            let displaySpi = Math.min(Math.max(spiValue, 0), 1.2);
+
+            // 2. COMPLÉTION ET GLISSEMENT (Via le nouveau fichier Tableau Projet)
+            const completedStatuses = ['Terminé', 'Done', 'Completed', 'Achevée', 'Complete'];
+            let completedCount = 0;
+            let activeTasksCount = 0;
+            let glissementJours = 0;
+            const today = new Date(); 
+
+            rawProject.forEach(t => {
+                if(!t['Title']) return; // Ignorer les lignes vides
+                activeTasksCount++;
+                const status = String(t['Status'] || "");
+                const isCompleted = completedStatuses.some(s => status.toLowerCase().includes(s.toLowerCase()));
+                
+                if (isCompleted) {
+                    completedCount++;
+                } else {
+                    // Utilise la colonne End Date du nouveau fichier
+                    if (t['End Date']) {
+                        const dueDateStr = String(t['End Date']).split(' ')[0];
+                        const dueDate = new Date(dueDateStr);
+                        if (!isNaN(dueDate) && dueDate < today) {
+                            const diffTime = Math.abs(today - dueDate);
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            glissementJours += diffDays;
+                        }
+                    }
+                }
+            });
+
+            let completionPercent = activeTasksCount > 0 ? Math.round((completedCount / activeTasksCount) * 100) : 0;
+
+            // 3. CHARGE DE TRAVAIL (Via Fichier Workload, Filtre TATTOO)
+            const workloadMap = {};
+            
+            rawWorkload.forEach(row => {
+                const projectName = String(row['Project name'] || "").toLowerCase();
+                if (projectName.includes('tattoo')) {
+                    const assignee = row['Assignee'];
+                    if (!assignee) return;
+
+                    const allocatedEffort = parseFloat(row['Total allocated effort (h)']) || 0;
+                    const dailyCapacity = parseFloat(row['Daily capacity (h)']) || 8;
+                    
+                    if (!workloadMap[assignee]) workloadMap[assignee] = { allocated: 0, capacity: dailyCapacity };
+                    workloadMap[assignee].allocated += allocatedEffort;
+                }
+            });
+
+            const workloadLabels = [];
+            const workloadData = [];
+            const workloadColors = [];
+
+            for (const [assignee, data] of Object.entries(workloadMap)) {
+                const annualCapacity = data.capacity * 220; 
+                const occupationPct = annualCapacity > 0 ? Math.round((data.allocated / annualCapacity) * 100) : 0;
+                
+                if (occupationPct > 0 || data.allocated > 0) {
+                    workloadLabels.push(assignee);
+                    workloadData.push(occupationPct);
+                    workloadColors.push(occupationPct > 100 ? colors.red : colors.brand);
+                }
+            }
+
+            updateCharts(displaySpi, completionPercent, glissementJours, workloadLabels, workloadData, workloadColors);
+        }
+
+        function updateCharts(spi, completion, glissement, wlLabels, wlData, wlColors) {
+            // SPI
+            document.getElementById('spiValueText').innerText = spi.toFixed(2);
+            let spiColor = colors.green;
+            if (spi < 0.9) spiColor = colors.red;
+            else if (spi < 1.0) spiColor = colors.orange;
+
+            if (charts.spi) charts.spi.destroy();
+            charts.spi = new Chart(document.getElementById('spiGaugeChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [spi, Math.max(0, 1.2 - spi)],
+                        backgroundColor: [spiColor, colors.gray],
+                        borderWidth: 0, borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    circumference: 180, rotation: -90, cutout: '75%',
+                    plugins: { tooltip: { enabled: false } }
+                }
+            });
+
+            // Complétion
+            document.getElementById('completionValueText').innerText = completion + '%';
+            if (charts.completion) charts.completion.destroy();
+            charts.completion = new Chart(document.getElementById('completionChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [completion, 100 - completion],
+                        backgroundColor: [colors.brand, colors.gray],
+                        borderWidth: 0, borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    cutout: '75%', plugins: { tooltip: { enabled: false } }
+                }
+            });
+
+            // Glissement
+            const badge = document.getElementById('glissementBadge');
+            if (glissement > 0) {
+                badge.innerText = `+ ${glissement} jours cumulés`;
+                badge.className = "px-4 py-6 text-center rounded-lg font-bold text-2xl bg-red-100 text-red-700 w-full";
+            } else {
+                badge.innerText = "Aucun retard 🎉";
+                badge.className = "px-4 py-6 text-center rounded-lg font-bold text-2xl bg-green-100 text-green-700 w-full";
+            }
+
+            // Workload
+            if (charts.workload) charts.workload.destroy();
+            if (wlLabels.length === 0) {
+                wlLabels = ["Aucune charge trouvée"]; wlData = [0]; wlColors = [colors.gray];
+            }
+
+            charts.workload = new Chart(document.getElementById('workloadChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: wlLabels,
+                    datasets: [{
+                        label: 'Occupation Allouée (%)',
+                        data: wlData,
+                        backgroundColor: wlColors,
+                        borderRadius: 4, barThickness: 25
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => ctx.parsed.x + '% de charge allouée' } }
+                    },
+                    scales: {
+                        x: { 
+                            beginAtZero: true, 
+                            max: Math.max(100, ...wlData) + 10, 
+                            grid: { color: colors.gray, drawBorder: false },
+                            title: { display: true, text: '% de la capacité annuelle' }
+                        },
+                        y: { grid: { display: false, drawBorder: false }, ticks: { font: { size: 12 } } }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
