@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard COPIL - TATTOO (Calculs Révisés)</title>
+    <title>TATTOO | Executive Dashboard</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -14,144 +14,198 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: { brand: { 50: '#f0fdfa', 500: '#14b8a6', 600: '#0d9488' } },
-                    boxShadow: { 'premium': '0 10px 25px -5px rgba(0, 0, 0, 0.05)' }
+                    colors: { 
+                        brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+                        slate: { 850: '#1e293b' }
+                    },
+                    borderRadius: { '4xl': '2rem' },
+                    boxShadow: { 
+                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+                        'card': '0 20px 25px -5px rgba(0, 0, 0, 0.03), 0 10px 10px -5px rgba(0, 0, 0, 0.02)'
+                    }
                 }
             }
         }
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fcfdfe; }
+
+        /* Effet de brillance sur les cartes */
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
         .chart-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; align-items: center; }
         .chart-center-text { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
-        .rag-indicator { border-radius: 50%; display: inline-block; border: 3px solid white; }
-        .rag-green { background-color: #10b981; color: rgba(16, 185, 129, 0.4); animation: pulse-rag 2s infinite; }
-        .rag-amber { background-color: #f59e0b; color: rgba(245, 158, 11, 0.4); animation: pulse-rag 2s infinite; }
-        .rag-red { background-color: #ef4444; color: rgba(239, 68, 68, 0.4); animation: pulse-rag 2s infinite; }
-        @keyframes pulse-rag { 0% { transform: scale(0.95); } 70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(0,0,0,0); } 100% { transform: scale(0.95); } }
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        
+        /* Indicateurs clignotants */
+        .rag-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .rag-green { background-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+        .rag-amber { background-color: #f59e0b; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+        .rag-red { background-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+
+        /* Tooltips SaaS */
+        .tooltip-box { display: none; transition: all 0.2s; }
+        .group:hover .tooltip-box { display: block; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-[#F8FAFC] text-slate-800 antialiased min-h-screen p-4 md:p-8">
+<body class="text-slate-900 min-h-screen p-4 md:p-8">
 
-    <div class="max-w-[1250px] mx-auto">
+    <div class="max-w-[1300px] mx-auto">
         
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
-            <div>
-                <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">COPIL <span class="text-indigo-600">TATTOO</span></h1>
-                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Données consolidées au 26 Fév. 2026</p>
+        <header class="mb-10 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-800">TATTOO <span class="text-slate-400 font-light">| Project Monitor</span></h1>
+                    <div id="statusBadge" class="flex items-center gap-2 mt-0.5">
+                        <div id="healthDot" class="rag-dot rag-amber"></div>
+                        <span id="healthText" class="text-[11px] font-bold uppercase tracking-widest text-slate-500">Analyse en cours...</span>
+                    </div>
+                </div>
             </div>
             
-            <div id="healthCard" class="flex items-center gap-4 bg-slate-50 py-2 px-6 rounded-2xl border-l-4 transition-all duration-500">
-                <div class="text-right">
-                    <p class="text-[10px] text-slate-400 font-bold uppercase">Santé Globale</p>
-                    <p id="healthText" class="text-sm font-extrabold text-slate-700">-</p>
-                </div>
-                <div id="healthDot" class="w-4 h-4 rag-indicator bg-slate-200"></div>
+            <div class="flex items-center gap-3 bg-white p-2 pl-4 rounded-3xl shadow-card border border-slate-100">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-tight">Source unique :</span>
+                <input type="file" id="fileGlobal" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-2xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-slate-100 file:text-slate-600 cursor-pointer hover:file:bg-slate-200 transition-all">
+                <button onclick="clearMemory()" class="p-2 text-slate-300 hover:text-red-500 transition-colors" title="Vider le cache">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
             </div>
         </header>
 
-        <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-8 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <input type="file" id="fileGlobal" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white cursor-pointer">
-                <span id="statusGlobal" class="text-[10px] font-bold text-amber-500 uppercase tracking-tighter">Attente fichier</span>
-            </div>
-            <button onclick="clearMemory()" class="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase">Vider le cache</button>
-        </section>
+        <div id="mainContainer" style="opacity: 0.1; pointer-events: none;" class="space-y-8 transition-opacity duration-1000">
 
-        <div id="mainContainer" style="opacity: 0.1; pointer-events: none;" class="space-y-8 transition-opacity duration-700">
-
-            <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 
-                <div class="bg-white rounded-3xl shadow-premium p-6 flex flex-col items-center relative group border border-slate-50">
-                    <div class="w-full flex justify-between items-center mb-2">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avancement</span>
-                        <div class="relative flex items-center group/tip">
+                <div class="glass-card rounded-[2.5rem] shadow-card p-8 flex flex-col items-center relative group overflow-hidden">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                        <svg class="w-20 h-20 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path></svg>
+                    </div>
+                    <div class="w-full flex items-center gap-2 mb-6">
+                        <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Avancement Tâches</h3>
+                        <div class="relative group/info">
                             <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
-                            <div class="hidden group-hover/tip:block absolute z-50 w-64 p-3 text-[11px] bg-slate-900 text-white rounded-xl shadow-xl -right-2 top-6 leading-relaxed">
-                                <b class="text-indigo-300">Calcul :</b> (Tâches Terminées / Tâches Uniques Tattoo Total) × 100.<br>
-                                <b class="text-indigo-300">Source :</b> Onglets 'Tasks' & 'Projet'.<br>
-                                <i>Note : Les tâches "Annulées" ne sont pas comptées.</i>
+                            <div class="tooltip-box absolute z-50 w-56 p-4 text-[10px] bg-slate-900 text-white rounded-2xl shadow-2xl -left-20 top-6 font-medium leading-relaxed">
+                                <span class="text-indigo-400 font-bold">Logique :</span> Pourcentage de tâches en statut "Completed" sur le total Tattoo.<br><i>Exclut les tâches annulées.</i>
                             </div>
                         </div>
                     </div>
                     <div class="chart-container">
                         <canvas id="completionChart"></canvas>
-                        <div class="chart-center-text"><span id="completionValueText" class="text-4xl font-black text-slate-800">0%</span></div>
+                        <div class="chart-center-text">
+                            <span id="completionValueText" class="text-5xl font-black text-slate-800 tracking-tighter">0%</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-3xl shadow-premium p-6 flex flex-col items-center relative group border border-slate-50">
-                    <div class="w-full flex justify-between items-center mb-2">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Consommation Effort</span>
-                        <div class="relative flex items-center group/tip">
+                <div class="glass-card rounded-[2.5rem] shadow-card p-8 flex flex-col items-center relative group overflow-hidden">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                        <svg class="w-20 h-20 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM5.884 6.924a1 1 0 10-1.414-1.414l-.707.707a1 1 0 101.414 1.414l.707-.707zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zM12.93 5.23a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707zM14 11a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v6z"></path></svg>
+                    </div>
+                    <div class="w-full flex items-center gap-2 mb-6">
+                        <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Consommation Effort</h3>
+                        <div class="relative group/info">
                             <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
-                            <div class="hidden group-hover/tip:block absolute z-50 w-64 p-3 text-[11px] bg-slate-900 text-white rounded-xl shadow-xl -right-2 top-6 leading-relaxed">
-                                <b class="text-emerald-300">Calcul :</b> (Somme des Heures Saisies Tattoo / Somme de l'Effort Budgété Tattoo) × 100.<br>
-                                <b class="text-emerald-300">Source :</b> 'Temps Passé' vs 'Export Tâches'.
+                            <div class="tooltip-box absolute z-50 w-56 p-4 text-[10px] bg-slate-900 text-white rounded-2xl shadow-2xl -left-20 top-6 font-medium leading-relaxed">
+                                <span class="text-emerald-400 font-bold">Logique :</span> Ratio (Heures Saisies / Effort Budgété) sur Tattoo.<br><i>Si > 100%, dépassement budgétaire.</i>
                             </div>
                         </div>
                     </div>
                     <div class="chart-container">
                         <canvas id="spiGaugeChart"></canvas>
-                        <div class="chart-center-text" style="margin-top: 55px;"><span id="spiValueText" class="text-4xl font-black text-slate-800">0%</span></div>
+                        <div class="chart-center-text" style="margin-top: 55px;">
+                            <span id="spiValueText" class="text-5xl font-black text-slate-800 tracking-tighter">0%</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-3xl shadow-premium p-6 flex flex-col justify-between relative group border border-slate-50">
-                    <div class="w-full flex justify-between items-center mb-2">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Retard (Jours)</span>
-                        <div class="relative flex items-center group/tip">
+                <div class="glass-card rounded-[2.5rem] shadow-card p-8 flex flex-col justify-between relative group overflow-hidden">
+                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500 text-rose-600">
+                        <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+                    </div>
+                    <div class="w-full flex items-center gap-2 mb-2">
+                        <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Retard Planning</h3>
+                        <div class="relative group/info">
                             <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
-                            <div class="hidden group-hover/tip:block absolute z-50 w-64 p-3 text-[11px] bg-slate-900 text-white rounded-xl shadow-xl -right-2 top-6 leading-relaxed">
-                                <b class="text-rose-300">Calcul :</b> Somme des jours d'écart entre 'Aujourd'hui' et 'Date d'échéance' pour toute tâche non close échue.<br>
-                                <b class="text-rose-300">Source :</b> 'Tableau Projet'.
+                            <div class="tooltip-box absolute z-50 w-56 p-4 text-[10px] bg-slate-900 text-white rounded-2xl shadow-2xl -left-20 top-6 font-medium leading-relaxed">
+                                <span class="text-rose-400 font-bold">Logique :</span> Cumul des jours d'écarts entre aujourd'hui et les dates d'échéance dépassées.
                             </div>
                         </div>
                     </div>
-                    <div id="glissementBadge" class="py-10 text-center rounded-2xl font-black text-5xl transition-all duration-700 tracking-tighter">0</div>
-                    <p class="text-[9px] text-slate-400 text-center font-bold uppercase tracking-tighter mt-2">Cumul des retards réels</p>
+                    <div class="flex-grow flex flex-col items-center justify-center">
+                        <div id="glissementBadge" class="font-black text-6xl tracking-tighter transition-all duration-700">0</div>
+                        <span class="text-[10px] font-extrabold uppercase text-slate-300 tracking-[0.3em] mt-2">Jours Cumulés</span>
+                    </div>
                 </div>
             </section>
 
-            <section class="bg-white rounded-3xl shadow-premium border border-slate-100 p-8">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-3">👥 Charge Allouée (Jours Hommes)</h3>
-                    <div class="relative flex items-center group/tip">
-                        <svg class="w-5 h-5 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
-                        <div class="hidden group-hover/tip:block absolute z-50 w-72 p-4 text-[11px] bg-slate-900 text-white rounded-xl shadow-xl right-0 top-8 leading-relaxed">
-                            <b class="text-indigo-300">Calcul :</b> (Effort Budgété en heures / 8h).<br>
-                            <b class="text-indigo-300">Répartition :</b> L'effort est divisé par le nombre de chargés de mission sur la tâche.<br>
-                            <b class="text-indigo-300">Référence :</b> La ligne verticale indique la <span class="text-orange-400 font-bold">Capacité Annuelle Théorique (218 JH)</span>.
+            <section class="glass-card rounded-[2.5rem] shadow-card p-10">
+                <div class="flex justify-between items-center mb-10">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold text-lg italic">JH</div>
+                        <h3 class="text-lg font-extrabold text-slate-800 tracking-tight">Répartition Charge de Travail <span class="text-slate-400 font-medium">(JH)</span></h3>
+                    </div>
+                    <div class="flex items-center gap-2 group relative">
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calcul & Référence</span>
+                        <svg class="w-4 h-4 text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
+                        <div class="tooltip-box absolute z-50 w-64 p-4 text-[10px] bg-slate-900 text-white rounded-2xl shadow-2xl right-0 top-6 font-medium leading-relaxed">
+                            Effort budgété converti en Jours Hommes (1J = 8H). L'effort d'une tâche est réparti entre tous ses assignés.<br><br>
+                            <span class="text-orange-400">---</span> <b>Capacité Théorique : 218 j/an</b>
                         </div>
                     </div>
                 </div>
-                <div class="overflow-y-auto custom-scrollbar pr-2" style="max-height: 450px;">
+                <div class="overflow-y-auto custom-scrollbar pr-4" style="max-height: 400px;">
                     <div id="workloadChartWrapper" style="position: relative; width: 100%;">
                         <canvas id="workloadChart"></canvas>
                     </div>
                 </div>
             </section>
 
-            <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
-                <div class="bg-white rounded-3xl shadow-premium border-t-8 border-rose-500 p-6 flex flex-col h-[500px]">
-                    <h3 class="font-black text-rose-600 uppercase tracking-tighter text-sm mb-6 flex justify-between">🚨 Tâches en Retard <span id="countLate" class="bg-rose-100 px-3 py-0.5 rounded-full">0</span></h3>
-                    <div id="lateTasksContainer" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-2"></div>
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-10 pb-12">
+                
+                <div class="bg-white rounded-[2.5rem] shadow-card border border-rose-50 flex flex-col h-[550px] overflow-hidden">
+                    <div class="p-8 bg-gradient-to-r from-rose-500 to-rose-600 text-white flex justify-between items-center">
+                        <div>
+                            <h3 class="font-black text-lg uppercase tracking-tighter">Retards Critique</h3>
+                            <p class="text-[10px] font-bold opacity-70 uppercase tracking-widest mt-0.5">Tâches non closes et échues</p>
+                        </div>
+                        <span id="countLate" class="bg-white/20 backdrop-blur-md text-white text-sm font-black px-4 py-1.5 rounded-2xl">0</span>
+                    </div>
+                    <div id="lateTasksContainer" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-grow bg-slate-50/30">
+                        <p class="text-xs text-slate-400 italic text-center mt-20">Aucune alerte.</p>
+                    </div>
                 </div>
-                <div class="bg-white rounded-3xl shadow-premium border-t-8 border-indigo-500 p-6 flex flex-col h-[500px]">
-                    <h3 class="font-black text-indigo-600 uppercase tracking-tighter text-sm mb-6 flex justify-between">🎯 Prochaines Échéances <span id="countUpcoming" class="bg-indigo-100 px-3 py-0.5 rounded-full">0</span></h3>
-                    <div id="milestonesContainer" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-2"></div>
+
+                <div class="bg-white rounded-[2.5rem] shadow-card border border-indigo-50 flex flex-col h-[550px] overflow-hidden">
+                    <div class="p-8 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white flex justify-between items-center">
+                        <div>
+                            <h3 class="font-black text-lg uppercase tracking-tighter">Prochains Jalons</h3>
+                            <p class="text-[10px] font-bold opacity-70 uppercase tracking-widest mt-0.5">Échéances à venir (Tattoo)</p>
+                        </div>
+                        <span id="countUpcoming" class="bg-white/20 backdrop-blur-md text-white text-sm font-black px-4 py-1.5 rounded-2xl">0</span>
+                    </div>
+                    <div id="milestonesContainer" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-grow bg-slate-50/30">
+                        <p class="text-xs text-slate-400 italic text-center mt-20">Aucune donnée.</p>
+                    </div>
                 </div>
+
             </section>
         </div>
     </div>
 
     <script>
         const colors = { red: '#f43f5e', amber: '#f59e0b', green: '#10b981', brand: '#6366f1', slate: '#f1f5f9' };
-        const CAPACITE_ANNUELLE_JH = 218; // Capacité théorique standard
+        const JH_CAPACITY = 218; // Capacité théorique annuelle
         
         let rawTime = [], rawProject = []; 
         let charts = { spi: null, completion: null, workload: null };
@@ -222,37 +276,30 @@
                 const folder = String(t['Folder'] || t['Projet ou dossier'] || "").toLowerCase();
                 const st = String(t['Status'] || t['Statut'] || "").toLowerCase();
                 
-                // FILTRE TATTOO EXCLUSIF
                 const isTattoo = title.toLowerCase().includes('tattoo') || folder.includes('tattoo');
                 if(!isTattoo || !title || processedNames.has(title)) return;
-
-                // FILTRE ANNULÉS
-                if(['annulé', 'cancelled', 'canceled'].some(s => st.includes(s))) return;
                 
+                // Ignorer les annulés pour toutes les stats
+                if(['annulé', 'cancelled', 'canceled'].some(s => st.includes(s))) return;
                 processedNames.add(title);
 
-                // REPARTITION CHARGE (JH)
+                // Effort & répartiion JH
                 let effortHours = convertTimeToDecimal(t['Effort'] || t['Effort prévu']);
                 totalEffort += effortHours;
-
                 let rawAss = String(t['Assigned To'] || t['Chargé de mission'] || "Non assigné");
                 let assArr = rawAss.split(',').map(a => a.split('<')[0].trim()).filter(a => a);
-                
                 let jhPerPerson = (effortHours / 8) / (assArr.length || 1);
                 assArr.forEach(a => { workloadMap[a] = (workloadMap[a] || 0) + jhPerPerson; });
 
-                // KPI AVANCEMENT
                 totalT++;
                 const isDone = ['terminé', 'done', 'completed', 'complete', 'achevée'].some(s => st.includes(s));
                 if(isDone) done++;
 
-                // JALONS & RETARDS
                 const due = parseExcelDate(t['End Date'] || t['Date d’échéance']);
                 if(due && !isDone) {
                     let idVal = t['ID'] || t['Key'];
                     let link = t['Permalink'] || t['Lien'] || t['URL'] || (idVal ? `https://www.wrike.com/open.htm?id=${idVal}` : "#");
                     const taskObj = { title, date: due, assignee: assArr.join(', '), link, dateStr: due.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) };
-                    
                     if(due < today) {
                         slip += Math.ceil(Math.abs(today - due) / 86400000);
                         lateTasks.push(taskObj);
@@ -262,12 +309,11 @@
                 }
             });
 
-            // TEMPS PASSE (uniquement Tattoo)
             rawTime.forEach(r => {
                 const tRef = String(r['Nom de la tâche'] || r['Nom'] || "").toLowerCase();
                 const pRef = String(r['Projet ou dossier'] || "").toLowerCase();
                 if(tRef.includes('tattoo') || pRef.includes('tattoo')) {
-                    totalTime += convertTimeToDecimal(r['Temps passé'] || r['Time spent']);
+                    totalTime += convertTimeToDecimal(r['Temps passé'] || r['Time spent'] || r['Time Spent (Hours)']);
                 }
             });
 
@@ -277,89 +323,85 @@
         function updateUI(comp, cons, slip, lates, upcomings, wl) {
             const hText = document.getElementById('healthText');
             const hDot = document.getElementById('healthDot');
-            const hCard = document.getElementById('healthCard');
-
+            
             if (cons > 110 || slip > 45) { 
-                hText.innerText = "Alerte Critique"; hDot.className = "w-4 h-4 rag-indicator rag-red"; hCard.style.borderColor = colors.red;
-            } else if (cons > 90 || slip > 15) {
-                hText.innerText = "Suivi Attentionné"; hDot.className = "w-4 h-4 rag-indicator rag-amber"; hCard.style.borderColor = colors.amber;
+                hText.innerText = "Alerte Retard"; hDot.className = "rag-dot rag-red";
+            } else if (cons > 90 || slip > 0) {
+                hText.innerText = "Suivi Requis"; hDot.className = "rag-dot rag-amber";
             } else {
-                hText.innerText = "Sain / Nominal"; hDot.className = "w-4 h-4 rag-indicator rag-green"; hCard.style.borderColor = colors.green;
+                hText.innerText = "Sous Contrôle"; hDot.className = "rag-dot rag-green";
             }
 
             document.getElementById('completionValueText').innerText = Math.round(comp) + "%";
             document.getElementById('spiValueText').innerText = Math.round(cons) + "%";
-            
-            const b = document.getElementById('glissementBadge');
-            b.innerText = slip;
-            b.className = "py-10 text-center rounded-2xl font-black text-5xl " + (slip > 30 ? "text-rose-600" : slip > 0 ? "text-amber-600" : "text-emerald-600");
+            const badge = document.getElementById('glissementBadge');
+            badge.innerText = slip;
+            badge.className = "font-black text-6xl tracking-tighter " + (slip > 30 ? "text-rose-600" : slip > 0 ? "text-amber-500" : "text-emerald-500");
 
-            const renderL = (id, countId, list, color) => {
+            const renderL = (id, countId, list, type) => {
                 document.getElementById(countId).innerText = list.length;
                 const c = document.getElementById(id);
-                if(!list.length) { c.innerHTML = "<p class='text-xs text-slate-400 italic text-center mt-20'>Aucun élément.</p>"; return; }
+                if(!list.length) { c.innerHTML = "<p class='text-xs text-slate-400 italic text-center mt-20 font-medium'>Tout est à jour.</p>"; return; }
                 list.sort((a,b) => a.date - b.date);
                 c.innerHTML = list.map(t => `
-                    <div class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all group">
+                    <div class="p-5 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group duration-300">
                         <div class="flex justify-between items-start gap-4">
-                            <a href="${t.link}" target="_blank" class="text-xs font-bold text-slate-700 group-hover:text-indigo-600 leading-tight flex-1 underline decoration-transparent hover:decoration-indigo-200 transition-all">${t.title} ↗</a>
-                            <span class="text-[9px] font-black px-2 py-1 rounded-lg border ${color==='red'?'bg-rose-50 text-rose-600 border-rose-100':'bg-indigo-50 text-indigo-600 border-indigo-100'} whitespace-nowrap">${t.dateStr}</span>
+                            <a href="${t.link}" target="_blank" class="text-xs font-bold text-slate-700 group-hover:text-indigo-600 leading-snug flex-1 flex items-center gap-2">
+                                ${t.title}
+                                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            </a>
+                            <span class="text-[9px] font-black px-3 py-1 rounded-xl border ${type==='red'?'bg-rose-50 text-rose-600 border-rose-100':'bg-indigo-50 text-indigo-600 border-indigo-100'} whitespace-nowrap shadow-sm">${t.dateStr}</span>
                         </div>
-                        <div class="text-[10px] text-slate-400 mt-2 font-semibold">👤 ${t.assignee}</div>
+                        <div class="flex items-center text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-4">
+                            <span class="w-1.5 h-1.5 bg-slate-200 rounded-full mr-2"></span> ${t.assignee}
+                        </div>
                     </div>
                 `).join('');
             };
             renderL('lateTasksContainer', 'countLate', lates, 'red');
             renderL('milestonesContainer', 'countUpcoming', upcomings, 'indigo');
 
-            // WORKLOAD CHART
             const labels = Object.keys(wl).sort((a,b) => wl[b] - wl[a]);
             const wrapper = document.getElementById('workloadChartWrapper');
-            wrapper.style.height = Math.max(250, labels.length * 40) + "px";
+            wrapper.style.height = Math.max(200, labels.length * 40) + "px";
 
             if(charts.workload) charts.workload.destroy();
             charts.workload = new Chart(document.getElementById('workloadChart').getContext('2d'), {
                 type: 'bar',
-                data: { labels, datasets: [{ data: labels.map(l => wl[l].toFixed(1)), backgroundColor: colors.brand, borderRadius: 8, barThickness: 18 }] },
+                data: { labels, datasets: [{ data: labels.map(l => wl[l].toFixed(1)), backgroundColor: '#6366f1', borderRadius: 20, barThickness: 12 }] },
                 options: { 
                     indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
                     plugins: { 
                         legend: { display: false },
-                        tooltip: { callbacks: { label: (ctx) => ` Charge : ${ctx.parsed.x} Jours Hommes` } }
+                        tooltip: { backgroundColor: '#0f172a', padding: 12, bodyFont: { size: 11, weight: 'bold' }, callbacks: { label: (ctx) => ` Charge : ${ctx.parsed.x} Jours Hommes` } }
                     },
                     scales: { 
-                        x: { 
-                            grid: { color: '#f1f5f9' }, 
-                            title: { display: true, text: 'JH (Référence 218 j/an)', font: { size: 10, weight: 'bold' } },
-                            suggestedMax: 250
-                        },
-                        y: { ticks: { font: { size: 10, weight: 'bold' } }, grid: { display: false } }
+                        x: { grid: { color: '#f8fafc' }, ticks: { font: { weight: '800', size: 10 } }, suggestedMax: 250 },
+                        y: { ticks: { font: { weight: '700', size: 11 }, color: '#64748b' }, grid: { display: false } }
                     }
                 },
-                // Plugin pour dessiner la ligne de capacité
                 plugins: [{
                     afterDraw: (chart) => {
                         const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
-                        const xPos = x.getPixelForValue(CAPACITE_ANNUELLE_JH);
+                        const xPos = x.getPixelForValue(JH_CAPACITY);
                         if (xPos >= left && xPos <= right) {
-                            ctx.save(); ctx.beginPath(); ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeStyle = '#f97316';
+                            ctx.save(); ctx.beginPath(); ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.strokeStyle = '#fb923c';
                             ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom); ctx.stroke(); ctx.restore();
-                            ctx.fillStyle = '#f97316'; ctx.font = 'bold 9px sans-serif'; ctx.fillText('CAPACITÉ ANNUELLE (218j)', xPos + 5, top + 10);
+                            ctx.fillStyle = '#fb923c'; ctx.font = 'black 10px Plus Jakarta Sans'; ctx.fillText('CAPACITÉ 218JH', xPos + 8, top + 15);
                         }
                     }
                 }]
             });
 
-            // GAUGE REVISÉES
             const drawD = (id, val, max, col) => {
                 if(charts[id]) charts[id].destroy();
                 charts[id] = new Chart(document.getElementById(id+'Chart').getContext('2d'), {
                     type: 'doughnut',
-                    data: { datasets: [{ data: [val, Math.max(0, max-val)], backgroundColor: [col, '#F1F5F9'], borderWidth: 0, borderRadius: 15 }] },
-                    options: { circumference: id==='spi'?180:360, rotation: id==='spi'?-90:0, cutout: '82%', plugins: { tooltip: { enabled: false } } }
+                    data: { datasets: [{ data: [val, Math.max(0, max-val)], backgroundColor: [col, '#f8fafc'], borderWidth: 0, borderRadius: 30 }] },
+                    options: { circumference: id==='spi'?180:360, rotation: id==='spi'?-90:0, cutout: '85%', plugins: { tooltip: { enabled: false } }, animation: { animateScale: true } }
                 });
             };
-            drawD('completion', Math.min(comp, 100), 100, colors.brand);
+            drawD('completion', Math.min(comp, 100), 100, '#6366f1');
             drawD('spi', Math.min(cons, 120), 120, cons > 110 ? colors.red : cons > 90 ? colors.amber : colors.green);
         }
     </script>
