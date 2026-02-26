@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard COPIL - TATTOO</title>
+    <title>Dashboard COPIL - TATTOO (Calculs Révisés)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -15,33 +15,23 @@
             theme: {
                 extend: {
                     colors: { brand: { 50: '#f0fdfa', 500: '#14b8a6', 600: '#0d9488' } },
-                    boxShadow: { 'premium': '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)' }
+                    boxShadow: { 'premium': '0 10px 25px -5px rgba(0, 0, 0, 0.05)' }
                 }
             }
         }
     </script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
-
         .chart-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; align-items: center; }
         .chart-center-text { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
-        
-        @keyframes pulse-rag {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 currentcolor; }
-            70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(0,0,0,0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0,0,0,0); }
-        }
         .rag-indicator { border-radius: 50%; display: inline-block; border: 3px solid white; }
         .rag-green { background-color: #10b981; color: rgba(16, 185, 129, 0.4); animation: pulse-rag 2s infinite; }
         .rag-amber { background-color: #f59e0b; color: rgba(245, 158, 11, 0.4); animation: pulse-rag 2s infinite; }
         .rag-red { background-color: #ef4444; color: rgba(239, 68, 68, 0.4); animation: pulse-rag 2s infinite; }
-
-        .tooltip-icon:hover + .tooltip-text { display: block; }
+        @keyframes pulse-rag { 0% { transform: scale(0.95); } 70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(0,0,0,0); } 100% { transform: scale(0.95); } }
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
@@ -49,93 +39,96 @@
 
     <div class="max-w-[1250px] mx-auto">
         
-        <header class="mb-8 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
             <div>
-                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Projet <span class="text-indigo-600">TATTOO</span></h1>
-                <p class="text-slate-500 font-medium flex items-center gap-2">
-                    <span class="w-2 h-2 bg-indigo-400 rounded-full"></span>
-                    Analyse des performances COPIL
-                </p>
+                <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">COPIL <span class="text-indigo-600">TATTOO</span></h1>
+                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Données consolidées au 26 Fév. 2026</p>
             </div>
             
-            <div id="healthCard" class="flex items-center bg-white py-3 px-6 rounded-2xl shadow-premium border-l-8 transition-all duration-500">
-                <div class="mr-6">
-                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Santé du Projet</p>
-                    <p id="healthText" class="text-xl font-extrabold text-slate-700">Chargement...</p>
+            <div id="healthCard" class="flex items-center gap-4 bg-slate-50 py-2 px-6 rounded-2xl border-l-4 transition-all duration-500">
+                <div class="text-right">
+                    <p class="text-[10px] text-slate-400 font-bold uppercase">Santé Globale</p>
+                    <p id="healthText" class="text-sm font-extrabold text-slate-700">-</p>
                 </div>
-                <div id="healthDot" class="w-5 h-5 rag-indicator bg-slate-200"></div>
+                <div id="healthDot" class="w-4 h-4 rag-indicator bg-slate-200"></div>
             </div>
         </header>
 
-        <section class="bg-white p-6 rounded-3xl shadow-premium border border-slate-100 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 transition-all hover:shadow-lg">
-            <div class="flex-1 w-full">
-                <div class="flex items-center gap-2 mb-3">
-                    <div class="bg-indigo-100 p-1.5 rounded-lg text-indigo-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    </div>
-                    <label class="text-sm font-bold text-slate-700">Importation des données (.xlsx)</label>
-                </div>
-                <div class="flex items-center gap-4">
-                    <input type="file" id="fileGlobal" accept=".xlsx, .xls, .csv" class="block w-full max-w-sm text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer transition-all">
-                    <span id="statusGlobal" class="text-xs font-bold text-amber-500 px-3 py-1 bg-amber-50 rounded-full">Prêt pour import</span>
-                </div>
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-8 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <input type="file" id="fileGlobal" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white cursor-pointer">
+                <span id="statusGlobal" class="text-[10px] font-bold text-amber-500 uppercase tracking-tighter">Attente fichier</span>
             </div>
-            <button onclick="clearMemory()" class="group text-xs text-slate-400 hover:text-red-500 font-bold flex items-center gap-2 transition-colors">
-                <svg class="w-4 h-4 group-hover:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                Réinitialiser la mémoire
-            </button>
+            <button onclick="clearMemory()" class="text-[10px] text-slate-400 hover:text-red-500 font-bold uppercase">Vider le cache</button>
         </section>
 
-        <div id="mainContainer" style="opacity: 0.1; pointer-events: none; transition: opacity 0.6s;" class="space-y-8">
+        <div id="mainContainer" style="opacity: 0.1; pointer-events: none;" class="space-y-8 transition-opacity duration-700">
 
             <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                <div class="bg-white rounded-3xl shadow-premium border-t-4 border-indigo-500 p-6 flex flex-col items-center relative overflow-hidden group">
-                    <div class="w-full flex justify-between items-center mb-4">
-                        <span class="text-[11px] font-extrabold text-indigo-500 uppercase tracking-wider">Avancement Global</span>
-                        <div class="relative flex items-center">
-                            <svg class="w-5 h-5 text-slate-200 cursor-help tooltip-icon hover:text-indigo-400 transition-colors" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
-                            <div class="tooltip-text hidden absolute z-50 w-56 p-3 text-xs bg-slate-900 text-white rounded-xl shadow-xl -left-56 top-6 font-normal">Calculé sur les tâches clôturées uniquement.</div>
+                <div class="bg-white rounded-3xl shadow-premium p-6 flex flex-col items-center relative group border border-slate-50">
+                    <div class="w-full flex justify-between items-center mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Avancement</span>
+                        <div class="relative flex items-center group/tip">
+                            <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
+                            <div class="hidden group-hover/tip:block absolute z-50 w-64 p-3 text-[11px] bg-slate-900 text-white rounded-xl shadow-xl -right-2 top-6 leading-relaxed">
+                                <b class="text-indigo-300">Calcul :</b> (Tâches Terminées / Tâches Uniques Tattoo Total) × 100.<br>
+                                <b class="text-indigo-300">Source :</b> Onglets 'Tasks' & 'Projet'.<br>
+                                <i>Note : Les tâches "Annulées" ne sont pas comptées.</i>
+                            </div>
                         </div>
                     </div>
                     <div class="chart-container">
                         <canvas id="completionChart"></canvas>
-                        <div class="chart-center-text">
-                            <span id="completionValueText" class="text-5xl font-extrabold text-slate-900 tracking-tighter">0%</span>
-                        </div>
+                        <div class="chart-center-text"><span id="completionValueText" class="text-4xl font-black text-slate-800">0%</span></div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-3xl shadow-premium border-t-4 border-emerald-500 p-6 flex flex-col items-center relative group">
-                    <div class="w-full flex justify-between items-center mb-4">
-                        <span class="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider text-center">Consommation Effort</span>
-                        <svg class="w-5 h-5 text-slate-200 cursor-help tooltip-icon hover:text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                <div class="bg-white rounded-3xl shadow-premium p-6 flex flex-col items-center relative group border border-slate-50">
+                    <div class="w-full flex justify-between items-center mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Consommation Effort</span>
+                        <div class="relative flex items-center group/tip">
+                            <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
+                            <div class="hidden group-hover/tip:block absolute z-50 w-64 p-3 text-[11px] bg-slate-900 text-white rounded-xl shadow-xl -right-2 top-6 leading-relaxed">
+                                <b class="text-emerald-300">Calcul :</b> (Somme des Heures Saisies Tattoo / Somme de l'Effort Budgété Tattoo) × 100.<br>
+                                <b class="text-emerald-300">Source :</b> 'Temps Passé' vs 'Export Tâches'.
+                            </div>
+                        </div>
                     </div>
                     <div class="chart-container">
                         <canvas id="spiGaugeChart"></canvas>
-                        <div class="chart-center-text" style="margin-top: 55px;">
-                            <span id="spiValueText" class="text-5xl font-extrabold text-slate-900 tracking-tighter">0%</span>
-                        </div>
+                        <div class="chart-center-text" style="margin-top: 55px;"><span id="spiValueText" class="text-4xl font-black text-slate-800">0%</span></div>
                     </div>
                 </div>
 
-                <div class="bg-white rounded-3xl shadow-premium border-t-4 border-rose-500 p-6 flex flex-col justify-between relative group">
-                    <div class="w-full flex justify-between items-center mb-4">
-                        <span class="text-[11px] font-extrabold text-rose-500 uppercase tracking-wider">Dérive Planning</span>
-                        <svg class="w-5 h-5 text-slate-200 cursor-help tooltip-icon hover:text-rose-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                <div class="bg-white rounded-3xl shadow-premium p-6 flex flex-col justify-between relative group border border-slate-50">
+                    <div class="w-full flex justify-between items-center mb-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Retard (Jours)</span>
+                        <div class="relative flex items-center group/tip">
+                            <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
+                            <div class="hidden group-hover/tip:block absolute z-50 w-64 p-3 text-[11px] bg-slate-900 text-white rounded-xl shadow-xl -right-2 top-6 leading-relaxed">
+                                <b class="text-rose-300">Calcul :</b> Somme des jours d'écart entre 'Aujourd'hui' et 'Date d'échéance' pour toute tâche non close échue.<br>
+                                <b class="text-rose-300">Source :</b> 'Tableau Projet'.
+                            </div>
+                        </div>
                     </div>
-                    <div id="glissementBadge" class="py-10 text-center rounded-2xl font-black text-4xl w-full flex items-center justify-center transition-all duration-700">
-                        0 j.
-                    </div>
-                    <p class="text-[10px] text-slate-400 text-center font-bold uppercase mt-2">Jours de retard cumulés</p>
+                    <div id="glissementBadge" class="py-10 text-center rounded-2xl font-black text-5xl transition-all duration-700 tracking-tighter">0</div>
+                    <p class="text-[9px] text-slate-400 text-center font-bold uppercase tracking-tighter mt-2">Cumul des retards réels</p>
                 </div>
             </section>
 
             <section class="bg-white rounded-3xl shadow-premium border border-slate-100 p-8">
-                <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-3">
-                    <span class="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center text-sm">👤</span>
-                    Charge Allouée par Mission (Jours)
-                </h3>
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-3">👥 Charge Allouée (Jours Hommes)</h3>
+                    <div class="relative flex items-center group/tip">
+                        <svg class="w-5 h-5 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
+                        <div class="hidden group-hover/tip:block absolute z-50 w-72 p-4 text-[11px] bg-slate-900 text-white rounded-xl shadow-xl right-0 top-8 leading-relaxed">
+                            <b class="text-indigo-300">Calcul :</b> (Effort Budgété en heures / 8h).<br>
+                            <b class="text-indigo-300">Répartition :</b> L'effort est divisé par le nombre de chargés de mission sur la tâche.<br>
+                            <b class="text-indigo-300">Référence :</b> La ligne verticale indique la <span class="text-orange-400 font-bold">Capacité Annuelle Théorique (218 JH)</span>.
+                        </div>
+                    </div>
+                </div>
                 <div class="overflow-y-auto custom-scrollbar pr-2" style="max-height: 450px;">
                     <div id="workloadChartWrapper" style="position: relative; width: 100%;">
                         <canvas id="workloadChart"></canvas>
@@ -144,37 +137,22 @@
             </section>
 
             <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-12">
-                
-                <div class="bg-white rounded-3xl shadow-premium border-b-8 border-rose-500 p-6 flex flex-col h-[500px]">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-black text-rose-600 uppercase tracking-tighter text-lg flex items-center gap-2">
-                            🚨 Retards Critique
-                            <span id="countLate" class="bg-rose-100 text-rose-600 text-xs px-2.5 py-0.5 rounded-full">0</span>
-                        </h3>
-                    </div>
-                    <div id="lateTasksContainer" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-3">
-                        <p class="text-sm text-slate-400 italic text-center mt-20 font-medium">Aucun retard détecté.</p>
-                    </div>
+                <div class="bg-white rounded-3xl shadow-premium border-t-8 border-rose-500 p-6 flex flex-col h-[500px]">
+                    <h3 class="font-black text-rose-600 uppercase tracking-tighter text-sm mb-6 flex justify-between">🚨 Tâches en Retard <span id="countLate" class="bg-rose-100 px-3 py-0.5 rounded-full">0</span></h3>
+                    <div id="lateTasksContainer" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-2"></div>
                 </div>
-
-                <div class="bg-white rounded-3xl shadow-premium border-b-8 border-indigo-500 p-6 flex flex-col h-[500px]">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-black text-indigo-600 uppercase tracking-tighter text-lg flex items-center gap-2">
-                            🎯 Prochains Jalons
-                            <span id="countUpcoming" class="bg-indigo-100 text-indigo-600 text-xs px-2.5 py-0.5 rounded-full">0</span>
-                        </h3>
-                    </div>
-                    <div id="milestonesContainer" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-3">
-                        <p class="text-sm text-slate-400 italic text-center mt-20 font-medium">Aucun jalon futur.</p>
-                    </div>
+                <div class="bg-white rounded-3xl shadow-premium border-t-8 border-indigo-500 p-6 flex flex-col h-[500px]">
+                    <h3 class="font-black text-indigo-600 uppercase tracking-tighter text-sm mb-6 flex justify-between">🎯 Prochaines Échéances <span id="countUpcoming" class="bg-indigo-100 px-3 py-0.5 rounded-full">0</span></h3>
+                    <div id="milestonesContainer" class="space-y-4 overflow-y-auto custom-scrollbar flex-grow pr-2"></div>
                 </div>
-
             </section>
         </div>
     </div>
 
     <script>
-        const colors = { red: '#f43f5e', amber: '#f59e0b', green: '#10b981', brand: '#4f46e5', slate: '#f1f5f9' };
+        const colors = { red: '#f43f5e', amber: '#f59e0b', green: '#10b981', brand: '#6366f1', slate: '#f1f5f9' };
+        const CAPACITE_ANNUELLE_JH = 218; // Capacité théorique standard
+        
         let rawTime = [], rawProject = []; 
         let charts = { spi: null, completion: null, workload: null };
 
@@ -236,40 +214,45 @@
             document.getElementById('mainContainer').style.pointerEvents = 'auto';
 
             let totalEffort = 0, totalTime = 0, done = 0, totalT = 0, slip = 0;
-            let lateTasks = [], upcomingTasks = [], workload = {}, processed = new Set();
+            let lateTasks = [], upcomingTasks = [], workloadMap = {}, processedNames = new Set();
             const today = new Date(); today.setHours(0,0,0,0);
 
             rawProject.forEach(t => {
                 const title = String(t['Title'] || t['Nom'] || "").trim();
                 const folder = String(t['Folder'] || t['Projet ou dossier'] || "").toLowerCase();
-                const parent = String(t['Parent task'] || "").toLowerCase();
                 const st = String(t['Status'] || t['Statut'] || "").toLowerCase();
-
+                
                 // FILTRE TATTOO EXCLUSIF
-                const isTattoo = title.toLowerCase().includes('tattoo') || folder.includes('tattoo') || parent.includes('tattoo');
-                if(!isTattoo || !title || processed.has(title)) return;
+                const isTattoo = title.toLowerCase().includes('tattoo') || folder.includes('tattoo');
+                if(!isTattoo || !title || processedNames.has(title)) return;
 
-                // EXCLURE LES ANNULÉS
-                const isCancelled = ['annulé', 'cancelled', 'canceled'].some(s => st.includes(s));
-                if(isCancelled) return;
+                // FILTRE ANNULÉS
+                if(['annulé', 'cancelled', 'canceled'].some(s => st.includes(s))) return;
+                
+                processedNames.add(title);
 
-                processed.add(title);
+                // REPARTITION CHARGE (JH)
+                let effortHours = convertTimeToDecimal(t['Effort'] || t['Effort prévu']);
+                totalEffort += effortHours;
 
-                // Calculations
-                let hrs = convertTimeToDecimal(t['Effort'] || t['Effort prévu']);
-                totalEffort += hrs;
                 let rawAss = String(t['Assigned To'] || t['Chargé de mission'] || "Non assigné");
                 let assArr = rawAss.split(',').map(a => a.split('<')[0].trim()).filter(a => a);
-                assArr.forEach(a => { workload[a] = (workload[a] || 0) + (hrs/8/assArr.length); });
+                
+                let jhPerPerson = (effortHours / 8) / (assArr.length || 1);
+                assArr.forEach(a => { workloadMap[a] = (workloadMap[a] || 0) + jhPerPerson; });
 
+                // KPI AVANCEMENT
                 totalT++;
                 const isDone = ['terminé', 'done', 'completed', 'complete', 'achevée'].some(s => st.includes(s));
                 if(isDone) done++;
 
+                // JALONS & RETARDS
                 const due = parseExcelDate(t['End Date'] || t['Date d’échéance']);
                 if(due && !isDone) {
-                    let link = t['Permalink'] || t['Lien'] || t['URL'] || (t['ID'] ? `https://www.wrike.com/open.htm?id=${t['ID']}` : t['Key'] ? `https://www.wrike.com/open.htm?id=${t['Key']}` : "#");
+                    let idVal = t['ID'] || t['Key'];
+                    let link = t['Permalink'] || t['Lien'] || t['URL'] || (idVal ? `https://www.wrike.com/open.htm?id=${idVal}` : "#");
                     const taskObj = { title, date: due, assignee: assArr.join(', '), link, dateStr: due.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) };
+                    
                     if(due < today) {
                         slip += Math.ceil(Math.abs(today - due) / 86400000);
                         lateTasks.push(taskObj);
@@ -279,85 +262,104 @@
                 }
             });
 
+            // TEMPS PASSE (uniquement Tattoo)
             rawTime.forEach(r => {
-                const taskRef = String(r['Nom de la tâche'] || r['Nom'] || "").toLowerCase();
-                const projRef = String(r['Projet ou dossier'] || "").toLowerCase();
-                if(taskRef.includes('tattoo') || projRef.includes('tattoo')) {
-                    totalTime += convertTimeToDecimal(r['Temps passé'] || r['Time spent'] || r['Time Spent (Hours)']);
+                const tRef = String(r['Nom de la tâche'] || r['Nom'] || "").toLowerCase();
+                const pRef = String(r['Projet ou dossier'] || "").toLowerCase();
+                if(tRef.includes('tattoo') || pRef.includes('tattoo')) {
+                    totalTime += convertTimeToDecimal(r['Temps passé'] || r['Time spent']);
                 }
             });
 
-            updateUI(totalT > 0 ? (done/totalT)*100 : 0, totalEffort > 0 ? (totalTime/totalEffort)*100 : 0, slip, lateTasks, upcomingTasks, workload);
+            updateUI(totalT > 0 ? (done/totalT)*100 : 0, totalEffort > 0 ? (totalTime/totalEffort)*100 : 0, slip, lateTasks, upcomingTasks, workloadMap);
         }
 
         function updateUI(comp, cons, slip, lates, upcomings, wl) {
-            const hCard = document.getElementById('healthCard');
             const hText = document.getElementById('healthText');
             const hDot = document.getElementById('healthDot');
-            
-            if (cons > 110 || slip > 30) {
-                hText.innerText = "Alerte Retard"; hCard.style.borderColor = colors.red; hDot.className = "w-5 h-5 rag-indicator rag-red";
-            } else if (cons > 90 || slip > 0) {
-                hText.innerText = "Suivi Requis"; hCard.style.borderColor = colors.amber; hDot.className = "w-5 h-5 rag-indicator rag-amber";
+            const hCard = document.getElementById('healthCard');
+
+            if (cons > 110 || slip > 45) { 
+                hText.innerText = "Alerte Critique"; hDot.className = "w-4 h-4 rag-indicator rag-red"; hCard.style.borderColor = colors.red;
+            } else if (cons > 90 || slip > 15) {
+                hText.innerText = "Suivi Attentionné"; hDot.className = "w-4 h-4 rag-indicator rag-amber"; hCard.style.borderColor = colors.amber;
             } else {
-                hText.innerText = "Sous Contrôle"; hCard.style.borderColor = colors.green; hDot.className = "w-5 h-5 rag-indicator rag-green";
+                hText.innerText = "Sain / Nominal"; hDot.className = "w-4 h-4 rag-indicator rag-green"; hCard.style.borderColor = colors.green;
             }
 
             document.getElementById('completionValueText').innerText = Math.round(comp) + "%";
             document.getElementById('spiValueText').innerText = Math.round(cons) + "%";
             
-            const badge = document.getElementById('glissementBadge');
-            badge.innerText = slip + " jours";
-            badge.className = "py-10 text-center rounded-2xl font-black text-4xl w-full flex items-center justify-center " + (slip > 30 ? "text-rose-600 bg-rose-50" : slip > 0 ? "text-amber-600 bg-amber-50" : "text-emerald-600 bg-emerald-50");
+            const b = document.getElementById('glissementBadge');
+            b.innerText = slip;
+            b.className = "py-10 text-center rounded-2xl font-black text-5xl " + (slip > 30 ? "text-rose-600" : slip > 0 ? "text-amber-600" : "text-emerald-600");
 
-            const renderL = (contId, countId, list, col) => {
-                const c = document.getElementById(contId);
+            const renderL = (id, countId, list, color) => {
                 document.getElementById(countId).innerText = list.length;
-                if(!list.length) { c.innerHTML = "<p class='text-xs text-slate-400 italic mt-10 text-center'>Aucune tâche.</p>"; return; }
+                const c = document.getElementById(id);
+                if(!list.length) { c.innerHTML = "<p class='text-xs text-slate-400 italic text-center mt-20'>Aucun élément.</p>"; return; }
                 list.sort((a,b) => a.date - b.date);
                 c.innerHTML = list.map(t => `
-                    <div class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md hover:border-brand-200 transition-all group">
+                    <div class="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all group">
                         <div class="flex justify-between items-start gap-4">
-                            <a href="${t.link}" target="_blank" class="text-sm font-bold text-slate-800 group-hover:text-indigo-600 leading-tight flex-1">
-                                ${t.title} <span class="opacity-0 group-hover:opacity-100 transition-opacity">↗</span>
-                            </a>
-                            <span class="text-[10px] font-bold px-2.5 py-1 rounded-lg border ${col === 'red' ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'} whitespace-nowrap">
-                                ${t.dateStr}
-                            </span>
+                            <a href="${t.link}" target="_blank" class="text-xs font-bold text-slate-700 group-hover:text-indigo-600 leading-tight flex-1 underline decoration-transparent hover:decoration-indigo-200 transition-all">${t.title} ↗</a>
+                            <span class="text-[9px] font-black px-2 py-1 rounded-lg border ${color==='red'?'bg-rose-50 text-rose-600 border-rose-100':'bg-indigo-50 text-indigo-600 border-indigo-100'} whitespace-nowrap">${t.dateStr}</span>
                         </div>
-                        <div class="flex items-center text-[10px] text-slate-400 font-bold uppercase tracking-wide mt-3">
-                            <span class="mr-2">👤</span> ${t.assignee}
-                        </div>
+                        <div class="text-[10px] text-slate-400 mt-2 font-semibold">👤 ${t.assignee}</div>
                     </div>
                 `).join('');
             };
             renderL('lateTasksContainer', 'countLate', lates, 'red');
-            renderL('milestonesContainer', 'countUpcoming', upcomings, 'brand');
+            renderL('milestonesContainer', 'countUpcoming', upcomings, 'indigo');
 
             // WORKLOAD CHART
             const labels = Object.keys(wl).sort((a,b) => wl[b] - wl[a]);
             const wrapper = document.getElementById('workloadChartWrapper');
-            wrapper.style.height = Math.max(200, labels.length * 40) + "px";
+            wrapper.style.height = Math.max(250, labels.length * 40) + "px";
 
             if(charts.workload) charts.workload.destroy();
             charts.workload = new Chart(document.getElementById('workloadChart').getContext('2d'), {
                 type: 'bar',
-                data: { labels, datasets: [{ data: labels.map(l => wl[l].toFixed(1)), backgroundColor: '#6366f1', borderRadius: 10, barThickness: 20 }] },
-                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
-                    plugins: { legend: {display:false} },
-                    scales: { x: { grid:{display:false}, ticks:{font:{weight:'bold'}}, title:{display:true, text:'Jours de travail'} }, y: { ticks: { autoSkip:false, font:{size:11, weight:'bold'} }, grid:{display:false} } }
-                }
+                data: { labels, datasets: [{ data: labels.map(l => wl[l].toFixed(1)), backgroundColor: colors.brand, borderRadius: 8, barThickness: 18 }] },
+                options: { 
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (ctx) => ` Charge : ${ctx.parsed.x} Jours Hommes` } }
+                    },
+                    scales: { 
+                        x: { 
+                            grid: { color: '#f1f5f9' }, 
+                            title: { display: true, text: 'JH (Référence 218 j/an)', font: { size: 10, weight: 'bold' } },
+                            suggestedMax: 250
+                        },
+                        y: { ticks: { font: { size: 10, weight: 'bold' } }, grid: { display: false } }
+                    }
+                },
+                // Plugin pour dessiner la ligne de capacité
+                plugins: [{
+                    afterDraw: (chart) => {
+                        const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
+                        const xPos = x.getPixelForValue(CAPACITE_ANNUELLE_JH);
+                        if (xPos >= left && xPos <= right) {
+                            ctx.save(); ctx.beginPath(); ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeStyle = '#f97316';
+                            ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom); ctx.stroke(); ctx.restore();
+                            ctx.fillStyle = '#f97316'; ctx.font = 'bold 9px sans-serif'; ctx.fillText('CAPACITÉ ANNUELLE (218j)', xPos + 5, top + 10);
+                        }
+                    }
+                }]
             });
 
+            // GAUGE REVISÉES
             const drawD = (id, val, max, col) => {
                 if(charts[id]) charts[id].destroy();
                 charts[id] = new Chart(document.getElementById(id+'Chart').getContext('2d'), {
                     type: 'doughnut',
-                    data: { datasets: [{ data: [val, Math.max(0, max-val)], backgroundColor: [col, '#F1F5F9'], borderWidth:0, borderRadius:15 }] },
-                    options: { circumference: id === 'spi' ? 180 : 360, rotation: id === 'spi' ? -90 : 0, cutout:'82%', plugins:{tooltip:{enabled:false}} }
+                    data: { datasets: [{ data: [val, Math.max(0, max-val)], backgroundColor: [col, '#F1F5F9'], borderWidth: 0, borderRadius: 15 }] },
+                    options: { circumference: id==='spi'?180:360, rotation: id==='spi'?-90:0, cutout: '82%', plugins: { tooltip: { enabled: false } } }
                 });
             };
-            drawD('completion', Math.min(comp, 100), 100, '#6366f1');
+            drawD('completion', Math.min(comp, 100), 100, colors.brand);
             drawD('spi', Math.min(cons, 120), 120, cons > 110 ? colors.red : cons > 90 ? colors.amber : colors.green);
         }
     </script>
