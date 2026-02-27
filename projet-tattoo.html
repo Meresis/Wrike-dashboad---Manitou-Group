@@ -3,407 +3,624 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TATTOO | Executive Dashboard</title>
+    <title>COPIL Dashboard - Projet TATTOO</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
-
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: { 
-                        brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
-                        slate: { 850: '#1e293b' }
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
                     },
-                    borderRadius: { '4xl': '2rem' },
-                    boxShadow: { 
-                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
-                        'card': '0 20px 25px -5px rgba(0, 0, 0, 0.03), 0 10px 10px -5px rgba(0, 0, 0, 0.02)'
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1', // Indigo
+                            600: '#4f46e5',
+                            900: '#312e81',
+                        }
                     }
                 }
             }
         }
     </script>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fcfdfe; }
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/localforage/dist/localforage.min.js"></script>
 
-        /* Effet de brillance sur les cartes */
-        .glass-card { 
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+    <style>
+        body {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            color: #334155;
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.05);
+            border-radius: 1.5rem; /* rounded-3xl */
         }
 
-        .chart-container { position: relative; height: 180px; width: 100%; display: flex; justify-content: center; align-items: center; }
-        .chart-center-text { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; }
+        /* Tooltip Container */
+        .tooltip-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        .tooltip-icon {
+            margin-left: 0.5rem;
+            color: #94a3b8;
+            transition: color 0.2s;
+        }
+        .tooltip-container:hover .tooltip-icon {
+            color: #4f46e5;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            width: 250px;
+            background-color: #1e293b;
+            color: #f8fafc;
+            text-align: left;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            font-weight: 400;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
         
-        /* Indicateurs clignotants */
-        .rag-dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .rag-green { background-color: #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
-        .rag-amber { background-color: #f59e0b; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
-        .rag-red { background-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
-
-        /* Tooltips SaaS */
-        .tooltip-box { display: none; transition: all 0.2s; }
-        .group:hover .tooltip-box { display: block; }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        /* Custom scrollbar pour les listes */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 20px;
+        }
     </style>
 </head>
-<body class="text-slate-900 min-h-screen p-4 md:p-8">
+<body class="p-6">
 
-    <div class="max-w-[1300px] mx-auto">
+    <div class="max-w-7xl mx-auto space-y-6">
         
-        <header class="mb-10 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div class="glass-card p-6 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                </div>
-                <div>
-                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-800">TATTOO <span class="text-slate-400 font-light">| Project Monitor</span></h1>
-                    <div id="statusBadge" class="flex items-center gap-2 mt-0.5">
-                        <div id="healthDot" class="rag-dot rag-amber"></div>
-                        <span id="healthText" class="text-[11px] font-bold uppercase tracking-widest text-slate-500">Analyse en cours...</span>
-                    </div>
+                <h1 class="text-3xl font-bold text-slate-800">COPIL <span class="text-brand-600">TATTOO</span></h1>
+                <div id="healthIndicator" class="hidden items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm">
+                    <span id="healthDot" class="w-3 h-3 rounded-full"></span>
+                    <span id="healthText">Santé</span>
                 </div>
             </div>
             
-            <div class="flex items-center gap-3 bg-white p-2 pl-4 rounded-3xl shadow-card border border-slate-100">
-                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-tight">Source unique :</span>
-                <input type="file" id="fileGlobal" accept=".xlsx, .xls, .csv" class="text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-4 file:rounded-2xl file:border-0 file:text-[10px] file:font-black file:uppercase file:bg-slate-100 file:text-slate-600 cursor-pointer hover:file:bg-slate-200 transition-all">
-                <button onclick="clearMemory()" class="p-2 text-slate-300 hover:text-red-500 transition-colors" title="Vider le cache">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            <div class="flex items-center gap-3">
+                <label class="cursor-pointer bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-sm font-medium hover:bg-slate-50 transition">
+                    Importer Export Excel
+                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" class="hidden">
+                </label>
+                <button id="clearData" class="text-sm text-slate-500 hover:text-rose-500 transition px-3 py-2">
+                    Réinitialiser
                 </button>
             </div>
-        </header>
+        </div>
 
-        <div id="mainContainer" style="opacity: 0.1; pointer-events: none;" class="space-y-8 transition-opacity duration-1000">
+        <div id="debugArea" class="hidden text-xs text-slate-500 px-4 flex gap-6">
+            <span id="debugTasks">Tâches Tattoo trouvées : 0</span>
+            <span id="debugUsers">Collaborateurs (Workload) : 0</span>
+        </div>
 
-            <section class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div id="loading" class="hidden text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto"></div>
+            <p class="mt-4 text-slate-600 font-medium">Analyse et traitement des données...</p>
+        </div>
+
+        <div id="dashboard" class="hidden space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-card p-6 flex flex-col items-center">
+                    <div class="w-full flex justify-between items-start mb-2">
+                        <h2 class="text-lg font-bold text-slate-700 tooltip-container">
+                            Avancement Global
+                            <svg class="w-4 h-4 tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span class="tooltip-text"><b>Calcul :</b> Tâches terminées / Total des tâches Tattoo<br><b>Source :</b> Onglet Tâches/Projet (Statut "Terminé/Completed")</span>
+                        </h2>
+                    </div>
+                    <div class="relative w-40 h-40">
+                        <canvas id="chartAvancement"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col">
+                            <span id="valAvancement" class="text-2xl font-extrabold text-slate-800">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-6 flex flex-col items-center">
+                    <div class="w-full flex justify-between items-start mb-2">
+                        <h2 class="text-lg font-bold text-slate-700 tooltip-container">
+                            Consommation Effort
+                            <svg class="w-4 h-4 tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span class="tooltip-text"><b>Calcul :</b> Somme Temps Passé / Somme Effort Alloué<br><b>Source :</b> Onglet Tâches/Projet & Temps passé</span>
+                        </h2>
+                    </div>
+                    <div class="relative w-48 h-24 mt-4">
+                        <canvas id="chartEffort"></canvas>
+                        <div class="absolute bottom-0 w-full flex justify-center">
+                            <span id="valEffort" class="text-xl font-bold text-slate-800">0 / 0 h</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-6 flex flex-col justify-center items-center relative overflow-hidden">
+                    <div class="w-full flex justify-between items-start absolute top-6 left-6 right-6">
+                        <h2 class="text-lg font-bold text-slate-700 tooltip-container">
+                            Dette Planning
+                            <svg class="w-4 h-4 tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span class="tooltip-text"><b>Calcul :</b> Cumul des jours de retard entre la date d'échéance des tâches non terminées et la date du jour.<br><b>Source :</b> Onglet Tâches/Projet</span>
+                        </h2>
+                    </div>
+                    <div class="mt-10 text-center">
+                        <span id="valDette" class="text-6xl font-extrabold text-rose-500 drop-shadow-sm">0</span>
+                        <p class="text-slate-500 font-medium mt-2">Jours cumulés de retard</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-slate-800 tooltip-container">
+                        Charge de Travail par Collaborateur (Jours-Hommes)
+                        <svg class="w-4 h-4 tooltip-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="tooltip-text"><b>Calcul :</b> Effort total alloué (heures) / 8.<br><b>Ligne repère :</b> 218 JH (Capacité Annuelle).<br><b>Source :</b> Onglet Workload</span>
+                    </h2>
+                </div>
+                <div class="relative w-full" style="height: 400px;" id="workloadContainer">
+                    <canvas id="chartWorkload"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                <div class="glass-card rounded-[2.5rem] shadow-card p-8 flex flex-col items-center relative group overflow-hidden">
-                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                        <svg class="w-20 h-20 text-indigo-600" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path></svg>
-                    </div>
-                    <div class="w-full flex items-center gap-2 mb-6">
-                        <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Avancement Tâches</h3>
-                        <div class="relative group/info">
-                            <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
-                            <div class="tooltip-box absolute z-50 w-56 p-4 text-[10px] bg-slate-900 text-white rounded-2xl shadow-2xl -left-20 top-6 font-medium leading-relaxed">
-                                <span class="text-indigo-400 font-bold">Logique :</span> Pourcentage de tâches en statut "Completed" sur le total Tattoo.<br><i>Exclut les tâches annulées.</i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="completionChart"></canvas>
-                        <div class="chart-center-text">
-                            <span id="completionValueText" class="text-5xl font-black text-slate-800 tracking-tighter">0%</span>
-                        </div>
+                <div class="glass-card p-6 flex flex-col h-[500px]">
+                    <h2 class="text-xl font-bold text-rose-600 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        En Retard (<span id="countRetard">0</span>)
+                    </h2>
+                    <div class="overflow-y-auto custom-scroll flex-1 pr-2">
+                        <ul id="listRetard" class="space-y-3"></ul>
                     </div>
                 </div>
 
-                <div class="glass-card rounded-[2.5rem] shadow-card p-8 flex flex-col items-center relative group overflow-hidden">
-                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                        <svg class="w-20 h-20 text-emerald-600" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM5.884 6.924a1 1 0 10-1.414-1.414l-.707.707a1 1 0 101.414 1.414l.707-.707zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zM12.93 5.23a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707zM14 11a1 1 0 01-1 1H7a1 1 0 01-1-1V5a1 1 0 011-1h6a1 1 0 011 1v6z"></path></svg>
-                    </div>
-                    <div class="w-full flex items-center gap-2 mb-6">
-                        <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Consommation Effort</h3>
-                        <div class="relative group/info">
-                            <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
-                            <div class="tooltip-box absolute z-50 w-56 p-4 text-[10px] bg-slate-900 text-white rounded-2xl shadow-2xl -left-20 top-6 font-medium leading-relaxed">
-                                <span class="text-emerald-400 font-bold">Logique :</span> Ratio (Heures Saisies / Effort Budgété) sur Tattoo.<br><i>Si > 100%, dépassement budgétaire.</i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="spiGaugeChart"></canvas>
-                        <div class="chart-center-text" style="margin-top: 55px;">
-                            <span id="spiValueText" class="text-5xl font-black text-slate-800 tracking-tighter">0%</span>
-                        </div>
+                <div class="glass-card p-6 flex flex-col h-[500px]">
+                    <h2 class="text-xl font-bold text-emerald-600 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                        Prochains Jalons (<span id="countJalons">0</span>)
+                    </h2>
+                    <div class="overflow-y-auto custom-scroll flex-1 pr-2">
+                        <ul id="listJalons" class="space-y-3"></ul>
                     </div>
                 </div>
 
-                <div class="glass-card rounded-[2.5rem] shadow-card p-8 flex flex-col justify-between relative group overflow-hidden">
-                    <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform duration-500 text-rose-600">
-                        <svg class="w-20 h-20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
-                    </div>
-                    <div class="w-full flex items-center gap-2 mb-2">
-                        <h3 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Retard Planning</h3>
-                        <div class="relative group/info">
-                            <svg class="w-4 h-4 text-slate-300 cursor-help" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
-                            <div class="tooltip-box absolute z-50 w-56 p-4 text-[10px] bg-slate-900 text-white rounded-2xl shadow-2xl -left-20 top-6 font-medium leading-relaxed">
-                                <span class="text-rose-400 font-bold">Logique :</span> Cumul des jours d'écarts entre aujourd'hui et les dates d'échéance dépassées.
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex-grow flex flex-col items-center justify-center">
-                        <div id="glissementBadge" class="font-black text-6xl tracking-tighter transition-all duration-700">0</div>
-                        <span class="text-[10px] font-extrabold uppercase text-slate-300 tracking-[0.3em] mt-2">Jours Cumulés</span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="glass-card rounded-[2.5rem] shadow-card p-10">
-                <div class="flex justify-between items-center mb-10">
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold text-lg italic">JH</div>
-                        <h3 class="text-lg font-extrabold text-slate-800 tracking-tight">Répartition Charge de Travail <span class="text-slate-400 font-medium">(JH)</span></h3>
-                    </div>
-                    <div class="flex items-center gap-2 group relative">
-                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calcul & Référence</span>
-                        <svg class="w-4 h-4 text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"></path></svg>
-                        <div class="tooltip-box absolute z-50 w-64 p-4 text-[10px] bg-slate-900 text-white rounded-2xl shadow-2xl right-0 top-6 font-medium leading-relaxed">
-                            Effort budgété converti en Jours Hommes (1J = 8H). L'effort d'une tâche est réparti entre tous ses assignés.<br><br>
-                            <span class="text-orange-400">---</span> <b>Capacité Théorique : 218 j/an</b>
-                        </div>
-                    </div>
-                </div>
-                <div class="overflow-y-auto custom-scrollbar pr-4" style="max-height: 400px;">
-                    <div id="workloadChartWrapper" style="position: relative; width: 100%;">
-                        <canvas id="workloadChart"></canvas>
-                    </div>
-                </div>
-            </section>
-
-            <section class="grid grid-cols-1 lg:grid-cols-2 gap-10 pb-12">
-                
-                <div class="bg-white rounded-[2.5rem] shadow-card border border-rose-50 flex flex-col h-[550px] overflow-hidden">
-                    <div class="p-8 bg-gradient-to-r from-rose-500 to-rose-600 text-white flex justify-between items-center">
-                        <div>
-                            <h3 class="font-black text-lg uppercase tracking-tighter">Retards Critique</h3>
-                            <p class="text-[10px] font-bold opacity-70 uppercase tracking-widest mt-0.5">Tâches non closes et échues</p>
-                        </div>
-                        <span id="countLate" class="bg-white/20 backdrop-blur-md text-white text-sm font-black px-4 py-1.5 rounded-2xl">0</span>
-                    </div>
-                    <div id="lateTasksContainer" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-grow bg-slate-50/30">
-                        <p class="text-xs text-slate-400 italic text-center mt-20">Aucune alerte.</p>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-[2.5rem] shadow-card border border-indigo-50 flex flex-col h-[550px] overflow-hidden">
-                    <div class="p-8 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white flex justify-between items-center">
-                        <div>
-                            <h3 class="font-black text-lg uppercase tracking-tighter">Prochains Jalons</h3>
-                            <p class="text-[10px] font-bold opacity-70 uppercase tracking-widest mt-0.5">Échéances à venir (Tattoo)</p>
-                        </div>
-                        <span id="countUpcoming" class="bg-white/20 backdrop-blur-md text-white text-sm font-black px-4 py-1.5 rounded-2xl">0</span>
-                    </div>
-                    <div id="milestonesContainer" class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-grow bg-slate-50/30">
-                        <p class="text-xs text-slate-400 italic text-center mt-20">Aucune donnée.</p>
-                    </div>
-                </div>
-
-            </section>
+            </div>
         </div>
     </div>
 
     <script>
-        const colors = { red: '#f43f5e', amber: '#f59e0b', green: '#10b981', brand: '#6366f1', slate: '#f1f5f9' };
-        const JH_CAPACITY = 218; // Capacité théorique annuelle
+        // --- 1. Variables globales & Instances Chart.js ---
+        let charts = {};
         
-        let rawTime = [], rawProject = []; 
-        let charts = { spi: null, completion: null, workload: null };
+        // --- 2. Fonctions Utilitaires & Robustesse ---
+        
+        // Nettoyer les clés d'entête pour la détection
+        const cleanStr = str => (str || '').toString().toLowerCase().trim().replace(/[\n\r]/g, '');
 
-        function convertTimeToDecimal(val) {
-            if (!val && val !== 0) return 0;
-            if (typeof val === 'number') return val; 
-            const s = String(val).trim();
-            if (s.includes(':')) {
-                const p = s.split(':');
-                return (parseInt(p[0]) || 0) + ((parseInt(p[1]) || 0) / 60);
+        // Conversion robuste des heures
+        function parseTime(val) {
+            if (val === undefined || val === null || val === '') return 0;
+            if (typeof val === 'number') {
+                // Si fraction < 1, probable format Excel fraction de jour (1 = 24h)
+                if (val > 0 && val < 1) return val * 24;
+                return val;
             }
-            return parseFloat(s.replace(',', '.')) || 0;
+            if (typeof val === 'string') {
+                if (val.includes(':')) {
+                    let parts = val.split(':');
+                    return parseInt(parts[0]||0) + parseInt(parts[1]||0)/60 + parseInt(parts[2]||0)/3600;
+                }
+                let parsed = parseFloat(val.replace(',', '.').replace(/[^0-9.-]/g, ''));
+                return isNaN(parsed) ? 0 : parsed;
+            }
+            return 0;
         }
 
-        function parseExcelDate(val) {
+        // Conversion robuste des dates
+        function parseDate(val) {
             if (!val) return null;
-            if (val instanceof Date) return val;
-            if (!isNaN(val) && typeof val === 'number') return new Date((val - 25569) * 86400000);
-            const d = new Date(String(val).split(' ')[0]);
-            return isNaN(d.getTime()) ? null : d;
-        }
-
-        function clearMemory() { localforage.clear().then(() => location.reload()); }
-
-        document.getElementById('fileGlobal').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if(!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array', cellDates: true });
-                let allTasks = [], foundTime = [];
-                workbook.SheetNames.forEach(sheetName => {
-                    const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: "" });
-                    if (!json.length) return;
-                    const keys = Object.keys(json[0] || {}).join(" ").toLowerCase();
-                    if (keys.includes('utilisateur') || keys.includes('temps passé')) {
-                        foundTime = foundTime.concat(json);
-                    } else if (keys.includes('nom') || keys.includes('title')) {
-                        allTasks = allTasks.concat(json);
-                    }
-                });
-                rawProject = allTasks; rawTime = foundTime;
-                localforage.setItem('rawProject', allTasks);
-                localforage.setItem('rawTime', foundTime);
-                tryUpdateDashboard();
-            };
-            reader.readAsArrayBuffer(file);
-        });
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            rawProject = await localforage.getItem('rawProject');
-            rawTime = await localforage.getItem('rawTime');
-            if(rawProject) tryUpdateDashboard();
-        });
-
-        function tryUpdateDashboard() {
-            if (!rawProject) return;
-            document.getElementById('mainContainer').style.opacity = '1';
-            document.getElementById('mainContainer').style.pointerEvents = 'auto';
-
-            let totalEffort = 0, totalTime = 0, done = 0, totalT = 0, slip = 0;
-            let lateTasks = [], upcomingTasks = [], workloadMap = {}, processedNames = new Set();
-            const today = new Date(); today.setHours(0,0,0,0);
-
-            rawProject.forEach(t => {
-                const title = String(t['Title'] || t['Nom'] || "").trim();
-                const folder = String(t['Folder'] || t['Projet ou dossier'] || "").toLowerCase();
-                const st = String(t['Status'] || t['Statut'] || "").toLowerCase();
-                
-                const isTattoo = title.toLowerCase().includes('tattoo') || folder.includes('tattoo');
-                if(!isTattoo || !title || processedNames.has(title)) return;
-                
-                // Ignorer les annulés pour toutes les stats
-                if(['annulé', 'cancelled', 'canceled'].some(s => st.includes(s))) return;
-                processedNames.add(title);
-
-                // Effort & répartiion JH
-                let effortHours = convertTimeToDecimal(t['Effort'] || t['Effort prévu']);
-                totalEffort += effortHours;
-                let rawAss = String(t['Assigned To'] || t['Chargé de mission'] || "Non assigné");
-                let assArr = rawAss.split(',').map(a => a.split('<')[0].trim()).filter(a => a);
-                let jhPerPerson = (effortHours / 8) / (assArr.length || 1);
-                assArr.forEach(a => { workloadMap[a] = (workloadMap[a] || 0) + jhPerPerson; });
-
-                totalT++;
-                const isDone = ['terminé', 'done', 'completed', 'complete', 'achevée'].some(s => st.includes(s));
-                if(isDone) done++;
-
-                const due = parseExcelDate(t['End Date'] || t['Date d’échéance']);
-                if(due && !isDone) {
-                    let idVal = t['ID'] || t['Key'];
-                    let link = t['Permalink'] || t['Lien'] || t['URL'] || (idVal ? `https://www.wrike.com/open.htm?id=${idVal}` : "#");
-                    const taskObj = { title, date: due, assignee: assArr.join(', '), link, dateStr: due.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) };
-                    if(due < today) {
-                        slip += Math.ceil(Math.abs(today - due) / 86400000);
-                        lateTasks.push(taskObj);
-                    } else {
-                        upcomingTasks.push(taskObj);
-                    }
-                }
-            });
-
-            rawTime.forEach(r => {
-                const tRef = String(r['Nom de la tâche'] || r['Nom'] || "").toLowerCase();
-                const pRef = String(r['Projet ou dossier'] || "").toLowerCase();
-                if(tRef.includes('tattoo') || pRef.includes('tattoo')) {
-                    totalTime += convertTimeToDecimal(r['Temps passé'] || r['Time spent'] || r['Time Spent (Hours)']);
-                }
-            });
-
-            updateUI(totalT > 0 ? (done/totalT)*100 : 0, totalEffort > 0 ? (totalTime/totalEffort)*100 : 0, slip, lateTasks, upcomingTasks, workloadMap);
-        }
-
-        function updateUI(comp, cons, slip, lates, upcomings, wl) {
-            const hText = document.getElementById('healthText');
-            const hDot = document.getElementById('healthDot');
+            if (typeof val === 'number') {
+                // Date de série Excel
+                return new Date(Math.round((val - 25569) * 86400 * 1000));
+            }
+            let d = new Date(val);
+            if (!isNaN(d.getTime())) return d;
             
-            if (cons > 110 || slip > 45) { 
-                hText.innerText = "Alerte Retard"; hDot.className = "rag-dot rag-red";
-            } else if (cons > 90 || slip > 0) {
-                hText.innerText = "Suivi Requis"; hDot.className = "rag-dot rag-amber";
-            } else {
-                hText.innerText = "Sous Contrôle"; hDot.className = "rag-dot rag-green";
+            // Si format FR dd/mm/yyyy
+            if (typeof val === 'string') {
+                let parts = val.split('/');
+                if (parts.length === 3) {
+                    let d2 = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                    if (!isNaN(d2.getTime())) return d2;
+                }
+            }
+            return null;
+        }
+
+        // --- Plugin Custom Chart.js pour ligne verticale (Capacité 218 JH) ---
+        const verticalLinePlugin = {
+            id: 'verticalLinePlugin',
+            afterDraw: (chart) => {
+                if (chart.config.type !== 'bar' || chart.config.options.indexAxis !== 'y') return;
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const yAxis = chart.scales.y;
+                
+                // On fixe la ligne à 218
+                const targetValue = 218;
+                
+                if (targetValue >= xAxis.min && targetValue <= xAxis.max) {
+                    const x = xAxis.getPixelForValue(targetValue);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x, yAxis.top);
+                    ctx.lineTo(x, yAxis.bottom);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#f59e0b'; // Amber-500
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.font = 'bold 12px "Plus Jakarta Sans", sans-serif';
+                    ctx.fillText('218 JH (Capacité)', x + 5, yAxis.top + 15);
+                    ctx.restore();
+                }
+            }
+        };
+        Chart.register(verticalLinePlugin);
+
+        // --- 3. Moteur d'Analyse Excel ---
+        async function processExcelData(workbook) {
+            let sheetsMeta = workbook.SheetNames.map(name => {
+                let ws = workbook.Sheets[name];
+                let json = XLSX.utils.sheet_to_json(ws, {header: 1, defval: null});
+                let headers = (json[0] || []).map(cleanStr);
+                return { name, json, headers };
+            });
+
+            // Identification des onglets
+            let taskSheet = sheetsMeta.find(s => s.headers.some(h => h.includes('title') || h.includes('nom') || h === 'nom de la tâche') && s.headers.some(h => h.includes('statut') || h.includes('status')));
+            let workloadSheet = sheetsMeta.find(s => s.headers.some(h => h.includes('allocated effort') || h.includes('capacity')));
+            let timeSheet = sheetsMeta.find(s => s.headers.some(h => h.includes('temps passé') || h.includes('time spent')));
+
+            if (!taskSheet) throw new Error("Onglet des Tâches introuvable. Vérifiez l'export.");
+
+            // --- TRAITEMENT DES TÂCHES ---
+            let taskData = XLSX.utils.sheet_to_json(workbook.Sheets[taskSheet.name]);
+            
+            // Map keys
+            let keyMap = {
+                title: Object.keys(taskData[0]).find(k => ['nom', 'title', 'nom de la tâche', 'nom de l\'élément'].includes(cleanStr(k))),
+                status: Object.keys(taskData[0]).find(k => ['statut', 'status'].includes(cleanStr(k))),
+                folder: Object.keys(taskData[0]).find(k => ['projet ou dossier', 'folder', 'dossier'].includes(cleanStr(k))),
+                parent: Object.keys(taskData[0]).find(k => ['parent task', 'tâche parente'].includes(cleanStr(k))),
+                id: Object.keys(taskData[0]).find(k => ['id', 'key'].includes(cleanStr(k))),
+                url: Object.keys(taskData[0]).find(k => ['permalink', 'url', 'lien'].includes(cleanStr(k))),
+                endDate: Object.keys(taskData[0]).find(k => ['date d’échéance', 'end date', 'due date'].includes(cleanStr(k))),
+                effort: Object.keys(taskData[0]).find(k => ['effort', 'planned effort', 'durée (hours)'].includes(cleanStr(k))),
+                timeSpent: Object.keys(taskData[0]).find(k => ['temps passé', 'time spent (hours)', 'temps passé (heures)'].includes(cleanStr(k))),
+                assignees: Object.keys(taskData[0]).find(k => ['chargé de mission', 'assigned to', 'assigné'].includes(cleanStr(k)))
+            };
+
+            let validTasksMap = new Map(); // Set() pour dédoublonnage
+            
+            taskData.forEach(row => {
+                let title = row[keyMap.title] || '';
+                let folder = row[keyMap.folder] || '';
+                let parent = row[keyMap.parent] || '';
+                let status = row[keyMap.status] || '';
+
+                // Filtrage 1: Doit contenir Tattoo
+                let isTattoo = [title, folder, parent].some(v => v.toString().toLowerCase().includes('tattoo'));
+                if (!isTattoo) return;
+
+                // Filtrage 2: Exclure Annulés
+                let sLow = status.toString().toLowerCase();
+                if (sLow.includes('cancel') || sLow.includes('annulé')) return;
+
+                // Anti-doublon par nom
+                if (!validTasksMap.has(title)) {
+                    let taskObj = {
+                        title: title,
+                        status: sLow,
+                        isDone: ['terminé', 'terminés', 'completed', 'done', 'validated'].some(st => sLow.includes(st)),
+                        endDate: parseDate(row[keyMap.endDate]),
+                        effort: parseTime(row[keyMap.effort]),
+                        timeSpent: parseTime(row[keyMap.timeSpent]),
+                        assignees: row[keyMap.assignees] || 'Non assigné',
+                        link: row[keyMap.url] || (row[keyMap.id] ? `https://www.wrike.com/open.htm?id=${row[keyMap.id]}` : '#')
+                    };
+                    validTasksMap.set(title, taskObj);
+                }
+            });
+
+            let tasksList = Array.from(validTasksMap.values());
+
+            // --- TRAITEMENT DU WORKLOAD ---
+            let workloadData = [];
+            if (workloadSheet) {
+                let wlRaw = XLSX.utils.sheet_to_json(workbook.Sheets[workloadSheet.name]);
+                let wlAssigneeCol = Object.keys(wlRaw[0]).find(k => ['assignee', 'utilisateur', 'nom', 'ressource'].includes(cleanStr(k)));
+                let wlEffortCol = Object.keys(wlRaw[0]).find(k => cleanStr(k).includes('total allocated effort'));
+
+                if(wlAssigneeCol && wlEffortCol) {
+                    let agg = {};
+                    wlRaw.forEach(row => {
+                        let name = row[wlAssigneeCol];
+                        let eff = parseTime(row[wlEffortCol]);
+                        if(name && eff > 0) {
+                            agg[name] = (agg[name] || 0) + eff;
+                        }
+                    });
+                    // Conversion Heures -> Jours Hommes ( / 8)
+                    workloadData = Object.keys(agg).map(k => ({ name: k, jh: +(agg[k] / 8).toFixed(1) }))
+                                        .sort((a,b) => b.jh - a.jh);
+                }
             }
 
-            document.getElementById('completionValueText').innerText = Math.round(comp) + "%";
-            document.getElementById('spiValueText').innerText = Math.round(cons) + "%";
-            const badge = document.getElementById('glissementBadge');
-            badge.innerText = slip;
-            badge.className = "font-black text-6xl tracking-tighter " + (slip > 30 ? "text-rose-600" : slip > 0 ? "text-amber-500" : "text-emerald-500");
+            return { tasks: tasksList, workload: workloadData };
+        }
 
-            const renderL = (id, countId, list, type) => {
-                document.getElementById(countId).innerText = list.length;
-                const c = document.getElementById(id);
-                if(!list.length) { c.innerHTML = "<p class='text-xs text-slate-400 italic text-center mt-20 font-medium'>Tout est à jour.</p>"; return; }
-                list.sort((a,b) => a.date - b.date);
-                c.innerHTML = list.map(t => `
-                    <div class="p-5 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all group duration-300">
-                        <div class="flex justify-between items-start gap-4">
-                            <a href="${t.link}" target="_blank" class="text-xs font-bold text-slate-700 group-hover:text-indigo-600 leading-snug flex-1 flex items-center gap-2">
-                                ${t.title}
-                                <svg class="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                            </a>
-                            <span class="text-[9px] font-black px-3 py-1 rounded-xl border ${type==='red'?'bg-rose-50 text-rose-600 border-rose-100':'bg-indigo-50 text-indigo-600 border-indigo-100'} whitespace-nowrap shadow-sm">${t.dateStr}</span>
-                        </div>
-                        <div class="flex items-center text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-4">
-                            <span class="w-1.5 h-1.5 bg-slate-200 rounded-full mr-2"></span> ${t.assignee}
-                        </div>
-                    </div>
-                `).join('');
-            };
-            renderL('lateTasksContainer', 'countLate', lates, 'red');
-            renderL('milestonesContainer', 'countUpcoming', upcomings, 'indigo');
+        // --- 4. Mise à jour de l'UI (Dashboard) ---
+        function renderDashboard(data) {
+            document.getElementById('debugArea').classList.remove('hidden');
+            document.getElementById('debugTasks').innerText = `Tâches Tattoo : ${data.tasks.length}`;
+            document.getElementById('debugUsers').innerText = `Collaborateurs : ${data.workload.length}`;
+            
+            document.getElementById('dashboard').classList.remove('hidden');
 
-            const labels = Object.keys(wl).sort((a,b) => wl[b] - wl[a]);
-            const wrapper = document.getElementById('workloadChartWrapper');
-            wrapper.style.height = Math.max(200, labels.length * 40) + "px";
+            const now = new Date();
+            now.setHours(0,0,0,0);
 
-            if(charts.workload) charts.workload.destroy();
-            charts.workload = new Chart(document.getElementById('workloadChart').getContext('2d'), {
-                type: 'bar',
-                data: { labels, datasets: [{ data: labels.map(l => wl[l].toFixed(1)), backgroundColor: '#6366f1', borderRadius: 20, barThickness: 12 }] },
-                options: { 
-                    indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: { backgroundColor: '#0f172a', padding: 12, bodyFont: { size: 11, weight: 'bold' }, callbacks: { label: (ctx) => ` Charge : ${ctx.parsed.x} Jours Hommes` } }
-                    },
-                    scales: { 
-                        x: { grid: { color: '#f8fafc' }, ticks: { font: { weight: '800', size: 10 } }, suggestedMax: 250 },
-                        y: { ticks: { font: { weight: '700', size: 11 }, color: '#64748b' }, grid: { display: false } }
+            // A. Calculs Globaux
+            let totalTasks = data.tasks.length;
+            let completedTasks = data.tasks.filter(t => t.isDone).length;
+            
+            let totalEffort = 0;
+            let totalSpent = 0;
+            let dettePlanning = 0; // en jours
+            let delayedTasks = [];
+            let upcomingTasks = [];
+
+            data.tasks.forEach(t => {
+                totalEffort += t.effort;
+                totalSpent += t.timeSpent;
+
+                if (t.endDate && !t.isDone) {
+                    let diffTime = t.endDate.getTime() - now.getTime();
+                    let diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
+                    
+                    if (diffDays < 0) {
+                        dettePlanning += Math.abs(diffDays);
+                        delayedTasks.push(t);
+                    } else {
+                        upcomingTasks.push(t);
                     }
+                }
+            });
+
+            // Tri et Limite
+            delayedTasks.sort((a, b) => a.endDate - b.endDate).splice(30);
+            upcomingTasks.sort((a, b) => a.endDate - b.endDate).splice(30);
+
+            // B. Santé
+            let isLate = dettePlanning > 30; // Règle arbitraire : > 30 jours cumulés = Alerte
+            let isOverBudget = totalSpent > totalEffort && totalEffort > 0;
+            
+            let healthColor = 'bg-emerald-100 text-emerald-700';
+            let dotColor = 'bg-emerald-500';
+            let healthText = 'Santé : OK';
+
+            if (isLate && isOverBudget) {
+                healthColor = 'bg-rose-100 text-rose-700'; dotColor = 'bg-rose-500'; healthText = 'Santé : Critique';
+            } else if (isLate || isOverBudget) {
+                healthColor = 'bg-amber-100 text-amber-700'; dotColor = 'bg-amber-500'; healthText = 'Santé : Sous vigilance';
+            }
+            
+            let hInd = document.getElementById('healthIndicator');
+            hInd.className = `flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold shadow-sm ${healthColor}`;
+            document.getElementById('healthDot').className = `w-3 h-3 rounded-full animate-pulse ${dotColor}`;
+            document.getElementById('healthText').innerText = healthText;
+
+            // C. Avancement (Chart)
+            let pctAvancement = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+            document.getElementById('valAvancement').innerText = `${pctAvancement}%`;
+            
+            if(charts.avancement) charts.avancement.destroy();
+            charts.avancement = new Chart(document.getElementById('chartAvancement'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Terminées', 'En cours'],
+                    datasets: [{
+                        data: [completedTasks, totalTasks - completedTasks],
+                        backgroundColor: ['#4f46e5', '#e2e8f0'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
                 },
-                plugins: [{
-                    afterDraw: (chart) => {
-                        const { ctx, chartArea: { top, bottom, left, right }, scales: { x } } = chart;
-                        const xPos = x.getPixelForValue(JH_CAPACITY);
-                        if (xPos >= left && xPos <= right) {
-                            ctx.save(); ctx.beginPath(); ctx.lineWidth = 2; ctx.setLineDash([6, 6]); ctx.strokeStyle = '#fb923c';
-                            ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom); ctx.stroke(); ctx.restore();
-                            ctx.fillStyle = '#fb923c'; ctx.font = 'black 10px Plus Jakarta Sans'; ctx.fillText('CAPACITÉ 218JH', xPos + 8, top + 15);
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false}, tooltip: {enabled: true} } }
+            });
+
+            // D. Effort (Chart 180deg)
+            document.getElementById('valEffort').innerText = `${Math.round(totalSpent)} / ${Math.round(totalEffort)}h`;
+            if(charts.effort) charts.effort.destroy();
+            charts.effort = new Chart(document.getElementById('chartEffort'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Consommé', 'Restant Prévu', 'Dépassement'],
+                    datasets: [{
+                        data: totalSpent <= totalEffort ? [totalSpent, totalEffort - totalSpent, 0] : [totalEffort, 0, totalSpent - totalEffort],
+                        backgroundColor: totalSpent <= totalEffort ? ['#10b981', '#f1f5f9', '#f43f5e'] : ['#f59e0b', '#f1f5f9', '#f43f5e'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, rotation: -90, circumference: 180,
+                    plugins: { legend: {display: false} }
+                }
+            });
+
+            // E. Dette
+            document.getElementById('valDette').innerText = dettePlanning;
+
+            // F. Workload
+            let wlContainer = document.getElementById('workloadContainer');
+            if (data.workload.length === 0) {
+                wlContainer.innerHTML = `<div class="flex h-full items-center justify-center text-slate-400">Aucune donnée de charge trouvée.</div>`;
+            } else {
+                wlContainer.innerHTML = '<canvas id="chartWorkload"></canvas>';
+                // Ajustement hauteur dynamique
+                wlContainer.style.height = `${Math.max(300, data.workload.length * 40)}px`;
+                
+                let ctxWl = document.getElementById('chartWorkload');
+                charts.workload = new Chart(ctxWl, {
+                    type: 'bar',
+                    data: {
+                        labels: data.workload.map(w => w.name.split(' ')[0] + ' ' + (w.name.split(' ')[1]||'')[0] + '.'),
+                        datasets: [{
+                            label: 'Jours Hommes Alloués',
+                            data: data.workload.map(w => w.jh),
+                            backgroundColor: '#6366f1',
+                            borderRadius: 6,
+                            barPercentage: 0.6
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                        scales: {
+                            x: { suggestedMax: 250, grid: { color: '#e2e8f0' } },
+                            y: { grid: { display: false } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: (ctx) => `${ctx.raw} JH` } }
                         }
                     }
-                }]
-            });
+                });
+            }
 
-            const drawD = (id, val, max, col) => {
-                if(charts[id]) charts[id].destroy();
-                charts[id] = new Chart(document.getElementById(id+'Chart').getContext('2d'), {
-                    type: 'doughnut',
-                    data: { datasets: [{ data: [val, Math.max(0, max-val)], backgroundColor: [col, '#f8fafc'], borderWidth: 0, borderRadius: 30 }] },
-                    options: { circumference: id==='spi'?180:360, rotation: id==='spi'?-90:0, cutout: '85%', plugins: { tooltip: { enabled: false } }, animation: { animateScale: true } }
+            // G. Listes
+            const formatDate = (d) => d.toLocaleDateString('fr-FR', {day: 'numeric', month: 'short', year: 'numeric'});
+            
+            const renderList = (tasks, listId, countId) => {
+                document.getElementById(countId).innerText = tasks.length;
+                let ul = document.getElementById(listId);
+                ul.innerHTML = '';
+                if(tasks.length === 0) {
+                    ul.innerHTML = '<li class="text-sm text-slate-400 italic text-center py-4">Aucune tâche</li>';
+                    return;
+                }
+                tasks.forEach(t => {
+                    let li = document.createElement('li');
+                    li.className = "p-3 rounded-xl bg-white/50 border border-slate-100 hover:bg-white hover:shadow-md transition group";
+                    li.innerHTML = `
+                        <div class="flex justify-between items-start gap-2">
+                            <a href="${t.link}" target="_blank" class="text-sm font-semibold text-slate-700 group-hover:text-brand-600 line-clamp-2 leading-tight">
+                                ${t.title}
+                            </a>
+                            <span class="text-xs font-medium whitespace-nowrap bg-slate-100 text-slate-600 px-2 py-1 rounded-md">
+                                ${formatDate(t.endDate)}
+                            </span>
+                        </div>
+                        <div class="mt-2 text-xs text-slate-500 flex items-center gap-1 truncate">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                            ${t.assignees}
+                        </div>
+                    `;
+                    ul.appendChild(li);
                 });
             };
-            drawD('completion', Math.min(comp, 100), 100, '#6366f1');
-            drawD('spi', Math.min(cons, 120), 120, cons > 110 ? colors.red : cons > 90 ? colors.amber : colors.green);
+
+            renderList(delayedTasks, 'listRetard', 'countRetard');
+            renderList(upcomingTasks, 'listJalons', 'countJalons');
         }
+
+        // --- 5. Initialisation et Événements ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Vérifier cache
+            let cachedData = await localforage.getItem('copil_tattoo_data');
+            if (cachedData) {
+                // re-parse dates after JSON serialization
+                cachedData.tasks.forEach(t => { if(t.endDate) t.endDate = new Date(t.endDate); });
+                renderDashboard(cachedData);
+            }
+
+            // Input File
+            document.getElementById('excelUpload').addEventListener('change', (e) => {
+                let file = e.target.files[0];
+                if(!file) return;
+
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+
+                let reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        let data = new Uint8Array(e.target.result);
+                        let workbook = XLSX.read(data, {type: 'array', cellDates: true});
+                        let processedData = await processExcelData(workbook);
+                        
+                        await localforage.setItem('copil_tattoo_data', processedData);
+                        renderDashboard(processedData);
+                    } catch (err) {
+                        alert("Erreur lors de l'analyse : " + err.message);
+                        console.error(err);
+                    } finally {
+                        document.getElementById('loading').classList.add('hidden');
+                        document.getElementById('excelUpload').value = '';
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+
+            // Bouton Reset
+            document.getElementById('clearData').addEventListener('click', async () => {
+                if(confirm("Effacer les données enregistrées ?")) {
+                    await localforage.removeItem('copil_tattoo_data');
+                    location.reload();
+                }
+            });
+        });
     </script>
 </body>
 </html>
