@@ -184,7 +184,7 @@
         </main>
 
         <footer class="flex justify-between items-center px-6 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-            <div>Engine TATTOO v2.2 (Links Secured)</div>
+            <div>Engine TATTOO v2.3 (Links Secured & Sheet Targeted)</div>
             <button id="clearData" class="hover:text-rose-500 transition">Réinitialiser Cache</button>
         </footer>
     </div>
@@ -210,7 +210,7 @@
             Object.values(charts).forEach(c => c.update());
         }
 
-        // --- MOTEUR DATA (Sécurisé & Anti-404) ---
+        // --- MOTEUR DATA (Ciblage & Anti-404) ---
         const cleanStr = str => (str || '').toString().toLowerCase().trim();
         
         function parseTime(val) {
@@ -232,7 +232,11 @@
                 return { name, data };
             });
 
-            const taskSheet = sheets.find(s => s.data.length > 0 && (s.data[0]['Statut'] || s.data[0]['Status']));
+            // 1. CIBLAGE PRIORITAIRE DE L'ONGLET SOURCE
+            let taskSheet = sheets.find(s => s.name.trim() === 'Liste tâches _PROJET') 
+                         || sheets.find(s => s.name.includes('Liste tâches _PROJET'))
+                         || sheets.find(s => s.data.length > 0 && (s.data[0]['Statut'] || s.data[0]['Status']));
+            
             const workloadSheet = sheets.find(s => s.data.length > 0 && Object.keys(s.data[0]).some(k => k.includes('effort')));
 
             let validTasks = [];
@@ -244,23 +248,23 @@
                     
                     if ([title, parent].some(v => v.toString().toLowerCase().includes('tattoo')) && !status.includes('annul') && !status.includes('cancel')) {
                         
-                        // --- FIX LIENS WRIKE (Anti-404 & Robustesse) ---
+                        // 2. CORRECTION DES LIENS WRIKE (Anti-404 Github Pages)
                         let taskIdRaw = row['ID'] || row['Key'] || row['Id'] || '';
-                        let taskId = taskIdRaw.toString().trim().replace(/\s+/g, ''); // Nettoyage de l'ID
+                        let taskId = taskIdRaw.toString().trim().replace(/\s+/g, ''); // Nettoyage absolu de l'ID
 
                         let linkRaw = row['Permalink'] || row['Lien permanent'] || row['URL'] || row['Lien'] || '';
                         let link = linkRaw.toString().trim();
 
-                        // Validation du lien (doit commencer par http pour éviter les chemins relatifs locaux sur GitHub Pages)
+                        // Force fallback si le lien ne commence pas explicitement par 'http'
                         if (link && !link.startsWith('http')) {
                             link = ''; 
                         }
 
-                        // Logique de secours absolue
+                        // Construction d'une URL absolue de secours
                         if (!link && taskId) {
                             link = `https://www.wrike.com/open.htm?id=${taskId}`;
                         } else if (!link) {
-                            link = '#'; // Sécurité ultime
+                            link = '#'; // Sécurité en dernier recours
                         }
 
                         validTasks.push({
