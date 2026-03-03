@@ -69,7 +69,7 @@
                     <i data-lucide="layout-dashboard" class="text-white w-8 h-8"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-800 text-slate-900 dark:text-white tracking-tight">DASHBOARD <span class="text-brand-600">TATTOO</span></h1>
+                    <h1 class="text-2xl font-800 text-slate-900 dark:text-white tracking-tight">DASHBOARD <span class="text-brand-600">TATTOO</span> <span class="text-sm font-bold text-slate-400 ml-2">v2.4</span></h1>
                     <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Next-Gen Project Analytics</p>
                 </div>
             </div>
@@ -131,7 +131,7 @@
                         <span id="valEffort" class="text-2xl font-800 text-slate-800 dark:text-white">0 / 0 JH</span>
                     </div>
 
-                    <div class="relative w-56 h-28">
+                    <div class="relative w-72 h-36 mx-auto flex justify-center">
                         <canvas id="chartEffort"></canvas>
                     </div>
                 </div>
@@ -393,7 +393,8 @@
                         backgroundColor: ['#10b981', bg, '#f43f5e'],
                         borderWidth: 0, cutout: '80%', rotation: -90, circumference: 180
                     }]
-                }
+                },
+                options: { responsive: true, maintainAspectRatio: false }
             });
 
             if(charts.wl) charts.wl.destroy();
