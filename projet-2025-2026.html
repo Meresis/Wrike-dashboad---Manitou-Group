@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard PM - Suivi des Temps</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-color: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+            --border-color: #E5E7EB;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Barre latérale et Onglets */
+        .sidebar {
+            width: 320px;
+            background-color: var(--card-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-sm);
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 24px 24px 0 24px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 8px 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .tab-btn:hover {
+            background-color: var(--bg-color);
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary-color);
+            color: #FFFFFF;
+        }
+
+        .tab-content {
+            padding: 0 24px 24px 24px;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+            flex: 1;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* Formulaires */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        input[type="file"], input[type="date"] {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background 0.2s;
+        }
+        
+        input[type="file"]::file-selector-button:hover {
+            background-color: #E5E7EB;
+        }
+
+        /* Listes de sélection (Utilisateurs et Projets) */
+        .checkbox-list {
+            flex: 1;
+            min-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            background: #F9FAFB;
+        }
+
+        .checkbox-list label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 0;
+            cursor: pointer;
+            font-weight: 400;
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+
+        .checkbox-list input[type="checkbox"] {
+            accent-color: var(--primary-color);
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        /* Boutons d'action rapide */
+        .action-links {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .action-links button {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 0.75rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* Contenu principal */
+        .main-content {
+            flex: 1;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+
+        .header h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* KPIs */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+        }
+
+        .kpi-card {
+            background-color: var(--card-bg);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .kpi-card h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .kpi-card .value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-top: 8px;
+        }
+
+        /* Graphique */
+        .chart-card {
+            background-color: var(--card-bg);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 450px;
+        }
+
+        .chart-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+        }
+
+        .empty-state {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-style: italic;
+            z-index: 10;
+        }
+
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>Paramètres</h2>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('general')">Général</button>
+                <button class="tab-btn" onclick="switchTab('projects')">Projets</button>
+            </div>
+        </div>
+        
+        <div id="tab-general" class="tab-content active">
+            <div class="form-group">
+                <label for="fileInput">Importer le fichier (CSV/XLSX)</label>
+                <input type="file" id="fileInput" accept=".csv, .xls, .xlsx">
+            </div>
+
+            <div class="form-group">
+                <label for="startDate">Date de début</label>
+                <input type="date" id="startDate" value="2025-01-01">
+            </div>
+
+            <div class="form-group">
+                <label for="endDate">Date de fin</label>
+                <input type="date" id="endDate" value="2026-12-31">
+            </div>
+
+            <div class="form-group" style="flex:1; display:flex; flex-direction:column;">
+                <label>Utilisateurs</label>
+                <div class="action-links">
+                    <button onclick="toggleAllCheckboxes('userCheckboxes', true)">Tout cocher</button>
+                    <button onclick="toggleAllCheckboxes('userCheckboxes', false)">Tout décocher</button>
+                </div>
+                <div class="checkbox-list" id="userCheckboxes">
+                    <p style="color: var(--text-muted); font-size: 0.85rem; padding-top: 5px;">En attente de données...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-projects" class="tab-content">
+            <div class="form-group" style="flex:1; display:flex; flex-direction:column; height: 100%;">
+                <label>Sélection des projets à afficher</label>
+                <div class="action-links">
+                    <button onclick="toggleAllCheckboxes('projectCheckboxes', true)">Tout cocher</button>
+                    <button onclick="toggleAllCheckboxes('projectCheckboxes', false)">Tout décocher</button>
+                </div>
+                <div class="checkbox-list" id="projectCheckboxes">
+                    <p style="color: var(--text-muted); font-size: 0.85rem; padding-top: 5px;">En attente de données...</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="header">
+            <h1>Tableau de Bord Product Management</h1>
+            <p>Analyse des temps passés sur les projets</p>
+        </header>
+
+        <div class="tabs" style="margin-bottom: 0; border-bottom: 2px solid var(--border-color);">
+            <button class="tab-btn main-tab-btn active" onclick="switchMainTab('dashboard')" style="font-size: 1rem; max-width: 200px;">Vue Globale</button>
+            <button class="tab-btn main-tab-btn" onclick="switchMainTab('monthly')" style="font-size: 1rem; max-width: 200px;">Vue par Mois</button>
+        </div>
+
+        <div id="main-tab-dashboard" class="main-tab-content" style="display:flex; flex-direction:column; gap:24px; flex:1;">
+            <section class="kpi-grid">
+                <div class="kpi-card">
+                    <h3>Temps total passé</h3>
+                    <div class="value" id="kpiTotalTime">0.00 h</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Projets affichés</h3>
+                    <div class="value" id="kpiTotalProjects">0</div>
+                </div>
+                <div class="kpi-card">
+                    <h3>Top 5 Projets</h3>
+                    <div id="kpiTop5" style="margin-top: 8px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; color: var(--text-main);">
+                        <span style="color: var(--text-muted); font-style: italic;">En attente de données...</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chart-card">
+                <h3>Répartition du temps par projet</h3>
+                <div class="chart-wrapper">
+                    <div id="emptyState" class="empty-state">Veuillez importer un fichier pour visualiser les données.</div>
+                    <canvas id="projectChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <div id="main-tab-monthly" class="main-tab-content" style="display:none; flex-direction:column; gap:24px; flex:1;">
+            <section class="chart-card">
+                <h3>Temps passé par mois et par projet</h3>
+                <div class="chart-wrapper">
+                    <div id="emptyStateMonthly" class="empty-state">Veuillez importer un fichier pour visualiser les données.</div>
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        // --- LOGIQUE DES ONGLETS LATÉRAUX ---
+        function switchTab(tabName) {
+            document.querySelectorAll('.sidebar-header .tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.sidebar .tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+
+        // --- LOGIQUE DES ONGLETS PRINCIPAUX ---
+        function switchMainTab(tabName) {
+            document.querySelectorAll('.main-tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.main-tab-content').forEach(content => content.style.display = 'none');
+            document.getElementById('main-tab-' + tabName).style.display = 'flex';
+        }
+
+        // --- FONCTION DE SÉLECTION RAPIDE ---
+        function toggleAllCheckboxes(containerId, state) {
+            const checkboxes = document.querySelectorAll(`#${containerId} input[type="checkbox"]`);
+            checkboxes.forEach(cb => cb.checked = state);
+            updateDashboard();
+        }
+
+        // --- VARIABLES GLOBALES ---
+        let rawData = [];
+        let myChart = null;
+        let myMonthlyChart = null;
+
+        // Fonction pour convertir "HH:MM:SS" en heures décimales
+        function convertTimeToDecimal(timeStr) {
+            if (!timeStr) return 0;
+            const parts = timeStr.toString().split(':');
+            if (parts.length >= 2) {
+                const hours = parseInt(parts[0], 10) || 0;
+                const minutes = parseInt(parts[1], 10) || 0;
+                const seconds = parseInt(parts[2], 10) || 0;
+                return hours + (minutes / 60) + (seconds / 3600);
+            }
+            return parseFloat(timeStr) || 0;
+        }
+
+        // Événement d'importation de fichier
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const extension = file.name.split('.').pop().toLowerCase();
+
+            if (extension === 'csv') {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        processImportedData(results.data);
+                    }
+                });
+            } else if (['xls', 'xlsx'].includes(extension)) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const json = XLSX.utils.sheet_to_json(worksheet, {raw: false, dateNF: 'yyyy-mm-dd'});
+                    processImportedData(json);
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                alert("Format de fichier non supporté. Veuillez utiliser CSV, XLS ou XLSX.");
+            }
+        });
+
+        // Traitement initial et nettoyage des données
+        function processImportedData(data) {
+            rawData = [];
+
+            data.forEach(row => {
+                const utilisateur = (row["Utilisateur"] || "").trim();
+                
+                // Exclusion de Romain Doni
+                if (utilisateur.toLowerCase() === "romain doni") return;
+
+                const tempsBrut = row["Temps passé"];
+                const tempsDecimal = convertTimeToDecimal(tempsBrut);
+                const dateStr = row["Date"];
+                const parsedDate = new Date(dateStr);
+                const projet = row["Projet ou dossier"] ? row["Projet ou dossier"].trim() : "Non classé";
+
+                if (!isNaN(parsedDate) && tempsDecimal > 0) {
+                    rawData.push({
+                        id: row["ID de la tâche"],
+                        nom: row["Nom de la tâche"],
+                        utilisateur: utilisateur,
+                        date: parsedDate,
+                        tempsDecimal: tempsDecimal,
+                        projet: projet,
+                        categorie: row["Catégorie"]
+                    });
+                }
+            });
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('emptyStateMonthly').style.display = 'none';
+            generateFilters(); 
+            updateDashboard();
+        }
+
+        // Génération dynamique des filtres (Utilisateurs & Projets)
+        function generateFilters() {
+            const userContainer = document.getElementById('userCheckboxes');
+            userContainer.innerHTML = '';
+            const uniqueUsers = [...new Set(rawData.map(d => d.utilisateur))].filter(u => u !== "").sort();
+
+            uniqueUsers.forEach(user => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = user;
+                checkbox.checked = true;
+                checkbox.className = 'user-filter-cb';
+                checkbox.addEventListener('change', updateDashboard);
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(user));
+                userContainer.appendChild(label);
+            });
+
+            const projectContainer = document.getElementById('projectCheckboxes');
+            projectContainer.innerHTML = '';
+            const uniqueProjects = [...new Set(rawData.map(d => d.projet))].filter(p => p !== "").sort();
+
+            uniqueProjects.forEach(projet => {
+                const label = document.createElement('label');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = projet;
+                checkbox.checked = true;
+                checkbox.className = 'project-filter-cb';
+                checkbox.addEventListener('change', updateDashboard);
+                label.appendChild(checkbox);
+                label.appendChild(document.createTextNode(projet));
+                projectContainer.appendChild(label);
+            });
+        }
+
+        // Événements pour les dates
+        document.getElementById('startDate').addEventListener('change', updateDashboard);
+        document.getElementById('endDate').addEventListener('change', updateDashboard);
+
+        // Mise à jour de tous les indicateurs et graphiques
+        function updateDashboard() {
+            if (rawData.length === 0) return;
+
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+            endDate.setHours(23, 59, 59);
+
+            const activeUsers = new Set(Array.from(document.querySelectorAll('.user-filter-cb:checked')).map(cb => cb.value));
+            const activeProjects = new Set(Array.from(document.querySelectorAll('.project-filter-cb:checked')).map(cb => cb.value));
+
+            // Données filtrées
+            const filteredData = rawData.filter(row => {
+                const isDateValid = row.date >= startDate && row.date <= endDate;
+                const isUserValid = activeUsers.has(row.utilisateur);
+                const isProjectValid = activeProjects.has(row.projet);
+                return isDateValid && isUserValid && isProjectValid;
+            });
+
+            // Agrégations
+            let totalTime = 0;
+            const projectAggregation = {};
+            const monthlyAggregation = {};
+            const allMonths = new Set();
+
+            filteredData.forEach(row => {
+                totalTime += row.tempsDecimal;
+                
+                // Aggregation globale (Projets)
+                if (!projectAggregation[row.projet]) projectAggregation[row.projet] = 0;
+                projectAggregation[row.projet] += row.tempsDecimal;
+
+                // Aggregation mensuelle
+                const year = row.date.getFullYear();
+                const month = String(row.date.getMonth() + 1).padStart(2, '0');
+                const monthStr = `${year}-${month}`;
+                
+                if (!monthlyAggregation[monthStr]) monthlyAggregation[monthStr] = {};
+                if (!monthlyAggregation[monthStr][row.projet]) monthlyAggregation[monthStr][row.projet] = 0;
+                
+                monthlyAggregation[monthStr][row.projet] += row.tempsDecimal;
+                allMonths.add(monthStr);
+            });
+
+            // Mise à jour KPIs
+            document.getElementById('kpiTotalTime').textContent = totalTime.toFixed(2) + ' h';
+            document.getElementById('kpiTotalProjects').textContent = Object.keys(projectAggregation).length;
+
+            // Mise à jour du Top 5
+            const sortedProjects = Object.entries(projectAggregation).sort((a, b) => b[1] - a[1]);
+            const top5Container = document.getElementById('kpiTop5');
+            top5Container.innerHTML = '';
+            const top5 = sortedProjects.slice(0, 5);
+
+            if(top5.length === 0) {
+                 top5Container.innerHTML = '<span style="color: var(--text-muted); font-style: italic;">Aucune donnée</span>';
+            } else {
+                 top5.forEach((item, index) => {
+                     const div = document.createElement('div');
+                     div.style.display = 'flex';
+                     div.style.justifyContent = 'space-between';
+                     div.innerHTML = `<span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item[0]}"><strong>${index+1}.</strong> ${item[0]}</span> <span style="color: var(--primary-color); font-weight: 600;">${item[1].toFixed(1)} h</span>`;
+                     top5Container.appendChild(div);
+                 });
+            }
+
+            // Mise à jour Graphique Vue Globale
+            renderChart(sortedProjects);
+
+            // Mise à jour Graphique Vue par Mois
+            renderMonthlyChart(monthlyAggregation, Array.from(allMonths).sort());
+        }
+
+        // Rendu de l'Histogramme (Vue globale)
+        function renderChart(sortedData) {
+            const ctx = document.getElementById('projectChart').getContext('2d');
+            const labels = sortedData.map(item => item[0]);
+            const values = sortedData.map(item => parseFloat(item[1].toFixed(2)));
+
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temps passé (heures)',
+                        data: values,
+                        backgroundColor: '#4F46E5',
+                        borderRadius: 6,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + ' heures';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Heures', color: '#6B7280' },
+                            grid: { color: '#E5E7EB' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Rendu du Graphique Mensuel (Barres empilées)
+        function renderMonthlyChart(monthlyData, sortedMonths) {
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            if (myMonthlyChart) myMonthlyChart.destroy();
+            
+            if (sortedMonths.length === 0) return;
+
+            // Extraire tous les projets présents dans cette fenêtre temporelle
+            const projectsInMonths = new Set();
+            sortedMonths.forEach(m => {
+                Object.keys(monthlyData[m]).forEach(p => projectsInMonths.add(p));
+            });
+            const projectsArray = Array.from(projectsInMonths).sort();
+
+            // Palette de couleurs pour différencier les projets
+            const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#3B82F6', '#14B8A6', '#F43F5E', '#84CC16', '#64748B', '#06B6D4'];
+
+            const datasets = projectsArray.map((proj, i) => {
+                return {
+                    label: proj,
+                    data: sortedMonths.map(m => (monthlyData[m] && monthlyData[m][proj]) ? parseFloat(monthlyData[m][proj].toFixed(2)) : 0),
+                    backgroundColor: colors[i % colors.length],
+                    borderRadius: 2
+                };
+            });
+
+            myMonthlyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedMonths,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            stacked: true,
+                            grid: { display: false }
+                        },
+                        y: { 
+                            stacked: true,
+                            title: { display: true, text: 'Heures', color: '#6B7280' },
+                            grid: { color: '#E5E7EB' }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.parsed.y === 0) return null; // Ne pas afficher au survol si c'est 0
+                                    return context.dataset.label + ' : ' + context.parsed.y + ' h';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
