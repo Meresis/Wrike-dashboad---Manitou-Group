@@ -280,6 +280,112 @@
             z-index: 10;
         }
 
+        /* Clic sur les projets de la vue liste */
+        .project-list-item {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .project-list-item:hover {
+            background-color: var(--bg-color) !important;
+            border-color: var(--primary-color) !important;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Fenêtre Modale (Détails des tâches) */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            animation: modalFadeIn 0.3s ease-out;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin: 0;
+            padding-right: 16px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--text-main);
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .task-table th, .task-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .task-table th {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            position: sticky;
+            top: 0;
+            background-color: var(--card-bg);
+        }
+
+        .task-table td {
+            font-size: 0.875rem;
+            color: var(--text-main);
+        }
+        
+        .task-table tr:hover td {
+            background-color: #F9FAFB;
+        }
+
     </style>
 </head>
 <body>
@@ -301,12 +407,12 @@
 
             <div class="form-group">
                 <label for="startDate">Date de début</label>
-                <input type="date" id="startDate" value="2025-01-01">
+                <input type="date" id="startDate">
             </div>
 
             <div class="form-group">
                 <label for="endDate">Date de fin</label>
-                <input type="date" id="endDate" value="2026-12-31">
+                <input type="date" id="endDate">
             </div>
 
             <div class="form-group" style="flex:1; display:flex; flex-direction:column;">
@@ -387,14 +493,51 @@
         <div id="main-tab-list" class="main-tab-content" style="display:none; flex-direction:column; gap:24px; flex:1;">
             <section class="chart-card" style="min-height: auto; flex: unset;">
                 <h3>Tous les projets</h3>
-                <div id="projectListContainer" style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Cliquez sur un projet pour voir le détail des tâches.</p>
+                <div id="projectListContainer" style="display: flex; flex-direction: column; gap: 12px;">
                     <div class="empty-state" style="position: relative;">Veuillez importer un fichier pour visualiser les données.</div>
                 </div>
             </section>
         </div>
     </main>
 
+    <div id="projectModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalProjectTitle">Détails du projet</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <table class="task-table">
+                    <thead>
+                        <tr>
+                            <th>Nom de la tâche</th>
+                            <th style="width: 150px; text-align: right;">Temps passé</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalTaskBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // --- INITIALISATION DES DATES PAR DÉFAUT (Mois en cours) ---
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+        const formatAsYYYYMMDD = (date) => {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
+        document.getElementById('startDate').value = formatAsYYYYMMDD(firstDay);
+        document.getElementById('endDate').value = formatAsYYYYMMDD(lastDay);
+
         // --- LOGIQUE DES ONGLETS LATÉRAUX ---
         function switchTab(tabName) {
             document.querySelectorAll('.sidebar-header .tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -418,8 +561,54 @@
             updateDashboard();
         }
 
+        // --- GESTION DE LA MODALE ---
+        function openModal(projectName) {
+            document.getElementById('modalProjectTitle').textContent = `Projet : ${projectName}`;
+            const tbody = document.getElementById('modalTaskBody');
+            tbody.innerHTML = '';
+
+            // Filtrer les données actuelles pour ne garder que celles du projet sélectionné
+            const projectData = currentFilteredData.filter(row => row.projet === projectName);
+
+            // Agréger le temps par tâche
+            const taskAggregation = {};
+            projectData.forEach(row => {
+                const taskName = row.nom || "Tâche sans nom";
+                if (!taskAggregation[taskName]) taskAggregation[taskName] = 0;
+                taskAggregation[taskName] += row.tempsDecimal;
+            });
+
+            // Trier les tâches de la plus chronophage à la moins chronophage
+            const sortedTasks = Object.entries(taskAggregation).sort((a, b) => b[1] - a[1]);
+
+            // Générer le HTML du tableau
+            sortedTasks.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item[0]}</td>
+                    <td style="text-align: right; font-weight: 500; color: var(--primary-color);">${item[1].toFixed(2)} h</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('projectModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('projectModal').style.display = 'none';
+        }
+
+        // Fermer la modale si on clique à l'extérieur du contenu
+        window.onclick = function(event) {
+            const modal = document.getElementById('projectModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
         // --- VARIABLES GLOBALES ---
         let rawData = [];
+        let currentFilteredData = []; // Variable pour conserver les données actuellement filtrées
         let myChart = null;
         let myMonthlyChart = null;
 
@@ -554,8 +743,8 @@
             const activeUsers = new Set(Array.from(document.querySelectorAll('.user-filter-cb:checked')).map(cb => cb.value));
             const activeProjects = new Set(Array.from(document.querySelectorAll('.project-filter-cb:checked')).map(cb => cb.value));
 
-            // Données filtrées
-            const filteredData = rawData.filter(row => {
+            // Données filtrées stockées globalement pour la modale
+            currentFilteredData = rawData.filter(row => {
                 const isDateValid = row.date >= startDate && row.date <= endDate;
                 const isUserValid = activeUsers.has(row.utilisateur);
                 const isProjectValid = activeProjects.has(row.projet);
@@ -565,15 +754,20 @@
             // Agrégations
             let totalTime = 0;
             const projectAggregation = {};
+            const projectUsers = {};
             const monthlyAggregation = {};
             const allMonths = new Set();
 
-            filteredData.forEach(row => {
+            currentFilteredData.forEach(row => {
                 totalTime += row.tempsDecimal;
                 
                 // Aggregation globale (Projets)
                 if (!projectAggregation[row.projet]) projectAggregation[row.projet] = 0;
                 projectAggregation[row.projet] += row.tempsDecimal;
+
+                // Aggregation des utilisateurs par projet
+                if (!projectUsers[row.projet]) projectUsers[row.projet] = new Set();
+                projectUsers[row.projet].add(row.utilisateur);
 
                 // Aggregation mensuelle
                 const year = row.date.getFullYear();
@@ -611,7 +805,7 @@
                  });
             }
 
-            // Mise à jour Vue Liste Globale (Nouvel Onglet)
+            // Mise à jour Vue Liste Globale
             const listContainer = document.getElementById('projectListContainer');
             listContainer.innerHTML = '';
 
@@ -619,16 +813,26 @@
                  listContainer.innerHTML = '<div class="empty-state" style="position: relative;">Aucune donnée</div>';
             } else {
                  sortedProjects.forEach((item, index) => {
+                     const usersList = Array.from(projectUsers[item[0]]).sort().join(', ');
+
                      const div = document.createElement('div');
+                     // Application de la classe CSS pour le hover et le curseur
+                     div.className = 'project-list-item';
                      div.style.display = 'flex';
                      div.style.flexDirection = 'column';
                      div.style.padding = '12px 16px';
                      div.style.backgroundColor = '#F9FAFB';
                      div.style.border = '1px solid var(--border-color)';
                      div.style.borderRadius = '8px';
+                     
+                     // Ajout de l'événement onclick pour ouvrir la modale
+                     div.onclick = () => openModal(item[0]);
 
                      div.innerHTML = `
-                        <span style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">${index + 1}. ${item[0]}</span>
+                        <span style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">
+                            ${index + 1}. ${item[0]} 
+                            <span style="font-weight: 400; color: var(--text-muted); font-size: 0.85em;">(${usersList})</span>
+                        </span>
                         <span style="color: var(--primary-color); font-weight: 500;">${item[1].toFixed(1)} h</span>
                      `;
                      listContainer.appendChild(div);
