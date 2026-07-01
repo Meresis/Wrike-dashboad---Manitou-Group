@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Workload dashboard v13.30 (Reconstruction complète & correctifs)</title>
+    <title>Workload dashboard v13.33 (Reconstruction complète & correctifs)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -70,7 +70,7 @@
     <!-- CONTENEUR IMPORTATION -->
     <div id="import-view">
       <div class="text-center mb-4">
-        <h1 class="fw-bold text-dark display-5">Workload dashboard <span class="text-primary">v13.30</span></h1>
+        <h1 class="fw-bold text-dark display-5">Workload dashboard <span class="text-primary">v13.33</span></h1>
         <p class="text-muted lead">Glissez-Déposez vos 3 fichiers Excel ou CSV Wrike</p>
       </div>
 
@@ -87,14 +87,18 @@
         <div class="status-badge" id="badge-proj"><span>🚀</span> Liste PROJETS</div>
       </div>
 
-      <div class="d-flex gap-2 justify-content-center mt-2 w-100" style="max-width: 800px;">
-          <button id="btn-launch" class="btn btn-primary btn-go disabled flex-grow-1" onclick="launchDashboard()">ACCÉDER AU DASHBOARD</button>
-          <button class="btn btn-outline-dark mt-3" style="border-radius: 30px; padding: 0 25px;" onclick="copyLogs()">📋 Copier les Logs</button>
+      <div id="import-progress-wrap" class="w-100 mt-4 px-3 d-none" style="max-width: 800px;">
+        <div class="d-flex justify-content-between small fw-bold text-secondary mb-1">
+          <span id="import-progress-label">Chargement des fichiers…</span>
+          <span id="import-progress-pct">0%</span>
+        </div>
+        <div class="progress" style="height: 16px; border-radius: 8px;">
+          <div id="import-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary fw-bold" role="progressbar" style="width: 0%; transition: width .2s ease;"></div>
+        </div>
       </div>
 
       <div class="w-100 mt-4 px-3" style="max-width: 800px;">
-          <div class="small fw-bold text-secondary mb-1">Console de diagnostic en direct :</div>
-          <div class="log-console" id="import-console-log">En attente du dépôt des fichiers...</div>
+        <div id="import-error" class="alert d-none" role="alert"></div>
       </div>
     </div>
 
@@ -102,10 +106,10 @@
     <div id="dashboard-view" class="app-wrapper d-none">
       <div class="panel top-bar">
         <div class="d-flex align-items-center gap-3 w-100">
-          <h5 class="fw-bold m-0 text-primary">Workload dashboard <span class="text-secondary small ms-1" style="font-size: 0.7em">v13.30</span></h5>
+          <h5 class="fw-bold m-0 text-primary">Workload dashboard <span class="text-secondary small ms-1" style="font-size: 0.7em">v13.33</span></h5>
           <div class="vr mx-2"></div>
           <div class="row g-2 w-100 align-items-center">
-            <div class="col-md-4">
+            <div class="col-md-3">
               <div class="btn-group btn-group-sm w-100 shadow-sm">
                 <button class="btn btn-outline-primary fw-bold" onclick="setPeriod('today')">Aujourd'hui</button>
                 <button class="btn btn-outline-secondary" onclick="setPeriod('week')">Semaine</button>
@@ -120,8 +124,14 @@
                 <input type="date" id="dEnd" class="form-control fw-bold text-center" onchange="runEngine()" />
               </div>
             </div>
-            <div class="col-md-3 d-flex gap-1">
-              <select id="selCollab" class="form-select form-select-sm fw-bold" onchange="onCollabChange()">
+            <div class="col-md-4 d-flex gap-1">
+              <select id="selTeam" class="form-select form-select-sm" onchange="onFilterChange()" title="Filtrer par équipe">
+                <option value="ALL">Toutes les équipes</option>
+              </select>
+              <select id="selProfile" class="form-select form-select-sm" onchange="onFilterChange()" title="Filtrer par profil">
+                <option value="ALL">Tous les profils</option>
+              </select>
+              <select id="selCollab" class="form-select form-select-sm fw-bold" onchange="onCollabChange()" title="Collaborateur">
                 <option value="ALL">Vue d'Equipe</option>
               </select>
             </div>
@@ -130,6 +140,7 @@
                 <button type="button" class="btn btn-primary btn-unit" id="btn-unit-h" onclick="setUnit('h')">H</button>
                 <button type="button" class="btn btn-outline-primary btn-unit" id="btn-unit-j" onclick="setUnit('j')">J</button>
               </div>
+              <button class="btn btn-sm btn-outline-secondary" onclick="openSettings()" title="Paramètres">⚙️</button>
               <button class="btn btn-sm btn-outline-danger" onclick="location.reload()">Exit</button>
             </div>
           </div>
@@ -267,16 +278,121 @@
       </div>
     </div>
 
+    <!-- MODALE PARAMÈTRES -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold text-dark">⚙️ Paramètres des collaborateurs</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted small mb-3">Définissez l'équipe et le profil (cases à cocher) ainsi que le temps partiel de chaque collaborateur. Le temps partiel réduit dynamiquement la capacité théorique (ex. 50% → 4h/jour). Ces réglages sont conservés sur ce navigateur.</p>
+            <table class="table table-sm align-middle table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th style="min-width:180px">Collaborateur</th>
+                  <th>Équipe</th>
+                  <th>Profil</th>
+                  <th style="width:120px">Temps partiel</th>
+                </tr>
+              </thead>
+              <tbody id="settings-body"></tbody>
+            </table>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="button" class="btn btn-primary" onclick="saveSettings()">💾 Enregistrer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
       let WORKLOAD_RAW = [], REF_RUN = new Set(), REF_PROJ = new Set(), DATA = [], CAPACITY_DATA = {}, PIVOT_LOAD = {};
       let USER_DAILY_TASKS = {};
       let USER_LEAVE_TASKS = {}; // heures issues des tâches "Absences/Congés" par collaborateur et par jour
       let DATA_MIN_DATE = null, DATA_MAX_DATE = null;
       let filesLoaded = { workload: false, run: false, proj: false };
+      let slotFiles = { workload: null, run: null, proj: null };
       let DISPLAY_UNIT = "h", optiMode = "month", currentOptiData = [], currentTeamData = [];
       let optiSortCol = "label", optiSortAsc = true;
       let activeTab = "overview";
       const HOURS_PER_DAY = 8;
+
+      // ====== PARAMÈTRES COLLABORATEURS (équipe / profil / temps partiel) ======
+      const TEAMS = ["Supply", "Logistics", "R&D IS", "Indus"];
+      const PROFILES = ["Business Analyst", "Développeur", "Manager"];
+      const PARTTIME = [100, 90, 80, 70, 60, 50];
+      const SETTINGS_KEY = "workload_user_settings_v1";
+      let USER_SETTINGS = {}; // { "Nom": { team:[...], profile:[...], partTime:100 } }
+
+      function loadSettings() {
+        try {
+          let s = localStorage.getItem(SETTINGS_KEY);
+          USER_SETTINGS = s ? (JSON.parse(s) || {}) : {};
+        } catch (e) { USER_SETTINGS = {}; }
+      }
+      function persistSettings() {
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(USER_SETTINGS)); }
+        catch (e) { addLog("Sauvegarde des paramètres impossible (stockage navigateur indisponible)."); }
+      }
+
+      // Capacité quotidienne théorique d'un collaborateur selon son temps partiel (défaut 100%).
+      function getDailyCapacity(user) {
+        let pt = (USER_SETTINGS[user] && USER_SETTINGS[user].partTime) ? USER_SETTINGS[user].partTime : 100;
+        return HOURS_PER_DAY * pt / 100;
+      }
+
+      // Collaborateurs actifs selon les filtres Équipe / Profil.
+      function getActiveUsers() {
+        let team = (document.getElementById("selTeam") || {}).value || "ALL";
+        let prof = (document.getElementById("selProfile") || {}).value || "ALL";
+        return Object.keys(CAPACITY_DATA).filter(u => {
+          if (u === "Inconnu") return false;
+          let s = USER_SETTINGS[u] || {};
+          if (team !== "ALL" && !(s.team || []).includes(team)) return false;
+          if (prof !== "ALL" && !(s.profile || []).includes(prof)) return false;
+          return true;
+        }).sort();
+      }
+
+      // ====== MODALE PARAMÈTRES ======
+      function openSettings() {
+        const tbody = document.getElementById("settings-body");
+        tbody.innerHTML = "";
+        Object.keys(CAPACITY_DATA).filter(u => u !== "Inconnu").sort().forEach(u => {
+          let s = USER_SETTINGS[u] || {};
+          let teams = TEAMS.map(t => `<label class="me-3 small text-nowrap"><input type="checkbox" class="chk-team form-check-input me-1" value="${t}" ${(s.team || []).includes(t) ? "checked" : ""}>${t}</label>`).join(" ");
+          let profs = PROFILES.map(p => `<label class="me-3 small text-nowrap"><input type="checkbox" class="chk-prof form-check-input me-1" value="${p}" ${(s.profile || []).includes(p) ? "checked" : ""}>${p}</label>`).join(" ");
+          let pt = s.partTime || 100;
+          let opts = PARTTIME.map(v => `<option value="${v}" ${v === pt ? "selected" : ""}>${v}%</option>`).join("");
+          tbody.innerHTML += `<tr data-user="${u}">
+            <td class="fw-bold">${u}</td>
+            <td>${teams}</td>
+            <td>${profs}</td>
+            <td><select class="form-select form-select-sm sel-pt">${opts}</select></td>
+          </tr>`;
+        });
+        new bootstrap.Modal(document.getElementById("settingsModal")).show();
+      }
+
+      function saveSettings() {
+        document.querySelectorAll("#settings-body tr").forEach(tr => {
+          let u = tr.getAttribute("data-user");
+          let team = Array.from(tr.querySelectorAll(".chk-team:checked")).map(c => c.value);
+          let profile = Array.from(tr.querySelectorAll(".chk-prof:checked")).map(c => c.value);
+          let partTime = parseInt(tr.querySelector(".sel-pt").value) || 100;
+          USER_SETTINGS[u] = { team, profile, partTime };
+        });
+        persistSettings();
+        let modalEl = document.getElementById("settingsModal");
+        let inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
+        populateCollabSelect();
+        refreshActiveTab();
+        addLog("Paramètres collaborateurs enregistrés.");
+      }
 
       let APP_LOGS = [];
       function addLog(msg, data = null) {
@@ -285,9 +401,6 @@
           if(data) logLine += ` => ${JSON.stringify(data).substring(0, 160)}`;
           APP_LOGS.push(logLine);
           console.log(logLine);
-
-          let cDiv = document.getElementById("import-console-log");
-          if(cDiv) { cDiv.innerText = APP_LOGS.join("\n"); cDiv.scrollTop = cDiv.scrollHeight; }
       }
 
       function copyLogs() {
@@ -372,26 +485,86 @@
                    .map(row => row.map(cell => typeof cell === 'string' ? cell.trim() : cell));
       }
 
-      function handleSmartUpload(files) {
-        if (files.length === 0) return;
-        addLog(`=== Réception de ${files.length} fichier(s) ===`);
-        document.getElementById("loading-spinner").classList.remove("d-none");
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      }
 
-        const promises = Array.from(files).map(file => readFileAsync(file));
-        Promise.all(promises).then(results => {
-          results.forEach(res => identifyAndAssign(res));
-          document.getElementById("loading-spinner").classList.add("d-none");
-          checkCompleteness();
-        }).catch(err => {
-          document.getElementById("loading-spinner").classList.add("d-none");
-          addLog("Erreur critique d'importation", err && err.message ? err.message : String(err));
+      function showImportError(html, type) {
+        let el = document.getElementById("import-error");
+        if (!el) return;
+        if (!html) { el.classList.add("d-none"); el.innerHTML = ""; return; }
+        el.className = "alert " + (type === "info" ? "alert-warning" : "alert-danger");
+        el.innerHTML = html;
+        el.classList.remove("d-none");
+      }
+
+      function updateBadges() {
+        [["workload", "badge-workload"], ["run", "badge-run"], ["proj", "badge-proj"]].forEach(([slot, id]) => {
+          let b = document.getElementById(id);
+          if (b) b.classList.toggle("active", !!filesLoaded[slot]);
         });
       }
 
-      function readFileAsync(file) {
+      function setImportProgress(pct, label) {
+        let wrap = document.getElementById("import-progress-wrap");
+        if (!wrap) return;
+        wrap.classList.remove("d-none");
+        let p = Math.max(0, Math.min(100, Math.round(pct)));
+        document.getElementById("import-progress-bar").style.width = p + "%";
+        document.getElementById("import-progress-pct").innerText = p + "%";
+        if (label) document.getElementById("import-progress-label").innerText = label;
+      }
+      function hideImportProgress() {
+        let wrap = document.getElementById("import-progress-wrap");
+        if (wrap) wrap.classList.add("d-none");
+      }
+
+      function handleSmartUpload(files) {
+        files = Array.from(files || []);
+        if (files.length === 0) return;
+        addLog(`=== Réception de ${files.length} fichier(s) ===`);
+        showImportError("");
+
+        let totalBytes = files.reduce((s, f) => s + (f.size || 0), 0) || 1;
+        let loaded = new Array(files.length).fill(0);
+        let doneCount = 0;
+        setImportProgress(2, `Chargement de ${files.length} fichier(s)…`);
+
+        function refresh(currentName) {
+          let sum = loaded.reduce((a, c) => a + c, 0);
+          // On plafonne la lecture à 95% : les 5% restants correspondent à l'analyse.
+          setImportProgress(Math.min(95, (sum / totalBytes) * 95),
+            `Chargement… ${doneCount}/${files.length} fichier(s)${currentName ? " — " + currentName : ""}`);
+        }
+
+        const tasks = files.map((file, idx) =>
+          readFileAsync(file, b => { loaded[idx] = b; refresh(file.name); })
+            .then(res => { loaded[idx] = file.size || 0; doneCount++; refresh(file.name); return { ok: true, res }; })
+            .catch(err => { loaded[idx] = file.size || 0; doneCount++; refresh(file.name); return { ok: false, name: file.name, err }; })
+        );
+
+        Promise.all(tasks).then(results => {
+          setImportProgress(100, "Analyse des fichiers…");
+          let errors = [];
+          results.forEach(r => {
+            if (!r.ok) {
+              errors.push(`Le fichier « <strong>${escapeHtml(r.name)}</strong> » n'a pas pu être lu (format Excel/CSV invalide ou corrompu).`);
+              return;
+            }
+            let outcome = identifyAndAssign(r.res);
+            if (outcome && outcome.error) errors.push(outcome.error);
+          });
+          updateBadges();
+          hideImportProgress();
+          checkCompleteness(errors);
+        });
+      }
+
+      function readFileAsync(file, onProgress) {
         return new Promise((resolve, reject) => {
           addLog(`Lecture de : ${file.name}`);
           const reader = new FileReader();
+          reader.onprogress = ev => { if (onProgress && ev.lengthComputable) onProgress(ev.loaded); };
 
           if (file.name.toLowerCase().endsWith('.csv')) {
               reader.onload = e => {
@@ -402,14 +575,16 @@
                           encReader.onload = evt => {
                               let view = new Uint16Array(evt.target.result);
                               let str = String.fromCharCode.apply(null, view);
-                              resolve({ name: file.name.toLowerCase(), data: csvToArray(str) });
+                              resolve({ name: file.name.toLowerCase(), orig: file.name, data: csvToArray(str) });
                           };
+                          encReader.onerror = () => reject(new Error("Lecture binaire impossible"));
                           encReader.readAsArrayBuffer(file);
                       } else {
-                          resolve({ name: file.name.toLowerCase(), data: csvToArray(text) });
+                          resolve({ name: file.name.toLowerCase(), orig: file.name, data: csvToArray(text) });
                       }
                   } catch(err) { reject(err); }
               };
+              reader.onerror = () => reject(new Error("Lecture du fichier CSV impossible"));
               reader.readAsText(file, 'UTF-8');
           } else {
               reader.onload = e => {
@@ -417,19 +592,25 @@
                   const data = new Uint8Array(e.target.result);
                   const wb = XLSX.read(data, { type: "array" });
                   const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" });
-                  resolve({ name: file.name.toLowerCase(), data: json });
+                  resolve({ name: file.name.toLowerCase(), orig: file.name, data: json });
                 } catch (err) { reject(err); }
               };
+              reader.onerror = () => reject(new Error("Lecture du fichier Excel impossible"));
               reader.readAsArrayBuffer(file);
           }
         });
       }
 
+      // Identifie un fichier et l'affecte à sa case. Retourne { slot } en cas de succès,
+      // ou { error } (message nominatif) si le fichier n'est pas exploitable/reconnu.
       function identifyAndAssign(fileObj) {
+        const orig = fileObj.orig || fileObj.name;
         try {
             const json = applyMoulinette(fileObj.data);
             const name = fileObj.name;
-            if(json.length === 0) return;
+            if (json.length === 0) {
+              return { error: `Le fichier « <strong>${escapeHtml(orig)}</strong> » est vide ou illisible.` };
+            }
 
             let hasWorkloadSignature = false;
             for (let i = 0; i < Math.min(15, json.length); i++) {
@@ -441,36 +622,64 @@
             }
 
             if (hasWorkloadSignature || name.includes("workload") || name.includes("charge")) {
-              addLog(`Routage : ${fileObj.name} associé à WORKLOAD`);
-              WORKLOAD_RAW = json; filesLoaded.workload = true;
-              let b = document.getElementById("badge-workload"); if(b) b.classList.add("active");
-            } else if (name.includes("run") || name.includes("maintenance") || name.includes("mco") || name.includes("support")) {
-              addLog(`Routage : ${fileObj.name} associé à RUN`);
-              extractRefProjects(json, REF_RUN); filesLoaded.run = true;
-              let b = document.getElementById("badge-run"); if(b) b.classList.add("active");
-            } else if (name.includes("proj")) {
-              addLog(`Routage : ${fileObj.name} associé à PROJETS`);
-              extractRefProjects(json, REF_PROJ); filesLoaded.proj = true;
-              let b = document.getElementById("badge-proj"); if(b) b.classList.add("active");
-            } else {
-              if (!filesLoaded.run) {
-                  addLog(`Nom inconnu. Routage automatique vers case RUN.`);
-                  extractRefProjects(json, REF_RUN); filesLoaded.run = true;
-                  document.getElementById("badge-run").classList.add("active");
-              } else if (!filesLoaded.proj) {
-                  addLog(`Nom inconnu. Routage automatique vers case PROJETS.`);
-                  extractRefProjects(json, REF_PROJ); filesLoaded.proj = true;
-                  document.getElementById("badge-proj").classList.add("active");
-              }
+              addLog(`Routage : ${orig} associé à WORKLOAD`);
+              WORKLOAD_RAW = json; filesLoaded.workload = true; slotFiles.workload = orig;
+              return { slot: "workload" };
             }
-        } catch(e) { addLog("Erreur filtrage", e && e.message ? e.message : String(e)); }
+            if (name.includes("run") || name.includes("maintenance") || name.includes("mco") || name.includes("support")) {
+              addLog(`Routage : ${orig} associé à RUN`);
+              REF_RUN = new Set(); extractRefProjects(json, REF_RUN); filesLoaded.run = true; slotFiles.run = orig;
+              return { slot: "run" };
+            }
+            if (name.includes("proj")) {
+              addLog(`Routage : ${orig} associé à PROJETS`);
+              REF_PROJ = new Set(); extractRefProjects(json, REF_PROJ); filesLoaded.proj = true; slotFiles.proj = orig;
+              return { slot: "proj" };
+            }
+            // Nom non explicite : routage par élimination vers une case encore libre
+            if (!filesLoaded.run) {
+              addLog(`Nom inconnu (${orig}) : routage automatique vers RUN.`);
+              REF_RUN = new Set(); extractRefProjects(json, REF_RUN); filesLoaded.run = true; slotFiles.run = orig;
+              return { slot: "run" };
+            }
+            if (!filesLoaded.proj) {
+              addLog(`Nom inconnu (${orig}) : routage automatique vers PROJETS.`);
+              REF_PROJ = new Set(); extractRefProjects(json, REF_PROJ); filesLoaded.proj = true; slotFiles.proj = orig;
+              return { slot: "proj" };
+            }
+            return { error: `Le fichier « <strong>${escapeHtml(orig)}</strong> » n'a pas été reconnu (ni Workload, ni Liste RUN, ni Liste PROJETS) et toutes les cases sont déjà remplies.` };
+        } catch(e) {
+            return { error: `Le fichier « <strong>${escapeHtml(orig)}</strong> » a provoqué une erreur d'analyse : ${escapeHtml(e && e.message ? e.message : String(e))}.` };
+        }
       }
 
-      function checkCompleteness() {
-        if (filesLoaded.workload && filesLoaded.run && filesLoaded.proj) {
-          addLog("Tous les pré-requis de consolidation de la gouvernance sont validés.");
-          document.getElementById("btn-launch").classList.remove("disabled");
+      function checkCompleteness(errors) {
+        errors = errors || [];
+        let missing = [];
+        if (!filesLoaded.workload) missing.push("Workload (plan de charge)");
+        if (!filesLoaded.run) missing.push("Liste RUN");
+        if (!filesLoaded.proj) missing.push("Liste PROJETS");
+
+        // Tous les fichiers valides et présents -> ouverture automatique du dashboard
+        if (errors.length === 0 && missing.length === 0) {
+          addLog("Tous les fichiers sont validés : ouverture automatique du dashboard.");
+          try {
+            launchDashboard();
+          } catch (e) {
+            showImportError(`L'analyse des données a échoué : ${escapeHtml(e && e.message ? e.message : String(e))}.<br>Vérifiez le fichier Workload puis redéposez-le dans la zone ci-dessus.`);
+          }
+          return;
         }
+
+        // Sinon : afficher les erreurs et/ou les fichiers manquants
+        let msgs = errors.slice();
+        if (missing.length > 0) {
+          msgs.push(`Fichier(s) encore attendu(s) : <strong>${missing.join(" · ")}</strong>.`);
+        }
+        if (errors.length > 0) {
+          msgs.push(`↺ Corrigez puis <strong>redéposez le(s) fichier(s)</strong> dans la zone ci-dessus.`);
+        }
+        showImportError(msgs.join("<br>"), errors.length > 0 ? "danger" : "info");
       }
 
       function extractRefProjects(rows, targetSet) {
@@ -487,15 +696,12 @@
       }
 
       function launchDashboard() {
-        try {
-            processData();
-            document.getElementById("import-view").classList.add("d-none");
-            document.getElementById("dashboard-view").classList.remove("d-none");
-            initFilters();
-        } catch(e) {
-            alert("Erreur d'analyse : " + e.message);
-            addLog("Erreur launchDashboard", e && e.message ? e.message : String(e));
-        }
+        // processData() peut lever une exception : on la laisse remonter à checkCompleteness,
+        // qui affichera un message et laissera l'utilisateur redéposer le fichier fautif.
+        processData();
+        document.getElementById("import-view").classList.add("d-none");
+        document.getElementById("dashboard-view").classList.remove("d-none");
+        initFilters();
       }
 
       function processData() {
@@ -538,7 +744,7 @@
         let currentAssignee = "Inconnu";
 
         /*
-          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.30)
+          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.33)
           ----------------------------------------------------
           Chaque ligne est un couple (Collaborateur × Projet), Type = "User". Pour chaque
           collaborateur, Wrike ajoute UNE ligne agrégée dont le "Project name" est VIDE :
@@ -701,12 +907,15 @@
       }
 
       function getLeave(user, timestamp) {
-          // Congés/Absences du jour = (capacité réduite : 8h - capacité réelle) + heures des tâches Absences/Congés,
-          // plafonné à la journée théorique pour éviter tout cumul au-delà de 8h.
+          // Congés/Absences du jour = part d'absence (issue de la capacité Wrike) ramenée à la
+          // capacité quotidienne réelle (temps partiel) + heures des tâches Absences/Congés,
+          // plafonné à la journée théorique du collaborateur.
+          let dayCap = getDailyCapacity(user);
           let cap = (CAPACITY_DATA[user] && CAPACITY_DATA[user][timestamp] !== undefined) ? CAPACITY_DATA[user][timestamp] : HOURS_PER_DAY;
-          let capLeave = cap < HOURS_PER_DAY ? (HOURS_PER_DAY - cap) : 0;
+          let offFraction = cap < HOURS_PER_DAY ? (HOURS_PER_DAY - cap) / HOURS_PER_DAY : 0;
+          let capLeave = dayCap * offFraction;
           let taskLeave = (USER_LEAVE_TASKS[user] && USER_LEAVE_TASKS[user][timestamp]) ? USER_LEAVE_TASKS[user][timestamp] : 0;
-          return Math.min(HOURS_PER_DAY, capLeave + taskLeave);
+          return Math.min(dayCap, capLeave + taskLeave);
       }
 
       function runEngine() {
@@ -727,7 +936,7 @@
           if (dLoop.getDay() !== 0 && dLoop.getDay() !== 6) {
             let t = dLoop.getTime();
             let dateKey = dLoop.toLocaleDateString("fr-FR");
-            let usersToProcess = who === "ALL" ? Object.keys(CAPACITY_DATA) : [who];
+            let usersToProcess = who === "ALL" ? getActiveUsers() : [who];
 
             let dayNetCapa = 0;
             usersToProcess.forEach(u => {
@@ -735,12 +944,13 @@
               if (!heatmapData[u]) heatmapData[u] = { load: 0, capa: 0, leaves: 0 };
 
               if (!window.GLOBAL_HOLIDAYS.has(t)) {
-                  totCapa += HOURS_PER_DAY;
-                  heatmapData[u].capa += HOURS_PER_DAY;
+                  let dayCap = getDailyCapacity(u);
+                  totCapa += dayCap;
+                  heatmapData[u].capa += dayCap;
                   let leave = getLeave(u, t);
                   totLeaves += leave;
                   heatmapData[u].leaves += leave;
-                  dayNetCapa += (HOURS_PER_DAY - leave);
+                  dayNetCapa += (dayCap - leave);
               }
 
               let l = getAccurateLoad(u, t);
@@ -824,7 +1034,7 @@
 
       function prepareOptiData(mode) {
         const who = document.getElementById("selCollab");
-        let usersToProcess = who.value === "ALL" ? Object.keys(CAPACITY_DATA) : [who.value];
+        let usersToProcess = who.value === "ALL" ? getActiveUsers() : [who.value];
         let periods = {};
 
         const sParts = document.getElementById("dStart").value.split('-');
@@ -864,7 +1074,7 @@
                 periods[key].workingDays++;
                 usersToProcess.forEach(u => {
                     if (u === "Inconnu") return;
-                    periods[key].capa += HOURS_PER_DAY;
+                    periods[key].capa += getDailyCapacity(u);
                     periods[key].leaves += getLeave(u, t);
                 });
             }
@@ -949,7 +1159,7 @@
       function prepareProjectionData() {
         const tbody = document.getElementById("projection-body"); tbody.innerHTML = "";
         const who = document.getElementById("selCollab").value;
-        let usersToProcess = who === "ALL" ? Object.keys(CAPACITY_DATA).sort() : [who];
+        let usersToProcess = who === "ALL" ? getActiveUsers() : [who];
 
         let startMonth = new Date(); startMonth.setDate(1); startMonth.setHours(12,0,0,0);
         let targetMonths = [];
@@ -967,7 +1177,7 @@
               if (dLoop.getDay() !== 0 && dLoop.getDay() !== 6) {
                 let t = dLoop.getTime();
                 if (!window.GLOBAL_HOLIDAYS.has(t)) {
-                  capa += HOURS_PER_DAY;
+                  capa += getDailyCapacity(u);
                   leaves += getLeave(u, t);
                 }
                 load += getAccurateLoad(u, t);
@@ -994,7 +1204,7 @@
 
       function prepareAnalyseData() {
         const who = document.getElementById("selCollab").value;
-        let usersToProcess = who === "ALL" ? Object.keys(CAPACITY_DATA).sort() : [who];
+        let usersToProcess = who === "ALL" ? getActiveUsers() : [who];
 
         let startMonth = new Date(); startMonth.setDate(1); startMonth.setHours(12,0,0,0);
         let monthsData = [];
@@ -1014,7 +1224,7 @@
                     if (!window.GLOBAL_HOLIDAYS.has(t)) {
                         usersToProcess.forEach(u => {
                             if (u === "Inconnu") return;
-                            mCapa += HOURS_PER_DAY;
+                            mCapa += getDailyCapacity(u);
                             mLeaves += getLeave(u, t);
                         });
                     }
@@ -1116,11 +1326,30 @@
       }
 
       function initFilters() {
-        const sel = document.getElementById("selCollab");
-        let users = Object.keys(CAPACITY_DATA).sort();
-        sel.innerHTML = '<option value="ALL">Vue d\'Equipe</option>';
-        users.forEach(u => { if(u !== "Inconnu") sel.innerHTML += `<option value="${u}">${u}</option>`; });
+        loadSettings();
+        // Filtres Équipe / Profil (listes fixes)
+        const tSel = document.getElementById("selTeam");
+        tSel.innerHTML = '<option value="ALL">Toutes les équipes</option>' + TEAMS.map(t => `<option value="${t}">${t}</option>`).join("");
+        const pSel = document.getElementById("selProfile");
+        pSel.innerHTML = '<option value="ALL">Tous les profils</option>' + PROFILES.map(p => `<option value="${p}">${p}</option>`).join("");
+        populateCollabSelect();
         setPeriod('month');
+      }
+
+      // Peuple la liste des noms en respectant les filtres Équipe / Profil actifs.
+      function populateCollabSelect() {
+        const sel = document.getElementById("selCollab");
+        let cur = sel.value;
+        let users = getActiveUsers();
+        sel.innerHTML = '<option value="ALL">Vue d\'Equipe</option>';
+        users.forEach(u => { sel.innerHTML += `<option value="${u}">${u}</option>`; });
+        sel.value = (cur !== "ALL" && users.includes(cur)) ? cur : "ALL";
+      }
+
+      // Changement de filtre Équipe / Profil : on restreint la liste des noms puis on recalcule.
+      function onFilterChange() {
+        populateCollabSelect();
+        refreshActiveTab();
       }
 
       // Changement de collaborateur : on rafraîchit l'onglet actif (et pas seulement la synthèse)
