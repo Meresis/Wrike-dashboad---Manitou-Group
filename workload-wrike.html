@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Workload dashboard v13.33 (Reconstruction complète & correctifs)</title>
+    <title>Workload dashboard v13.35 (Reconstruction complète & correctifs)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -70,7 +70,7 @@
     <!-- CONTENEUR IMPORTATION -->
     <div id="import-view">
       <div class="text-center mb-4">
-        <h1 class="fw-bold text-dark display-5">Workload dashboard <span class="text-primary">v13.33</span></h1>
+        <h1 class="fw-bold text-dark display-5">Workload dashboard <span class="text-primary">v13.35</span></h1>
         <p class="text-muted lead">Glissez-Déposez vos 3 fichiers Excel ou CSV Wrike</p>
       </div>
 
@@ -106,7 +106,7 @@
     <div id="dashboard-view" class="app-wrapper d-none">
       <div class="panel top-bar">
         <div class="d-flex align-items-center gap-3 w-100">
-          <h5 class="fw-bold m-0 text-primary">Workload dashboard <span class="text-secondary small ms-1" style="font-size: 0.7em">v13.33</span></h5>
+          <h5 class="fw-bold m-0 text-primary">Workload dashboard <span class="text-secondary small ms-1" style="font-size: 0.7em">v13.35</span></h5>
           <div class="vr mx-2"></div>
           <div class="row g-2 w-100 align-items-center">
             <div class="col-md-3">
@@ -119,9 +119,9 @@
             </div>
             <div class="col-md-3">
               <div class="input-group input-group-sm">
-                <input type="date" id="dStart" class="form-control fw-bold text-center" onchange="runEngine()" />
+                <input type="date" id="dStart" class="form-control fw-bold text-center" onchange="refreshActiveTab()" />
                 <span class="input-group-text px-1">➝</span>
-                <input type="date" id="dEnd" class="form-control fw-bold text-center" onchange="runEngine()" />
+                <input type="date" id="dEnd" class="form-control fw-bold text-center" onchange="refreshActiveTab()" />
               </div>
             </div>
             <div class="col-md-4 d-flex gap-1">
@@ -150,6 +150,7 @@
       <ul class="nav nav-tabs ps-3 border-bottom-0" id="mainTabs">
         <li class="nav-item"><button class="nav-link active" id="tab-overview" onclick="switchTab('overview')">Synthèse</button></li>
         <li class="nav-item"><button class="nav-link" id="tab-opti" onclick="switchTab('opti')">✨ Optimisation de Charge</button></li>
+        <li class="nav-item"><button class="nav-link" id="tab-dev" onclick="switchTab('dev')">👩‍💻 Charge développeur</button></li>
       </ul>
 
       <div class="tab-content" id="tabContent">
@@ -198,7 +199,7 @@
                   <table class="table table-sm table-bordered text-center mb-0" style="font-size: 0.8rem">
                     <thead class="table-light">
                       <tr>
-                        <th>Collaborateur</th><th>Charge</th><th>Capacité</th><th>Dispo</th><th>%</th>
+                        <th>Collaborateur</th><th>Capacité</th><th>Charge</th><th>Dispo</th><th>%</th>
                       </tr>
                     </thead>
                     <tbody id="heatmap-body"></tbody>
@@ -275,6 +276,35 @@
             <div class="p-4" id="analyse-content"></div>
           </div>
         </div>
+
+        <!-- VUE CHARGE DÉVELOPPEUR -->
+        <div id="view-dev" class="tab-pane d-none">
+          <div class="panel d-flex flex-column h-100">
+            <div class="table-header bg-white border-bottom">
+              <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
+                <h6 class="m-0 fw-bold text-primary">👩‍💻 Charge développeurs <span id="dev-period" class="text-secondary small fw-normal"></span></h6>
+                <span class="small text-muted">Trié par disponibilité décroissante — aide à l'affectation des tâches</span>
+              </div>
+            </div>
+            <div class="table-scroll p-0">
+              <table class="table table-bordered table-hover mb-0 text-center align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th class="text-start ps-3">Développeur</th>
+                    <th>Équipe</th>
+                    <th>Capacité</th>
+                    <th>Charge</th>
+                    <th>Disponibilité</th>
+                    <th>Occupation</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody id="dev-body"></tbody>
+              </table>
+            </div>
+            <div id="dev-summary" class="p-3 border-top bg-light small"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -322,16 +352,55 @@
 
       // ====== PARAMÈTRES COLLABORATEURS (équipe / profil / temps partiel) ======
       const TEAMS = ["Supply", "Logistics", "R&D IS", "Indus"];
-      const PROFILES = ["Business Analyst", "Développeur", "Manager"];
+      const PROFILES = ["Business Analyst", "Développeur", "Manager", "Prestataire", "Dev ext"];
       const PARTTIME = [100, 90, 80, 70, 60, 50];
       const SETTINGS_KEY = "workload_user_settings_v1";
       let USER_SETTINGS = {}; // { "Nom": { team:[...], profile:[...], partTime:100 } }
 
+      // Paramétrage par défaut (pré-rempli) : évite la saisie initiale par les managers.
+      // Utilisé tant qu'aucun réglage n'a été enregistré sur le navigateur.
+      const DEFAULT_SETTINGS = {
+        "Christian Jacques":   { team: ["Indus"],     profile: ["Business Analyst"], partTime: 100 },
+        "Cyril Bernard":       { team: ["Supply"],    profile: ["Développeur"],      partTime: 100 },
+        "Céline Girardeau":    { team: ["Supply"],    profile: ["Business Analyst"], partTime: 100 },
+        "David Sechet":        { team: ["R&D IS"],    profile: ["Business Analyst"], partTime: 100 },
+        "Eloïse Rivery":       { team: ["Supply"],    profile: ["Manager"],          partTime: 100 },
+        "Emilie Saindon":      { team: ["Supply"],    profile: ["Business Analyst"], partTime: 100 },
+        "Fabien Jacques":      { team: ["Supply"],    profile: ["Développeur", "Prestataire", "Dev ext"], partTime: 100 },
+        "Florian Dufour":      { team: ["Supply"],    profile: ["Développeur"],      partTime: 100 },
+        "Florian Poirier":     { team: ["Supply"],    profile: ["Business Analyst"], partTime: 100 },
+        "Guillaume Moynard":   { team: ["Indus"],     profile: ["Business Analyst"], partTime: 100 },
+        "Hadrien Bosseau":     { team: ["Indus"],     profile: ["Développeur"],      partTime: 100 },
+        "Jason Rousseau":      { team: ["R&D IS"],    profile: ["Développeur", "Prestataire", "Dev ext"], partTime: 100 },
+        "Jeremy Plouzennec":   { team: ["Supply"],    profile: ["Business Analyst"], partTime: 90 },
+        "Julien Juhel":        { team: ["R&D IS"],    profile: ["Business Analyst"], partTime: 100 },
+        "Jérémie You":         { team: ["Indus"],     profile: ["Business Analyst"], partTime: 100 },
+        "Kévin Mathieu":       { team: ["Supply"],    profile: ["Business Analyst", "Prestataire"], partTime: 100 },
+        "Laetitia Grosbois":   { team: ["Supply"],    profile: ["Business Analyst"], partTime: 100 },
+        "Laurent Cholvy":      { team: [],            profile: [],                   partTime: 100 },
+        "Liliane Da Costa":    { team: ["Supply"],    profile: ["Business Analyst"], partTime: 100 },
+        "Louis Marie":         { team: ["R&D IS"],    profile: ["Développeur", "Prestataire", "Dev ext"], partTime: 100 },
+        "Lucie Gentils Grandin":{ team: ["R&D IS"],   profile: ["Business Analyst", "Prestataire"], partTime: 100 },
+        "Matthieu Avis":       { team: ["Indus"],     profile: ["Manager"],          partTime: 100 },
+        "Mickaël Serre":       { team: ["R&D IS"],    profile: ["Développeur"],      partTime: 100 },
+        "Nicolas Cuperly":     { team: ["Supply"],    profile: ["Business Analyst", "Prestataire"], partTime: 100 },
+        "Olivier Guyot":       { team: ["R&D IS"],    profile: ["Business Analyst"], partTime: 100 },
+        "Romain Doni":         { team: [],            profile: ["Prestataire"],      partTime: 100 },
+        "Samir Bou Samra":     { team: ["Supply"],    profile: ["Business Analyst", "Prestataire"], partTime: 100 },
+        "Stéphane Bechieau":   { team: ["Indus"],     profile: ["Business Analyst"], partTime: 100 },
+        "Sébastien Charron":   { team: ["Logistics"], profile: ["Business Analyst"], partTime: 100 },
+        "Thomas Joubert":      { team: ["Logistics"], profile: ["Business Analyst"], partTime: 100 },
+        "Xavier Gallard":      { team: ["R&D IS"],    profile: ["Manager"],          partTime: 100 },
+        "Yohann Besq":         { team: ["R&D IS"],    profile: ["Business Analyst", "Prestataire"], partTime: 100 }
+      };
+
       function loadSettings() {
         try {
           let s = localStorage.getItem(SETTINGS_KEY);
-          USER_SETTINGS = s ? (JSON.parse(s) || {}) : {};
-        } catch (e) { USER_SETTINGS = {}; }
+          if (s) { USER_SETTINGS = JSON.parse(s) || {}; return; }
+        } catch (e) { /* stockage indisponible */ }
+        // Aucun réglage enregistré -> on part des valeurs par défaut (copie indépendante)
+        USER_SETTINGS = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
       }
       function persistSettings() {
         try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(USER_SETTINGS)); }
@@ -744,7 +813,7 @@
         let currentAssignee = "Inconnu";
 
         /*
-          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.33)
+          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.35)
           ----------------------------------------------------
           Chaque ligne est un couple (Collaborateur × Projet), Type = "User". Pour chaque
           collaborateur, Wrike ajoute UNE ligne agrégée dont le "Project name" est VIDE :
@@ -1272,16 +1341,83 @@
         analyseDiv.innerHTML = html;
       }
 
+      // ====== ONGLET CHARGE DÉVELOPPEUR ======
+      // Profils considérés comme "développeur" pour cet onglet.
+      const DEV_PROFILES = ["Développeur", "Dev ext"];
+
+      function prepareDevLoad() {
+        const sParts = document.getElementById("dStart").value.split('-');
+        const eParts = document.getElementById("dEnd").value.split('-');
+        if (sParts.length < 3 || eParts.length < 3) return;
+        const start = new Date(parseInt(sParts[0]), parseInt(sParts[1]) - 1, parseInt(sParts[2]), 12, 0, 0);
+        const end = new Date(parseInt(eParts[0]), parseInt(eParts[1]) - 1, parseInt(eParts[2]), 12, 0, 0);
+
+        const team = (document.getElementById("selTeam") || {}).value || "ALL";
+        let devs = Object.keys(CAPACITY_DATA).filter(u => {
+          if (u === "Inconnu") return false;
+          let s = USER_SETTINGS[u] || {};
+          let isDev = (s.profile || []).some(p => DEV_PROFILES.includes(p));
+          if (!isDev) return false;
+          if (team !== "ALL" && !(s.team || []).includes(team)) return false;
+          return true;
+        });
+
+        let rows = devs.map(u => {
+          let capa = 0, charge = 0;
+          let d = new Date(start);
+          while (d <= end) {
+            if (d.getDay() !== 0 && d.getDay() !== 6) {
+              let t = d.getTime();
+              if (!window.GLOBAL_HOLIDAYS.has(t)) capa += (getDailyCapacity(u) - getLeave(u, t));
+              charge += getAccurateLoad(u, t);
+            }
+            d.setDate(d.getDate() + 1);
+          }
+          let dispo = capa - charge;
+          let occ = capa > 0 ? (charge / capa) * 100 : 0;
+          let s = USER_SETTINGS[u] || {};
+          return { user: u, team: (s.team || []).join(", ") || "—", capa, charge, dispo, occ };
+        }).sort((a, b) => b.dispo - a.dispo);
+
+        const tbody = document.getElementById("dev-body"); tbody.innerHTML = "";
+        rows.forEach(r => {
+          let st = getStatus(r.occ);
+          tbody.innerHTML += `<tr>
+            <td class="fw-bold text-start ps-3">${r.user}</td>
+            <td class="small text-muted">${r.team}</td>
+            <td>${fmtVal(r.capa)}</td>
+            <td>${fmtVal(r.charge)}</td>
+            <td class="${r.dispo >= 0 ? 'text-avail-pos' : 'text-avail-neg'}">${fmtVal(r.dispo)}</td>
+            <td>${r.occ.toFixed(0)}%</td>
+            <td><span class="badge ${st.cls}">${st.label}</span></td>
+          </tr>`;
+        });
+
+        const summary = document.getElementById("dev-summary");
+        if (rows.length === 0) {
+          summary.innerHTML = `Aucun développeur${team !== "ALL" ? " dans l'équipe « " + escapeHtml(team) + " »" : ""}. Définissez le profil « Développeur » ou « Dev ext » dans ⚙️ Paramètres.`;
+        } else {
+          let totalDispo = rows.reduce((a, r) => a + Math.max(0, r.dispo), 0);
+          let mobilisables = rows.filter(r => r.occ < STATUS_TIERS.optimalMin);
+          let names = mobilisables.map(r => `${r.user} (${fmtVal(r.dispo)})`).join(" · ");
+          summary.innerHTML = `<strong>${rows.length}</strong> développeur(s)${team !== "ALL" ? " — équipe « " + escapeHtml(team) + " »" : ""} · `
+            + `Capacité disponible cumulée : <strong>${fmtVal(totalDispo)}</strong>`
+            + (mobilisables.length ? `<br>💡 Mobilisable(s) pour une nouvelle tâche (occupation < ${STATUS_TIERS.optimalMin}%) : ${names}` : `<br>✅ Tous les développeurs sont au moins à l'optimum sur la période.`);
+        }
+        document.getElementById("dev-period").innerText = `(${start.toLocaleDateString("fr-FR")} → ${end.toLocaleDateString("fr-FR")})`;
+      }
+
       function renderTeamTable() {
         const hb = document.getElementById("heatmap-body"); hb.innerHTML = "";
         currentTeamData.sort((a,b) => a.user.localeCompare(b.user)).forEach(d => {
           if (d.user === "Inconnu") return;
+          let st = getStatus(d.occ);
           hb.innerHTML += `<tr>
             <td class="fw-bold text-start ps-3">${d.user}</td>
-            <td>${fmtVal(d.load)}</td>
             <td>${fmtVal(d.capa)}</td>
+            <td>${fmtVal(d.load)}</td>
             <td class="${d.dispo >= 0 ? 'text-success' : 'text-danger'} fw-bold">${fmtVal(d.dispo)}</td>
-            <td><span class="heatmap-cell ${d.occ > 100 ? 'bg-danger' : 'bg-ok'}">${d.occ.toFixed(0)}%</span></td>
+            <td><span class="badge ${st.cls}">${d.occ.toFixed(0)}%</span></td>
           </tr>`;
         });
       }
@@ -1374,7 +1510,7 @@
 
         document.getElementById("dStart").value = formatISOLocal(s);
         document.getElementById("dEnd").value = formatISOLocal(e);
-        runEngine();
+        refreshActiveTab();
       }
 
       function setUnit(u) {
@@ -1387,7 +1523,7 @@
       // ====== GESTION DES ONGLETS ======
       function switchTab(tab) {
         activeTab = tab;
-        ['overview', 'opti'].forEach(t => {
+        ['overview', 'opti', 'dev'].forEach(t => {
             let pane = document.getElementById('view-' + t);
             let btn = document.getElementById('tab-' + t);
             if (pane) {
@@ -1409,6 +1545,8 @@
             prepareOptiData(optiMode);
             prepareProjectionData();
             prepareAnalyseData();
+        } else if (tab === 'dev') {
+            prepareDevLoad();
         }
       }
 
