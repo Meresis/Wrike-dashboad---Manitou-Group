@@ -3,74 +3,145 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Workload dashboard v13.35 (Reconstruction complète & correctifs)</title>
+    <title>Workload dashboard v13.44 (Reconstruction complète & correctifs)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
     <style>
-      :root { --primary: #0d6efd; --bg: #f0f2f5; --kpi-h: 150px; }
-      body { background-color: var(--bg); font-family: "Segoe UI", sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+      /* ====== THÈMES (clair / sombre) ====== */
+      html[data-theme="dark"]{
+        --bg:#1B1E20; --surface:#23272B; --surface-2:#2B3136; --border:#373E45;
+        --text:#EAECEC; --text-muted:#99A1A7;
+        --accent:#E1251B; --accent-dark:#8E140D; --accent-ink:#ffffff;
+        --title:#EC6A61;
+        --ok:#4F9D69; --warn:#E0A03C; --danger:#E1251B; --info:#6F93A8; --steel:#5B7C93;
+        --cat-run:#5B7C93; --cat-proj:#E0A03C; --cat-autre:#99A1A7;
+        --track:#333A40;
+      }
+      html[data-theme="light"]{
+        /* Palette d'origine (avant refonte) : Bootstrap clair, accent bleu */
+        --bg:#F0F2F5; --surface:#FFFFFF; --surface-2:#F8F9FA; --border:#E2E8F0;
+        --text:#1E293B; --text-muted:#64748B;
+        --accent:#0D6EFD; --accent-dark:#0A58CA; --accent-ink:#ffffff;
+        --title:#0D6EFD;
+        --ok:#198754; --warn:#FFC107; --danger:#DC3545; --info:#0DCAF0; --steel:#0D6EFD;
+        --cat-run:#0D6EFD; --cat-proj:#F59E0B; --cat-autre:#CED4DA;
+        --track:#E9ECEF;
+      }
+      :root{ --primary:var(--accent); --kpi-h:160px; }
+
+      body { background-color: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', system-ui, "Segoe UI", sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; align-items: center; transition: background-color .25s ease, color .25s ease; }
+      h1,h2,h3,h4,h5,h6,.kpi-label,.nav-tabs .nav-link,.status-badge,.btn-go { font-family: 'Saira','IBM Plex Sans',sans-serif; letter-spacing:.01em; }
+      .kpi-val { font-family:'IBM Plex Mono',monospace; font-variant-numeric: tabular-nums; }
+      table td, table th, .num { font-variant-numeric: tabular-nums; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
       .app-wrapper { width: 100%; max-width: 1700px; height: 100%; display: flex; flex-direction: column; padding: 20px; gap: 15px; }
-      .panel { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0; }
+      .panel { background: var(--surface); border-radius: 12px; border: 1px solid var(--border); box-shadow: none; }
       .top-bar { padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+      .top-bar h5 { color: var(--title) !important; }
+      .vr { background: var(--border); opacity: 1; }
       .btn-unit { font-weight: bold; width: 35px; }
-      .nav-tabs .nav-link { border: none; color: #6c757d; font-weight: 600; cursor: pointer; }
-      .nav-tabs .nav-link.active { color: var(--primary); border-bottom: 3px solid var(--primary); background: transparent; }
+      .theme-toggle { border-color: var(--border); color: var(--text-muted); }
+
+      .nav-tabs { border-bottom: 1px solid var(--border); }
+      .nav-tabs .nav-link { border: none; color: var(--text-muted); font-weight: 600; cursor: pointer; background: transparent; }
+      .nav-tabs .nav-link:hover { color: var(--text); }
+      .nav-tabs .nav-link.active { color: var(--title); background: transparent; position: relative; }
+      /* Signature : liseré "bande de sécurité" sous l'onglet actif */
+      .nav-tabs .nav-link.active::after { content:""; position:absolute; left:.55rem; right:.55rem; bottom:0; height:3px; border-radius:2px; background-image: repeating-linear-gradient(45deg, var(--accent) 0 6px, var(--accent-dark) 6px 12px); }
+
+      /* KPI : cartes différenciées (liseré supérieur coloré, pas d'ombre uniforme) */
       .kpi-strip { display: flex; gap: 15px; height: var(--kpi-h); flex-shrink: 0; }
-      .kpi-box { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-bottom: 4px solid transparent; padding: 10px; }
-      .kpi-box.primary { border-color: #0d6efd; } .kpi-box.dark { border-color: #212529; } .kpi-box.success { border-color: #198754; } .kpi-box.info { border-color: #0dcaf0; }
-      .kpi-val { font-size: 1.8rem; font-weight: 800; line-height: 1; margin: 5px 0; color: #1e293b; }
-      .kpi-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; }
-      .progress-stacked { height: 12px; width: 100%; border-radius: 6px; background-color: #e9ecef; display: flex; overflow: hidden; margin-bottom: 8px; }
+      .kpi-box { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 12px; position: relative; overflow: hidden; }
+      .kpi-box::before { content:""; position:absolute; top:0; left:0; right:0; height:3px; background: var(--kpi-accent, var(--border)); }
+      .kpi-box.primary { --kpi-accent: var(--accent); } .kpi-box.dark { --kpi-accent: var(--text-muted); } .kpi-box.success { --kpi-accent: var(--ok); } .kpi-box.info { --kpi-accent: var(--info); } .kpi-box.gauge { --kpi-accent: var(--accent); }
+      .kpi-val { font-size: 1.8rem; font-weight: 700; line-height: 1; margin: 5px 0; color: var(--text); }
+      .kpi-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.06em; }
+      .kpi-sub { font-size: .72rem; color: var(--text-muted); }
+
+      /* Jauge d'instrument (signature) */
+      .gauge-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; }
+      .gauge-wrap svg { width: 158px; height: 88px; display:block; }
+
+      .progress-stacked { height: 12px; width: 100%; border-radius: 6px; background-color: var(--track); display: flex; overflow: hidden; margin-bottom: 8px; }
       .progress-bar { display: flex; flex-direction: column; justify-content: center; color: #fff; text-align: center; white-space: nowrap; transition: width 0.6s ease; }
       .kpi-legend { display: flex; justify-content: space-between; width: 100%; font-size: 0.75rem; font-weight: 700; }
       .legend-item { display: flex; align-items: center; gap: 4px; }
       .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
       .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-      .tab-pane { height: 100%; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; overflow-x: hidden; padding-bottom: 20px;}
+      .tab-pane { height: 100%; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; overflow-x: hidden; padding-bottom: 20px; }
       .active-tab { display: flex !important; }
       .content-area { flex: 1; display: flex; gap: 15px; min-height: 0; }
       .chart-panel { flex: 1.2; display: flex; flex-direction: column; padding: 20px; }
       .chart-wrapper { flex: 1; position: relative; min-height: 0; width: 100%; }
       .table-panel { flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-      .table-header { padding: 12px 20px; border-bottom: 1px solid #eee; background: #f8f9fa; font-weight: bold; text-align: center; display: flex; justify-content: space-between; align-items: center; }
+      .table-header { padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); font-weight: bold; text-align: center; display: flex; justify-content: space-between; align-items: center; color: var(--text); }
       .table-scroll { flex: 1; overflow-y: auto; }
-      .table-custom th { text-align: left; font-size: 0.75rem; text-transform: uppercase; background: #fff; position: sticky; top: 0; z-index: 5; }
+      .table-custom th { text-align: left; font-size: 0.75rem; text-transform: uppercase; background: var(--surface); position: sticky; top: 0; z-index: 5; color: var(--text-muted); }
       .table-custom td { vertical-align: middle; font-size: 0.85rem; }
-      .sortable-th { cursor: pointer; user-select: none; position: sticky; top: 0; background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6; }
-      .sortable-th:hover { background-color: #e9ecef; }
-      .sort-icon { font-size: 0.7em; margin-left: 5px; color: #999; }
+      .sortable-th { cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--surface-2); z-index: 10; border-bottom: 2px solid var(--border); }
+      .sortable-th:hover { background-color: var(--surface); }
+      .sort-icon { font-size: 0.7em; margin-left: 5px; color: var(--text-muted); }
       .heatmap-cell { font-weight: bold; color: white; border-radius: 4px; padding: 2px 6px; font-size: 0.8rem; }
-      .bg-ok { background-color: #198754; } .bg-danger { background-color: #dc3545; }
-      .bg-danger-dark { background-color: #842029 !important; }
-      .text-avail-pos { color: #198754; font-weight: bold; } .text-avail-neg { color: #dc3545; font-weight: bold; }
+      .bg-ok { background-color: var(--ok); } .bg-danger { background-color: var(--danger); }
+      .bg-danger-dark { background-color: var(--accent-dark) !important; }
+      .text-avail-pos { color: var(--ok); font-weight: bold; } .text-avail-neg { color: var(--danger); font-weight: bold; }
+
+      /* ====== Overrides Bootstrap pilotés par le thème ====== */
+      .text-dark, .text-body { color: var(--text) !important; }
+      .text-muted, .text-secondary { color: var(--text-muted) !important; }
+      .text-primary { color: var(--title) !important; }
+      .text-success { color: var(--ok) !important; } .text-danger { color: var(--danger) !important; } .text-info { color: var(--info) !important; } .text-warning { color: var(--warn) !important; }
+      .bg-white { background: var(--surface) !important; } .bg-light { background: var(--surface-2) !important; }
+      .border, .border-top, .border-bottom, .border-start, .border-end { border-color: var(--border) !important; }
+      .badge.bg-success { background: var(--ok) !important; } .badge.bg-danger { background: var(--danger) !important; } .badge.bg-warning { background: var(--warn) !important; color:#17191b !important; } .badge.bg-info { background: var(--info) !important; color:#17191b !important; } .badge.bg-primary { background: var(--steel) !important; } .badge.bg-secondary { background:#727d86 !important; }
+      .form-select, .form-control { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+      .form-select:focus, .form-control:focus { background: var(--surface-2); color: var(--text); border-color: var(--accent); box-shadow: 0 0 0 .2rem rgba(225,37,27,.25); }
+      .form-select option { background: var(--surface); color: var(--text); }
+      .table { color: var(--text); --bs-table-bg: transparent; --bs-table-color: var(--text); border-color: var(--border); }
+      .table > :not(caption) > * > * { border-color: var(--border); background: transparent; color: var(--text); }
+      thead.table-light th, .table-light, .table-light > th { background: var(--surface-2) !important; color: var(--text) !important; }
+      .table-hover > tbody > tr:hover > * { background: var(--surface-2); }
+      .modal-content { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+      .modal-header, .modal-footer { border-color: var(--border); }
+      html[data-theme="dark"] .btn-close { filter: invert(1) grayscale(1) brightness(1.6); }
+      .alert-warning { background: var(--surface-2); color: var(--text); border: 1px solid var(--warn); }
+      .alert-danger { background: var(--surface-2); color: var(--text); border: 1px solid var(--danger); }
+      .alert-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+      .alert-success { background: var(--surface-2); color: var(--text); border: 1px solid var(--ok); }
 
       #import-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; }
-      .smart-dropzone { width: 800px; height: 300px; border: 3px dashed #cbd5e1; border-radius: 20px; background: white; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s; }
-      .smart-dropzone:hover { border-color: var(--primary); background-color: #f8fbff; transform: scale(1.01); }
-      .smart-dropzone.dragover { border-color: #198754; background-color: #d1e7dd; transform: scale(1.02); }
+      .smart-dropzone { width: 800px; max-width: 92vw; height: 300px; border: 3px dashed var(--border); border-radius: 20px; background: var(--surface); display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: all 0.3s; }
+      .smart-dropzone:hover { border-color: var(--accent); transform: scale(1.01); }
+      .smart-dropzone.dragover { border-color: var(--ok); transform: scale(1.02); }
 
-      .status-indicators { display: flex; gap: 20px; margin-top: 30px; width: 800px; justify-content: center; }
-      .status-badge { padding: 10px 20px; border-radius: 30px; background: #e9ecef; color: #adb5bd; font-weight: bold; display: flex; align-items: center; gap: 10px; transition: all 0.3s;}
-      .status-badge.active { background: #198754; color: white; box-shadow: 0 4px 10px rgba(25, 135, 84, 0.3); }
-      .btn-go { margin-top: 30px; padding: 12px 40px; font-weight: bold; font-size: 1.2rem; border-radius: 30px; transition: all 0.3s;}
+      .status-indicators { display: flex; gap: 20px; margin-top: 30px; width: 800px; max-width: 92vw; justify-content: center; flex-wrap: wrap; }
+      .status-badge { padding: 10px 20px; border-radius: 30px; background: var(--surface-2); color: var(--text-muted); font-weight: bold; display: flex; align-items: center; gap: 10px; transition: all 0.3s; border: 1px solid var(--border); }
+      .status-badge.active { background: var(--ok); color: white; border-color: transparent; }
+      .btn-go { margin-top: 30px; padding: 12px 40px; font-weight: bold; font-size: 1.2rem; border-radius: 30px; }
 
-      .analyse-card { background: #f8f9fa; border-left: 5px solid var(--primary); padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-      .analyse-card.danger { border-left-color: #dc3545; background: #fff5f5; }
-      .analyse-card.success { border-left-color: #198754; background: #f0fdf4; }
-      .analyse-card.warning { border-left-color: #ffc107; background: #fffcf0; }
+      .analyse-card { background: var(--surface-2); border-left: 5px solid var(--accent); padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+      .analyse-card.danger { border-left-color: var(--danger); }
+      .analyse-card.success { border-left-color: var(--ok); }
+      .analyse-card.warning { border-left-color: var(--warn); }
       .analyse-bullet { margin-bottom: 10px; line-height: 1.6; }
 
-      .log-console { font-family: monospace; font-size: 0.75rem; background: #212529; padding: 15px; border-radius: 8px; color: #0dfaf0; border: 1px solid #343a40; max-height: 200px; overflow-y: auto; text-align: left; white-space: pre-wrap; }
+      .log-console { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; background: #15181a; padding: 15px; border-radius: 8px; color: #5fd0a0; border: 1px solid var(--border); max-height: 200px; overflow-y: auto; text-align: left; white-space: pre-wrap; }
     </style>
+    <script>(function(){try{var t=localStorage.getItem('workload_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
   </head>
   <body>
     <!-- CONTENEUR IMPORTATION -->
     <div id="import-view">
       <div class="text-center mb-4">
-        <h1 class="fw-bold text-dark display-5">Workload dashboard <span class="text-primary">v13.35</span></h1>
+        <h1 class="fw-bold text-dark display-5">Workload dashboard <span class="text-primary">v13.44</span></h1>
         <p class="text-muted lead">Glissez-Déposez vos 3 fichiers Excel ou CSV Wrike</p>
       </div>
 
@@ -106,7 +177,7 @@
     <div id="dashboard-view" class="app-wrapper d-none">
       <div class="panel top-bar">
         <div class="d-flex align-items-center gap-3 w-100">
-          <h5 class="fw-bold m-0 text-primary">Workload dashboard <span class="text-secondary small ms-1" style="font-size: 0.7em">v13.35</span></h5>
+          <h5 class="fw-bold m-0 text-primary">Workload dashboard <span class="text-secondary small ms-1" style="font-size: 0.7em">v13.44</span></h5>
           <div class="vr mx-2"></div>
           <div class="row g-2 w-100 align-items-center">
             <div class="col-md-3">
@@ -126,13 +197,13 @@
             </div>
             <div class="col-md-4 d-flex gap-1">
               <select id="selTeam" class="form-select form-select-sm" onchange="onFilterChange()" title="Filtrer par équipe">
-                <option value="ALL">Toutes les équipes</option>
+                <option value="ALL">Equipes</option>
               </select>
               <select id="selProfile" class="form-select form-select-sm" onchange="onFilterChange()" title="Filtrer par profil">
-                <option value="ALL">Tous les profils</option>
+                <option value="ALL">Profils</option>
               </select>
               <select id="selCollab" class="form-select form-select-sm fw-bold" onchange="onCollabChange()" title="Collaborateur">
-                <option value="ALL">Vue d'Equipe</option>
+                <option value="ALL">Collaborateurs</option>
               </select>
             </div>
             <div class="col-md-2 text-end d-flex gap-2 justify-content-end align-items-center">
@@ -140,6 +211,7 @@
                 <button type="button" class="btn btn-primary btn-unit" id="btn-unit-h" onclick="setUnit('h')">H</button>
                 <button type="button" class="btn btn-outline-primary btn-unit" id="btn-unit-j" onclick="setUnit('j')">J</button>
               </div>
+              <button class="btn btn-sm btn-outline-secondary theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Basculer clair / sombre" aria-label="Basculer le thème">🌙</button>
               <button class="btn btn-sm btn-outline-secondary" onclick="openSettings()" title="Paramètres">⚙️</button>
               <button class="btn btn-sm btn-outline-danger" onclick="location.reload()">Exit</button>
             </div>
@@ -147,8 +219,12 @@
         </div>
       </div>
 
+      <div id="data-freshness" class="px-3 py-1 small d-none"></div>
+
       <ul class="nav nav-tabs ps-3 border-bottom-0" id="mainTabs">
-        <li class="nav-item"><button class="nav-link active" id="tab-overview" onclick="switchTab('overview')">Synthèse</button></li>
+        <li class="nav-item"><button class="nav-link active" id="tab-overview" onclick="switchTab('overview')">📊 Synthèse</button></li>
+        <li class="nav-item"><button class="nav-link" id="tab-heatmap" onclick="switchTab('heatmap')">🗓️ Heatmap</button></li>
+        <li class="nav-item"><button class="nav-link" id="tab-projects" onclick="switchTab('projects')">📁 Projets</button></li>
         <li class="nav-item"><button class="nav-link" id="tab-opti" onclick="switchTab('opti')">✨ Optimisation de Charge</button></li>
         <li class="nav-item"><button class="nav-link" id="tab-dev" onclick="switchTab('dev')">👩‍💻 Charge développeur</button></li>
       </ul>
@@ -157,15 +233,19 @@
         <!-- VUE SYNTHESE -->
         <div id="view-overview" class="tab-pane active-tab">
           <div class="kpi-strip">
-            <div class="panel kpi-box primary">
-              <div class="kpi-label">Charge</div>
-              <div class="kpi-val text-primary" id="k-load">0 h</div>
-              <div class="kpi-sub">Planifiée</div>
+            <div class="panel kpi-box gauge">
+              <div class="kpi-label">Occupation</div>
+              <div class="gauge-wrap" id="k-gauge"></div>
             </div>
             <div class="panel kpi-box dark">
               <div class="kpi-label">Capacité Nette</div>
               <div class="kpi-val" id="k-capa">0 h</div>
               <div class="kpi-sub">Théorique - Congés</div>
+            </div>
+            <div class="panel kpi-box primary">
+              <div class="kpi-label">Charge</div>
+              <div class="kpi-val text-primary" id="k-load">0 h</div>
+              <div class="kpi-sub">Planifiée</div>
             </div>
             <div class="panel kpi-box success">
               <div class="kpi-label">Disponibilité</div>
@@ -175,14 +255,14 @@
             <div class="panel kpi-box info" style="flex: 2">
               <div class="kpi-label mb-3">Répartition de la Charge</div>
               <div class="progress-stacked">
-                <div class="progress-bar" id="pb-run" style="width: 0%; background-color: #0d6efd"></div>
-                <div class="progress-bar" id="pb-proj" style="width: 0%; background-color: #f59e0b"></div>
-                <div class="progress-bar" id="pb-other" style="width: 0%; background-color: #ced4da"></div>
+                <div class="progress-bar" id="pb-run" style="width: 0%; background: var(--cat-run)"></div>
+                <div class="progress-bar" id="pb-proj" style="width: 0%; background: var(--cat-proj)"></div>
+                <div class="progress-bar" id="pb-other" style="width: 0%; background: var(--cat-autre)"></div>
               </div>
               <div class="kpi-legend mt-1">
-                <div class="legend-item" style="color: #0d6efd"><span class="legend-dot" style="background: #0d6efd"></span><span>RUN:</span><span id="val-run">0h</span></div>
-                <div class="legend-item" style="color: #f59e0b"><span class="legend-dot" style="background: #f59e0b"></span><span>PROJ:</span><span id="val-proj">0h</span></div>
-                <div class="legend-item" style="color: #6c757d"><span class="legend-dot" style="background: #ced4da"></span><span>AUTRE:</span><span id="val-other">0h</span></div>
+                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-run)"></span><span>RUN:</span><span id="val-run">0h</span></div>
+                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-proj)"></span><span>PROJ:</span><span id="val-proj">0h</span></div>
+                <div class="legend-item"><span class="legend-dot" style="background: var(--cat-autre)"></span><span>AUTRE:</span><span id="val-other">0h</span></div>
               </div>
             </div>
           </div>
@@ -305,6 +385,32 @@
             <div id="dev-summary" class="p-3 border-top bg-light small"></div>
           </div>
         </div>
+
+        <!-- VUE HEATMAP -->
+        <div id="view-heatmap" class="tab-pane d-none">
+          <div class="panel d-flex flex-column h-100">
+            <div class="table-header bg-white border-bottom">
+              <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
+                <h6 class="m-0 fw-bold text-primary">🗓️ Heatmap d'occupation <span class="text-secondary small fw-normal">(collaborateurs × mois)</span></h6>
+                <span id="heatmap-legend" class="small"></span>
+              </div>
+            </div>
+            <div class="table-scroll p-0" id="heatmap-grid-wrap"></div>
+          </div>
+        </div>
+
+        <!-- VUE PROJETS -->
+        <div id="view-projects" class="tab-pane d-none">
+          <div class="panel d-flex flex-column h-100">
+            <div class="table-header bg-white border-bottom">
+              <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
+                <h6 class="m-0 fw-bold text-primary">📁 Projets <span id="projects-period" class="text-secondary small fw-normal"></span></h6>
+                <span class="small text-muted">Charge par projet, répartition par collaborateur, période couverte</span>
+              </div>
+            </div>
+            <div class="table-scroll p-3" id="projects-wrap"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -341,6 +447,7 @@
     <script>
       let WORKLOAD_RAW = [], REF_RUN = new Set(), REF_PROJ = new Set(), DATA = [], CAPACITY_DATA = {}, PIVOT_LOAD = {};
       let USER_DAILY_TASKS = {};
+      let LAST_IMPORT_DATE = null;
       let USER_LEAVE_TASKS = {}; // heures issues des tâches "Absences/Congés" par collaborateur et par jour
       let DATA_MIN_DATE = null, DATA_MAX_DATE = null;
       let filesLoaded = { workload: false, run: false, proj: false };
@@ -481,18 +588,71 @@
       // ====== PALIERS DE STATUT (basés sur le taux d'occupation) ======
       // Planification optimale à partir de 87% (≈ 7h/j) et jusqu'à 100% (8h/j).
       // Seuils ajustables ici si besoin :
+      // ====== SEUILS & PARAMÈTRES GLOBAUX (modifiables ici) ======
       const STATUS_TIERS = {
-        optimalMin: 87,   // début de la zone optimale (7h/j)
-        full: 100,        // pleine capacité (8h/j)
-        overload: 110,    // au-delà : surcharge critique
-        underMin: 70      // en-dessous : capacité largement disponible
+        criticalUnder: 50,  // < 50%  -> Sous-charge critique
+        underMin: 50,       // 50–87% -> Sous-charge
+        optimalMin: 87,     // 87–105% -> Optimal (87% = 7h/j réalistes sur base 8h)
+        overload: 105       // > 105% -> Surcharge
+      };
+      const CONFIG = {
+        anomalyMonths: 2,   // nb de mois consécutifs à 0% de charge déclenchant "À vérifier"
+        stalenessDays: 14,  // ancienneté (jours) du fichier au-delà de laquelle on alerte
+        recoHorizon: 6,     // horizon (mois) des recommandations de rééquilibrage
+        maxReco: 8,         // nb max de suggestions affichées
+        historyMax: 24      // nb d'instantanés d'historique conservés (si activé)
       };
       function getStatus(occ) {
-        if (occ > STATUS_TIERS.overload)  return { label: "Surcharge critique", cls: "bg-danger-dark" };
-        if (occ > STATUS_TIERS.full)      return { label: "Surcharge",          cls: "bg-danger" };
-        if (occ >= STATUS_TIERS.optimalMin) return { label: "Optimal",           cls: "bg-success" };
-        if (occ >= STATUS_TIERS.underMin) return { label: "Sous-charge",         cls: "bg-warning text-dark" };
-        return { label: "Disponible", cls: "bg-info text-dark" };
+        if (occ > STATUS_TIERS.overload)   return { label: "Surcharge",          cls: "bg-danger" };
+        if (occ >= STATUS_TIERS.optimalMin) return { label: "Optimal",            cls: "bg-success" };
+        if (occ >= STATUS_TIERS.criticalUnder) return { label: "Sous-charge",     cls: "bg-warning text-dark" };
+        return { label: "Sous-charge critique", cls: "bg-info text-dark" };
+      }
+
+      // ====== THÈME CLAIR / SOMBRE ======
+      function themeVars() {
+        let s = getComputedStyle(document.documentElement);
+        const g = n => s.getPropertyValue(n).trim();
+        return { text: g('--text'), muted: g('--text-muted'), border: g('--border'), accent: g('--accent'),
+                 ok: g('--ok'), warn: g('--warn'), danger: g('--danger'), info: g('--info'), steel: g('--steel'), surface: g('--surface'), catRun: g('--cat-run'), catProj: g('--cat-proj'), catAutre: g('--cat-autre') };
+      }
+      function applyTheme(t) {
+        t = (t === 'light') ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        try { localStorage.setItem('workload_theme', t); } catch (e) {}
+        let btn = document.getElementById('themeToggle');
+        if (btn) { btn.innerText = (t === 'dark') ? '☀️' : '🌙'; btn.title = (t === 'dark') ? 'Passer en thème clair' : 'Passer en thème sombre'; }
+      }
+      function toggleTheme() {
+        let cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+        // Re-render pour que graphiques et jauge reprennent les couleurs du thème.
+        let dv = document.getElementById('dashboard-view');
+        if (dv && !dv.classList.contains('d-none')) refreshActiveTab();
+      }
+
+      // ====== JAUGE D'INSTRUMENT (signature) ======
+      function renderGauge(occ) {
+        let el = document.getElementById('k-gauge'); if (!el) return;
+        let tv = themeVars();
+        const max = 150, cx = 79, cy = 80, r = 64, w = 13;
+        const ang = p => Math.PI * (1 - Math.max(0, Math.min(p, max)) / max);
+        const pt = (a, rad) => [(cx + rad * Math.cos(a)).toFixed(1), (cy - rad * Math.sin(a)).toFixed(1)];
+        function arc(p0, p1, color) {
+          let a0 = ang(p0), a1 = ang(p1);
+          let [x0, y0] = pt(a0, r), [x1, y1] = pt(a1, r);
+          let large = Math.abs(a0 - a1) > Math.PI ? 1 : 0;
+          return `<path d="M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}" fill="none" stroke="${color}" stroke-width="${w}"/>`;
+        }
+        let bands = arc(0, 50, tv.info) + arc(50, 87, tv.warn) + arc(87, 105, tv.ok) + arc(105, 150, tv.danger);
+        let a = ang(occ), [nx, ny] = pt(a, r - 3), st = getStatus(occ);
+        el.innerHTML = `<svg viewBox="0 0 158 92" role="img" aria-label="Occupation ${occ.toFixed(0)}%">
+            ${bands}
+            <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${tv.text}" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="${cx}" cy="${cy}" r="4.5" fill="${tv.text}"/>
+            <text x="${cx}" y="${cy - 16}" text-anchor="middle" font-family="'IBM Plex Mono',monospace" font-size="20" font-weight="700" fill="${tv.text}">${occ.toFixed(0)}%</text>
+          </svg>
+          <div class="kpi-sub">${st.label}</div>`;
       }
 
       // ====== FORMATAGE DES VALEURS (Heures / Jours) ======
@@ -574,59 +734,92 @@
         });
       }
 
-      function setImportProgress(pct, label) {
+      // ====== BARRE DE PROGRESSION ANIMÉE ======
+      let _progTimer = null, _progCur = 0, _progTarget = 0;
+      function _applyProgress(p) {
+        let pr = Math.round(p);
+        let bar = document.getElementById("import-progress-bar"); if (bar) bar.style.width = pr + "%";
+        let pct = document.getElementById("import-progress-pct"); if (pct) pct.innerText = pr + "%";
+      }
+      function startProgressAnimator() {
+        _progCur = 0; _progTarget = 0;
         let wrap = document.getElementById("import-progress-wrap");
-        if (!wrap) return;
-        wrap.classList.remove("d-none");
-        let p = Math.max(0, Math.min(100, Math.round(pct)));
-        document.getElementById("import-progress-bar").style.width = p + "%";
-        document.getElementById("import-progress-pct").innerText = p + "%";
-        if (label) document.getElementById("import-progress-label").innerText = label;
+        if (wrap) wrap.classList.remove("d-none");
+        _applyProgress(0);
+        if (_progTimer) clearInterval(_progTimer);
+        // À chaque tick, la barre se rapproche de sa cible (easing) : mouvement continu et fluide.
+        _progTimer = setInterval(() => {
+          if (_progCur < _progTarget) {
+            _progCur += Math.max(0.4, (_progTarget - _progCur) * 0.18);
+            if (_progCur > _progTarget) _progCur = _progTarget;
+            _applyProgress(_progCur);
+          }
+        }, 40);
+      }
+      function setProgressTarget(t, label) {
+        _progTarget = Math.max(_progTarget, Math.min(100, t)); // ne recule jamais
+        if (label) { let l = document.getElementById("import-progress-label"); if (l) l.innerText = label; }
+      }
+      function stopProgressAnimator() {
+        if (_progTimer) { clearInterval(_progTimer); _progTimer = null; }
+        _applyProgress(100);
       }
       function hideImportProgress() {
         let wrap = document.getElementById("import-progress-wrap");
         if (wrap) wrap.classList.add("d-none");
       }
+      function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-      function handleSmartUpload(files) {
+      async function handleSmartUpload(files) {
         files = Array.from(files || []);
         if (files.length === 0) return;
         addLog(`=== Réception de ${files.length} fichier(s) ===`);
         showImportError("");
+        startProgressAnimator();
+        setProgressTarget(8, `Préparation de ${files.length} fichier(s)…`);
+        await _delay(150);
 
-        let totalBytes = files.reduce((s, f) => s + (f.size || 0), 0) || 1;
-        let loaded = new Array(files.length).fill(0);
-        let doneCount = 0;
-        setImportProgress(2, `Chargement de ${files.length} fichier(s)…`);
-
-        function refresh(currentName) {
-          let sum = loaded.reduce((a, c) => a + c, 0);
-          // On plafonne la lecture à 95% : les 5% restants correspondent à l'analyse.
-          setImportProgress(Math.min(95, (sum / totalBytes) * 95),
-            `Chargement… ${doneCount}/${files.length} fichier(s)${currentName ? " — " + currentName : ""}`);
+        // Lecture séquentielle avec petits paliers : la barre progresse visiblement à chaque étape.
+        let results = [];
+        for (let i = 0; i < files.length; i++) {
+          let file = files[i];
+          setProgressTarget(8 + (i / files.length) * 68, `Lecture de ${file.name}…`);
+          await _delay(120); // laisse la barre avancer avant le parsing (synchrone)
+          try {
+            let res = await readFileAsync(file);
+            results.push({ ok: true, res });
+          } catch (err) {
+            results.push({ ok: false, name: file.name, err });
+          }
+          setProgressTarget(8 + ((i + 1) / files.length) * 68, `Lecture de ${file.name}…`);
+          await _delay(90);
         }
 
-        const tasks = files.map((file, idx) =>
-          readFileAsync(file, b => { loaded[idx] = b; refresh(file.name); })
-            .then(res => { loaded[idx] = file.size || 0; doneCount++; refresh(file.name); return { ok: true, res }; })
-            .catch(err => { loaded[idx] = file.size || 0; doneCount++; refresh(file.name); return { ok: false, name: file.name, err }; })
-        );
+        setProgressTarget(84, "Analyse des données…");
+        await _delay(250);
 
-        Promise.all(tasks).then(results => {
-          setImportProgress(100, "Analyse des fichiers…");
-          let errors = [];
-          results.forEach(r => {
-            if (!r.ok) {
-              errors.push(`Le fichier « <strong>${escapeHtml(r.name)}</strong> » n'a pas pu être lu (format Excel/CSV invalide ou corrompu).`);
-              return;
-            }
-            let outcome = identifyAndAssign(r.res);
-            if (outcome && outcome.error) errors.push(outcome.error);
-          });
-          updateBadges();
-          hideImportProgress();
-          checkCompleteness(errors);
+        let errors = [];
+        results.forEach(r => {
+          if (!r.ok) {
+            errors.push(`Le fichier « <strong>${escapeHtml(r.name)}</strong> » n'a pas pu être lu (format Excel/CSV invalide ou corrompu).`);
+            return;
+          }
+          let outcome = identifyAndAssign(r.res);
+          if (outcome && outcome.error) errors.push(outcome.error);
         });
+        updateBadges();
+
+        setProgressTarget(96, "Consolidation…");
+        await _delay(220);
+
+        let complete = errors.length === 0 && filesLoaded.workload && filesLoaded.run && filesLoaded.proj;
+        if (complete) {
+          setProgressTarget(100, "Ouverture du dashboard…");
+          await _delay(320); // laisse la barre atteindre 100% avant l'ouverture
+        }
+        stopProgressAnimator();
+        hideImportProgress();
+        checkCompleteness(errors);
       }
 
       function readFileAsync(file, onProgress) {
@@ -644,12 +837,12 @@
                           encReader.onload = evt => {
                               let view = new Uint16Array(evt.target.result);
                               let str = String.fromCharCode.apply(null, view);
-                              resolve({ name: file.name.toLowerCase(), orig: file.name, data: csvToArray(str) });
+                              resolve({ name: file.name.toLowerCase(), orig: file.name, lastModified: file.lastModified, data: csvToArray(str) });
                           };
                           encReader.onerror = () => reject(new Error("Lecture binaire impossible"));
                           encReader.readAsArrayBuffer(file);
                       } else {
-                          resolve({ name: file.name.toLowerCase(), orig: file.name, data: csvToArray(text) });
+                          resolve({ name: file.name.toLowerCase(), orig: file.name, lastModified: file.lastModified, data: csvToArray(text) });
                       }
                   } catch(err) { reject(err); }
               };
@@ -661,7 +854,7 @@
                   const data = new Uint8Array(e.target.result);
                   const wb = XLSX.read(data, { type: "array" });
                   const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" });
-                  resolve({ name: file.name.toLowerCase(), orig: file.name, data: json });
+                  resolve({ name: file.name.toLowerCase(), orig: file.name, lastModified: file.lastModified, data: json });
                 } catch (err) { reject(err); }
               };
               reader.onerror = () => reject(new Error("Lecture du fichier Excel impossible"));
@@ -693,6 +886,7 @@
             if (hasWorkloadSignature || name.includes("workload") || name.includes("charge")) {
               addLog(`Routage : ${orig} associé à WORKLOAD`);
               WORKLOAD_RAW = json; filesLoaded.workload = true; slotFiles.workload = orig;
+              if (fileObj.lastModified) LAST_IMPORT_DATE = new Date(fileObj.lastModified);
               return { slot: "workload" };
             }
             if (name.includes("run") || name.includes("maintenance") || name.includes("mco") || name.includes("support")) {
@@ -771,6 +965,7 @@
         document.getElementById("import-view").classList.add("d-none");
         document.getElementById("dashboard-view").classList.remove("d-none");
         initFilters();
+        renderDataFreshness();
       }
 
       function processData() {
@@ -813,7 +1008,7 @@
         let currentAssignee = "Inconnu";
 
         /*
-          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.35)
+          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.44)
           ----------------------------------------------------
           Chaque ligne est un couple (Collaborateur × Projet), Type = "User". Pour chaque
           collaborateur, Wrike ajoute UNE ligne agrégée dont le "Project name" est VIDE :
@@ -1065,6 +1260,7 @@
         document.getElementById("k-capa").innerText = fmtVal(realCapaDisplay);
         document.getElementById("k-dispo").innerText = fmtVal(dispo);
         document.getElementById("k-dispo").className = "kpi-val " + (dispo >= 0 ? "text-success" : "text-danger");
+        renderGauge(realCapaDisplay > 0 ? (totLoad / realCapaDisplay) * 100 : 0);
 
         document.getElementById("val-run").innerText = fmtVal(cats.RUN) + " (" + (totLoad>0 ? ((cats.RUN/totLoad)*100).toFixed(0) : 0) + "%)";
         document.getElementById("val-proj").innerText = fmtVal(cats.PROJETS) + " (" + (totLoad>0 ? ((cats.PROJETS/totLoad)*100).toFixed(0) : 0) + "%)";
@@ -1313,32 +1509,245 @@
 
       function renderAnalyseReport(monthsData, globalOcc, totalNetCapa, totalLoad, totalLeaves, who) {
         const analyseDiv = document.getElementById("analyse-content");
-        let overloaded = monthsData.filter(m => m.occ > 100);
-        let underloaded = monthsData.filter(m => m.occ < 85);
+        let overloaded = monthsData.filter(m => m.occ > STATUS_TIERS.overload);
+        let underloaded = monthsData.filter(m => m.occ < STATUS_TIERS.optimalMin);
         let entity = who === "ALL" ? "de l'équipe" : "de ce collaborateur";
 
         let html = `<div class="row mb-4">
                       <div class="col-md-4"><div class="p-3 border rounded bg-white shadow-sm text-center"><div class="text-muted small fw-bold text-uppercase">Capacité Nette</div><div class="fs-3 fw-bold text-dark">${fmtVal(totalNetCapa)}</div></div></div>
                       <div class="col-md-4"><div class="p-3 border rounded bg-white shadow-sm text-center"><div class="text-muted small fw-bold text-uppercase">Charge Prévue</div><div class="fs-3 fw-bold text-primary">${fmtVal(totalLoad)}</div></div></div>
-                      <div class="col-md-4"><div class="p-3 border rounded bg-white shadow-sm text-center"><div class="text-muted small fw-bold text-uppercase">Occupation Globale</div><div class="fs-3 fw-bold ${globalOcc > 100 ? 'text-danger' : 'text-success'}">${globalOcc.toFixed(1)}%</div></div></div>
+                      <div class="col-md-4"><div class="p-3 border rounded bg-white shadow-sm text-center"><div class="text-muted small fw-bold text-uppercase">Occupation Globale</div><div class="fs-3 fw-bold ${globalOcc > STATUS_TIERS.overload ? 'text-danger' : 'text-success'}">${globalOcc.toFixed(1)}%</div></div></div>
                     </div>`;
 
-        html += `<div class="analyse-card ${globalOcc > 100 ? 'danger' : 'success'}">
+        html += `<div class="analyse-card ${globalOcc > STATUS_TIERS.overload ? 'danger' : 'success'}">
                     <h5 class="fw-bold mb-3">📝 Résumé Exécutif</h5>
                     <p class="mb-0">Sur le semestre à venir, la charge moyenne planifiée ${entity} s'établit à <strong>${globalOcc.toFixed(1)}%</strong> de la capacité nette disponible (${fmtVal(totalNetCapa)}), pour une charge totale de <strong>${fmtVal(totalLoad)}</strong> et ${fmtVal(totalLeaves)} de congés prévus.</p></div>`;
 
         html += `<div class="row"><div class="col-md-6"><div class="p-3 bg-white border rounded shadow-sm h-100"><h6 class="fw-bold border-bottom pb-2 text-danger">⚠️ Points de friction (Surcharge)</h6>`;
         if(overloaded.length > 0) {
             overloaded.forEach(m => html += `<div class="small mb-1"><strong>${m.label} :</strong> ${m.occ.toFixed(0)}% d'occupation.</div>`);
-        } else html += `<p class="text-muted small">Aucun mois en surcharge critique.</p>`;
+        } else html += `<p class="text-muted small">Aucun mois en surcharge.</p>`;
 
         html += `</div></div><div class="col-md-6"><div class="p-3 bg-white border rounded shadow-sm h-100"><h6 class="fw-bold border-bottom pb-2 text-info">📉 Opportunités (Sous-charge)</h6>`;
         if(underloaded.length > 0) {
             underloaded.forEach(m => html += `<div class="small mb-1"><strong>${m.label} :</strong> ${m.occ.toFixed(0)}% d'occupation.</div>`);
         } else html += `<p class="text-muted small">Aucune sous-charge prévisible.</p>`;
-
         html += `</div></div></div>`;
+
+        // --- Recommandations de rééquilibrage automatiques (horizon CONFIG.recoHorizon) ---
+        let recos = generateRebalancing();
+        html += `<div class="mt-4"><h5 class="fw-bold text-primary mb-3">🔄 Recommandations de rééquilibrage <span class="text-secondary small fw-normal">(${CONFIG.recoHorizon} prochains mois)</span></h5>`;
+        if (recos.length === 0) {
+          html += `<p class="text-muted small mb-0">Aucune opportunité de transfert détectée : pas de surcharge et de sous-charge simultanées sur la période, ou effectif filtré insuffisant.</p>`;
+        } else {
+          html += `<div class="d-flex flex-column gap-2">`;
+          recos.forEach(r => {
+            html += `<div class="alert alert-warning mb-0 shadow-sm border-0 small">
+                       <strong>${escapeHtml(r.from)}</strong> en surcharge (${r.fromOcc.toFixed(0)}%) en ${r.month} — <strong>${escapeHtml(r.to)}</strong> disponible (${r.toOcc.toFixed(0)}%) le même mois, transfert à évaluer.</div>`;
+          });
+          html += `</div>`;
+        }
+        html += `</div>`;
+
         analyseDiv.innerHTML = html;
+      }
+
+      // ====== SOCLE MENSUEL COMMUN (anomalies / heatmap / recommandations) ======
+      function _monthStart(d) { return new Date(d.getFullYear(), d.getMonth(), 1, 12, 0, 0); }
+      function getDataMonths() {
+        let arr = [];
+        if (!DATA_MIN_DATE || !DATA_MAX_DATE) return arr;
+        let d = _monthStart(DATA_MIN_DATE), end = _monthStart(DATA_MAX_DATE);
+        while (d <= end) { arr.push(new Date(d)); d = new Date(d.getFullYear(), d.getMonth() + 1, 1, 12, 0, 0); }
+        return arr;
+      }
+      // Charge / capacité nette / occupation d'un collaborateur sur un mois donné.
+      function computeUserMonth(user, mStart) {
+        let next = new Date(mStart.getFullYear(), mStart.getMonth() + 1, 1, 12, 0, 0);
+        let capa = 0, leaves = 0, load = 0, d = new Date(mStart);
+        while (d < next) {
+          if (d.getDay() !== 0 && d.getDay() !== 6) {
+            let t = d.getTime();
+            if (!window.GLOBAL_HOLIDAYS.has(t)) { capa += getDailyCapacity(user); leaves += getLeave(user, t); }
+            load += getAccurateLoad(user, t);
+          }
+          d.setDate(d.getDate() + 1);
+        }
+        let net = capa - leaves;
+        return { capaNette: net, load, occ: net > 0 ? (load / net) * 100 : 0 };
+      }
+      function _userMonthLoad(user, mStart) {
+        let next = new Date(mStart.getFullYear(), mStart.getMonth() + 1, 1, 12, 0, 0);
+        let load = 0, d = new Date(mStart);
+        while (d < next) { if (d.getDay() !== 0 && d.getDay() !== 6) load += getAccurateLoad(user, d.getTime()); d.setDate(d.getDate() + 1); }
+        return load;
+      }
+      // Anomalie : N mois consécutifs à 0 de charge sur la plage du fichier.
+      function getDataAnomaly(user) {
+        let months = getDataMonths(), run = 0, max = 0;
+        months.forEach(m => { if (_userMonthLoad(user, m) <= 0.01) { run++; if (run > max) max = run; } else run = 0; });
+        return { flagged: max >= CONFIG.anomalyMonths, months: max };
+      }
+      // Cellule de statut unifiée : badge "À vérifier" (avec infobulle) si anomalie + charge basse, sinon statut standard.
+      function statusCellHTML(occ, user) {
+        if (user) {
+          let a = getDataAnomaly(user);
+          if (a.flagged && occ < STATUS_TIERS.optimalMin) {
+            return `<span class="badge bg-secondary" title="0 % de charge sur ${a.months} mois consécutifs dans le fichier importé. Cela peut signaler un problème d'affectation dans Wrike plutôt qu'une réelle disponibilité — à vérifier avant d'affecter des tâches.">⚠️ À vérifier</span>`;
+          }
+        }
+        let st = getStatus(occ);
+        return `<span class="badge ${st.cls}">${st.label}</span>`;
+      }
+
+      // ====== RECOMMANDATIONS DE RÉÉQUILIBRAGE ======
+      // Rôle fonctionnel utilisé pour l'appariement (Développeur et Dev ext = même métier ;
+      // "Prestataire" est un statut contractuel, pas un rôle, donc ignoré ici).
+      const FUNCTIONAL_ROLE = {
+        "Business Analyst": "BA",
+        "Développeur": "DEV",
+        "Dev ext": "DEV",
+        "Manager": "MGR"
+      };
+      function _funcRoles(user) {
+        let s = USER_SETTINGS[user] || {};
+        let set = new Set();
+        (s.profile || []).forEach(p => { if (FUNCTIONAL_ROLE[p]) set.add(FUNCTIONAL_ROLE[p]); });
+        return set;
+      }
+      // Interchangeables = au moins un rôle fonctionnel commun ET au moins une équipe commune.
+      function _sameGroup(a, b) {
+        let ra = _funcRoles(a), rb = _funcRoles(b);
+        let sameRole = [...ra].some(r => rb.has(r));
+        let sa = USER_SETTINGS[a] || {}, sb = USER_SETTINGS[b] || {};
+        let sameTeam = (sa.team || []).some(t => (sb.team || []).includes(t));
+        return sameRole && sameTeam;
+      }
+
+      function generateRebalancing() {
+        const selC = (document.getElementById("selCollab") || {}).value || "ALL";
+        let pool, focusUser = null;
+        if (selC !== "ALL") {
+          // Personne sélectionnée : périmètre = les membres de SA/SES équipe(s), et on ne
+          // garde que les suggestions qui l'impliquent.
+          focusUser = selC;
+          let teams = (USER_SETTINGS[selC] && USER_SETTINGS[selC].team) || [];
+          if (teams.length === 0) { pool = [selC]; }
+          else {
+            pool = Object.keys(CAPACITY_DATA).filter(u =>
+              u !== "Inconnu" && ((USER_SETTINGS[u] && USER_SETTINGS[u].team) || []).some(t => teams.includes(t)));
+          }
+        } else {
+          // Vue globale ou filtre Équipe/Profil : getActiveUsers respecte déjà selTeam + selProfile.
+          pool = getActiveUsers();
+        }
+        if (pool.length < 2) return [];
+
+        let start = new Date(); start.setDate(1); start.setHours(12, 0, 0, 0);
+        let suggestions = [];
+        for (let i = 0; i < CONFIG.recoHorizon; i++) {
+          let m = new Date(start.getFullYear(), start.getMonth() + i, 1, 12, 0, 0);
+          let label = m.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+          let stats = pool.map(u => ({ u, ...computeUserMonth(u, m), anomaly: getDataAnomaly(u).flagged }));
+          let over = stats.filter(s => s.occ > STATUS_TIERS.overload).sort((a, b) => b.occ - a.occ);
+          let under = stats.filter(s => s.occ < STATUS_TIERS.optimalMin && !s.anomaly && s.capaNette > 0).sort((a, b) => a.occ - b.occ);
+          over.forEach(o => {
+            // Receveur : même rôle fonctionnel ET même équipe, le plus disponible.
+            let cand = under.find(b => _sameGroup(o.u, b.u));
+            if (cand) suggestions.push({ month: label, from: o.u, fromOcc: o.occ, to: cand.u, toOcc: cand.occ, sev: o.occ - cand.occ });
+          });
+        }
+        // Si une personne est ciblée, ne conserver que les transferts qui la concernent (donneur ou receveur).
+        if (focusUser) suggestions = suggestions.filter(s => s.from === focusUser || s.to === focusUser);
+        suggestions.sort((a, b) => b.sev - a.sev);
+        return suggestions.slice(0, CONFIG.maxReco);
+      }
+
+      // ====== HEATMAP (collaborateurs × mois) ======
+      function renderHeatmap() {
+        let wrap = document.getElementById("heatmap-grid-wrap");
+        let months = getDataMonths(), users = getActiveUsers();
+        if (!months.length || !users.length) { wrap.innerHTML = `<div class="p-4 text-muted">Aucune donnée à afficher.</div>`; return; }
+        let head = `<th class="text-start ps-3" style="position:sticky;left:0;background:var(--surface-2);z-index:2;">Collaborateur</th>`
+          + months.map(m => `<th class="text-center small text-nowrap">${m.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" })}</th>`).join("");
+        let body = "";
+        users.forEach(u => {
+          let a = getDataAnomaly(u);
+          let nameCell = `<td class="fw-bold text-start ps-3 text-nowrap" style="position:sticky;left:0;background:var(--surface);">${u}${a.flagged ? ` <span title="0 % de charge sur ${a.months} mois consécutifs : à vérifier dans Wrike.">⚠️</span>` : ""}</td>`;
+          let cells = months.map(m => {
+            let r = computeUserMonth(u, m);
+            if (r.capaNette <= 0) return `<td class="text-center text-muted" title="Aucune capacité (congés/absence)">–</td>`;
+            let st = getStatus(r.occ);
+            return `<td class="text-center p-1"><span class="badge ${st.cls}" style="min-width:46px" title="${u} — ${m.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })} : ${r.occ.toFixed(0)} % (${fmtVal(r.load)} / ${fmtVal(r.capaNette)})">${r.occ.toFixed(0)}%</span></td>`;
+          }).join("");
+          body += `<tr>${nameCell}${cells}</tr>`;
+        });
+        wrap.innerHTML = `<table class="table table-bordered table-sm mb-0 align-middle"><thead class="table-light"><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+        document.getElementById("heatmap-legend").innerHTML =
+          `<span class="badge bg-danger">Surcharge &gt;${STATUS_TIERS.overload}%</span> `
+          + `<span class="badge bg-success">Optimal ${STATUS_TIERS.optimalMin}–${STATUS_TIERS.overload}%</span> `
+          + `<span class="badge bg-warning text-dark">Sous-charge ${STATUS_TIERS.criticalUnder}–${STATUS_TIERS.optimalMin}%</span> `
+          + `<span class="badge bg-info text-dark">&lt;${STATUS_TIERS.criticalUnder}%</span> `
+          + `<span class="badge bg-secondary">⚠️ À vérifier</span>`;
+      }
+
+      // ====== ONGLET PROJETS (projet × collaborateur × période) ======
+      function buildProjectData(start, end) {
+        let selC = (document.getElementById("selCollab") || {}).value || "ALL";
+        let usersSet = selC !== "ALL" ? new Set([selC]) : new Set(getActiveUsers());
+        let projects = {};
+        DATA.forEach(row => {
+          if (!usersSet.has(row.assignee)) return;
+          row.values.forEach(v => {
+            if (v.d < start || v.d > end) return;
+            let p = projects[row.project] || (projects[row.project] = { name: row.project, cat: row.category, total: 0, byUser: {}, min: null, max: null });
+            p.total += v.v;
+            p.byUser[row.assignee] = (p.byUser[row.assignee] || 0) + v.v;
+            if (!p.min || v.d < p.min) p.min = v.d;
+            if (!p.max || v.d > p.max) p.max = v.d;
+          });
+        });
+        return Object.values(projects).sort((a, b) => b.total - a.total);
+      }
+      function renderProjects() {
+        const sParts = document.getElementById("dStart").value.split('-'), eParts = document.getElementById("dEnd").value.split('-');
+        if (sParts.length < 3 || eParts.length < 3) return;
+        const start = new Date(+sParts[0], +sParts[1] - 1, +sParts[2], 12, 0, 0), end = new Date(+eParts[0], +eParts[1] - 1, +eParts[2], 12, 0, 0);
+        document.getElementById("projects-period").innerText = `(${start.toLocaleDateString("fr-FR")} → ${end.toLocaleDateString("fr-FR")})`;
+        let projs = buildProjectData(start, end);
+        const wrap = document.getElementById("projects-wrap");
+        if (!projs.length) { wrap.innerHTML = `<div class="text-muted">Aucune tâche projet sur la période sélectionnée.</div>`; return; }
+        let catCls = { RUN: "bg-primary", PROJETS: "bg-success", AUTRES: "bg-secondary" };
+        let totalAll = projs.reduce((a, p) => a + p.total, 0);
+        let html = `<div class="small text-muted mb-3"><strong>${projs.length}</strong> projet(s) · charge totale <strong>${fmtVal(totalAll)}</strong> sur la période</div>`;
+        projs.forEach(p => {
+          let users = Object.keys(p.byUser).sort((a, b) => p.byUser[b] - p.byUser[a]);
+          let rows = users.map(u => `<tr><td class="ps-3">${u}</td><td class="text-end">${fmtVal(p.byUser[u])}</td><td class="text-end text-muted" style="width:70px">${(p.byUser[u] / p.total * 100).toFixed(0)}%</td></tr>`).join("");
+          html += `<div class="mb-3 border rounded shadow-sm">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-2 bg-light border-bottom">
+              <div class="fw-bold">${p.name} <span class="badge ${catCls[p.cat] || 'bg-secondary'} ms-1">${p.cat}</span></div>
+              <div class="small text-muted">${users.length} collaborateur(s) · ${p.min.toLocaleDateString("fr-FR")} → ${p.max.toLocaleDateString("fr-FR")}</div>
+              <div class="fw-bold text-primary">${fmtVal(p.total)}</div>
+            </div>
+            <table class="table table-sm mb-0"><tbody>${rows}</tbody></table>
+          </div>`;
+        });
+        wrap.innerHTML = html;
+      }
+
+      // ====== FRAÎCHEUR DES DONNÉES ======
+      function renderDataFreshness() {
+        let el = document.getElementById("data-freshness");
+        if (!el) return;
+        if (!LAST_IMPORT_DATE || isNaN(LAST_IMPORT_DATE.getTime())) { el.classList.add("d-none"); return; }
+        let days = Math.floor((Date.now() - LAST_IMPORT_DATE.getTime()) / 86400000);
+        let stale = days > CONFIG.stalenessDays;
+        el.className = "px-3 py-1 small";
+        el.style.background = stale ? "#fff3cd" : "";
+        el.style.color = stale ? "#842029" : "";
+        el.innerHTML = `${stale ? "⚠️ " : "🕒 "}Données du fichier importé : <strong>${LAST_IMPORT_DATE.toLocaleDateString("fr-FR")}</strong> (${days} jour${days > 1 ? "s" : ""})`
+          + (stale ? ` — import ancien (&gt; ${CONFIG.stalenessDays} j), pensez à ré-exporter depuis Wrike.` : "");
+        el.classList.remove("d-none");
       }
 
       // ====== ONGLET CHARGE DÉVELOPPEUR ======
@@ -1381,7 +1790,6 @@
 
         const tbody = document.getElementById("dev-body"); tbody.innerHTML = "";
         rows.forEach(r => {
-          let st = getStatus(r.occ);
           tbody.innerHTML += `<tr>
             <td class="fw-bold text-start ps-3">${r.user}</td>
             <td class="small text-muted">${r.team}</td>
@@ -1389,7 +1797,7 @@
             <td>${fmtVal(r.charge)}</td>
             <td class="${r.dispo >= 0 ? 'text-avail-pos' : 'text-avail-neg'}">${fmtVal(r.dispo)}</td>
             <td>${r.occ.toFixed(0)}%</td>
-            <td><span class="badge ${st.cls}">${st.label}</span></td>
+            <td>${statusCellHTML(r.occ, r.user)}</td>
           </tr>`;
         });
 
@@ -1417,7 +1825,7 @@
             <td>${fmtVal(d.capa)}</td>
             <td>${fmtVal(d.load)}</td>
             <td class="${d.dispo >= 0 ? 'text-success' : 'text-danger'} fw-bold">${fmtVal(d.dispo)}</td>
-            <td><span class="badge ${st.cls}">${d.occ.toFixed(0)}%</span></td>
+            <td>${statusCellHTML(d.occ, d.user)}</td>
           </tr>`;
         });
       }
@@ -1442,21 +1850,25 @@
         const labels = Object.keys(daily);
         const scale = DISPLAY_UNIT === "j" ? 1 / HOURS_PER_DAY : 1;
         const unitLabel = DISPLAY_UNIT === "j" ? "Jours" : "Heures";
+        const tv = themeVars();
         window.mainChartInst = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'RUN', data: labels.map(l => (daily[l].RUN || 0) * scale), backgroundColor: '#0d6efd', stack: 'S0' },
-                    { label: 'PROJETS', data: labels.map(l => (daily[l].PROJETS || 0) * scale), backgroundColor: '#f59e0b', stack: 'S0' },
-                    { label: 'AUTRES', data: labels.map(l => (daily[l].AUTRES || 0) * scale), backgroundColor: '#ced4da', stack: 'S0' },
-                    { label: 'Capacité Max', data: labels.map(l => (daily[l].maxCapa || 0) * scale), type: 'line', pointRadius: 0, borderColor: '#dc3545', borderDash: [5, 5] }
+                    { label: 'RUN', data: labels.map(l => (daily[l].RUN || 0) * scale), backgroundColor: tv.catRun, stack: 'S0' },
+                    { label: 'PROJETS', data: labels.map(l => (daily[l].PROJETS || 0) * scale), backgroundColor: tv.catProj, stack: 'S0' },
+                    { label: 'AUTRES', data: labels.map(l => (daily[l].AUTRES || 0) * scale), backgroundColor: tv.catAutre, stack: 'S0' },
+                    { label: 'Capacité Max', data: labels.map(l => (daily[l].maxCapa || 0) * scale), type: 'line', pointRadius: 0, borderColor: tv.accent, borderWidth: 2, borderDash: [5, 5] }
                 ]
             },
             options: {
                 maintainAspectRatio: false,
-                plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 10 } } },
-                scales: { y: { title: { display: true, text: unitLabel } } }
+                plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 10, color: tv.text, font: { family: 'IBM Plex Sans' } } } },
+                scales: {
+                    x: { ticks: { color: tv.muted }, grid: { color: tv.border } },
+                    y: { title: { display: true, text: unitLabel, color: tv.muted }, ticks: { color: tv.muted }, grid: { color: tv.border } }
+                }
             }
         });
       }
@@ -1465,9 +1877,9 @@
         loadSettings();
         // Filtres Équipe / Profil (listes fixes)
         const tSel = document.getElementById("selTeam");
-        tSel.innerHTML = '<option value="ALL">Toutes les équipes</option>' + TEAMS.map(t => `<option value="${t}">${t}</option>`).join("");
+        tSel.innerHTML = '<option value="ALL">Equipes</option>' + TEAMS.map(t => `<option value="${t}">${t}</option>`).join("");
         const pSel = document.getElementById("selProfile");
-        pSel.innerHTML = '<option value="ALL">Tous les profils</option>' + PROFILES.map(p => `<option value="${p}">${p}</option>`).join("");
+        pSel.innerHTML = '<option value="ALL">Profils</option>' + PROFILES.map(p => `<option value="${p}">${p}</option>`).join("");
         populateCollabSelect();
         setPeriod('month');
       }
@@ -1477,7 +1889,7 @@
         const sel = document.getElementById("selCollab");
         let cur = sel.value;
         let users = getActiveUsers();
-        sel.innerHTML = '<option value="ALL">Vue d\'Equipe</option>';
+        sel.innerHTML = '<option value="ALL">Collaborateurs</option>';
         users.forEach(u => { sel.innerHTML += `<option value="${u}">${u}</option>`; });
         sel.value = (cur !== "ALL" && users.includes(cur)) ? cur : "ALL";
       }
@@ -1523,7 +1935,7 @@
       // ====== GESTION DES ONGLETS ======
       function switchTab(tab) {
         activeTab = tab;
-        ['overview', 'opti', 'dev'].forEach(t => {
+        ['overview', 'heatmap', 'projects', 'opti', 'dev'].forEach(t => {
             let pane = document.getElementById('view-' + t);
             let btn = document.getElementById('tab-' + t);
             if (pane) {
@@ -1538,6 +1950,10 @@
       function renderTabContent(tab) {
         if (tab === 'overview') {
             runEngine();
+        } else if (tab === 'heatmap') {
+            renderHeatmap();
+        } else if (tab === 'projects') {
+            renderProjects();
         } else if (tab === 'opti') {
             // Onglet unifié : tableau annuel + projection + analyse prévisionnelle
             const who = document.getElementById("selCollab").value;
@@ -1588,6 +2004,9 @@
         });
         addLog("Interface prête. Zone de dépôt active (clic ou glisser-déposer).");
       })();
+
+      // Synchronise l'icône du bouton avec le thème courant (déjà appliqué par le script anti-flash).
+      applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
     </script>
   </body>
 </html>
