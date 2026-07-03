@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Manitou Wrike - Dashboards</title>
-<script>(function(){try{var t=localStorage.getItem('manitou_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+<script>(function(){
+  try{var t=localStorage.getItem('manitou_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}
+  try{if(localStorage.getItem('manitou_sidebar_collapsed')==='1'){document.documentElement.classList.add('sidebar-collapsed');}}catch(e){}
+})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
@@ -30,18 +33,40 @@
   h1,h2,h3,h4,h5,h6{font-family:'Saira','IBM Plex Sans',sans-serif;letter-spacing:.01em;}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 
-  /* ===== BARRE LATÉRALE ===== */
-  .sidebar{width:250px;min-width:210px;height:100vh;background:var(--side-bg);display:flex;flex-direction:column;}
-  .sidebar .brand{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 14px 16px 18px;color:#fff;background:var(--side-active);}
-  .brand-title{font-size:1.2rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .brand-theme-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-size:1rem;cursor:pointer;flex-shrink:0;}
-  .brand-theme-btn:hover{background:rgba(255,255,255,.1);}
+  /* ===== BARRE LATÉRALE (réductible) ===== */
+  .sidebar{width:250px;min-width:250px;height:100vh;background:var(--side-bg);display:flex;flex-direction:column;overflow:hidden;transition:width .2s ease, min-width .2s ease;}
+  html.sidebar-collapsed .sidebar{width:64px;min-width:64px;}
+  .sidebar .brand{display:flex;align-items:center;padding:16px 14px 16px 18px;color:#fff;background:var(--side-active);}
+  html.sidebar-collapsed .sidebar .brand{justify-content:center;padding:16px 8px;}
+  .brand-title{font-size:1.2rem;font-weight:700;white-space:nowrap;}
+  html.sidebar-collapsed .brand-title{display:none;}
   .sidebar nav{display:flex;flex-direction:column;padding-top:10px;}
   .side-link{display:flex;align-items:center;gap:10px;padding:13px 18px;color:rgba(255,255,255,.68);text-decoration:none;font-weight:600;border:none;background:transparent;text-align:left;font-size:.98rem;cursor:pointer;border-left:4px solid transparent;font-family:'Saira','IBM Plex Sans',sans-serif;white-space:nowrap;}
+  html.sidebar-collapsed .side-link{justify-content:center;padding:13px 0;}
+  .side-link .link-label{overflow:hidden;text-overflow:ellipsis;}
+  html.sidebar-collapsed .side-link .link-label{display:none;}
   .side-link:hover{background:rgba(255,255,255,.08);color:#fff;}
   .side-link.active{background:var(--side-active);color:#fff;border-left-color:var(--accent);}
+  html.sidebar-collapsed .side-link.active{border-left-color:transparent;}
   .side-link:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
-  .sidebar .foot{margin-top:auto;padding:14px 18px;color:rgba(255,255,255,.4);font-size:.72rem;}
+
+  /* Pied de barre latérale : libellé "Portail Dashboards — PMO" + bouton de thème, à droite */
+  .sidebar .foot{margin-top:auto;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  html.sidebar-collapsed .sidebar .foot{justify-content:center;padding:12px 8px;}
+  .foot-label{color:rgba(255,255,255,.4);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  html.sidebar-collapsed .foot-label{display:none;}
+  .brand-theme-btn{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#fff;font-size:.95rem;cursor:pointer;flex-shrink:0;}
+  .brand-theme-btn:hover{background:rgba(255,255,255,.1);}
+
+  /* Petit bouton flottant, toujours en haut à gauche, sur la jonction menu/contenu */
+  .collapse-toggle{
+    position:fixed; top:14px; left:236px; width:26px; height:26px; border-radius:50%;
+    background:var(--surface); border:1px solid var(--border); color:var(--text-muted);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:80;
+    font-size:.72rem; padding:0; box-shadow:0 1px 4px rgba(0,0,0,.3); transition:left .2s ease;
+  }
+  .collapse-toggle:hover{ color:var(--text); border-color:var(--accent); }
+  html.sidebar-collapsed .collapse-toggle{ left:50px; }
 
   /* ===== ZONE PRINCIPALE ===== */
   .main{flex:1;height:100vh;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
@@ -75,15 +100,19 @@
   <aside class="sidebar">
     <div class="brand">
       <span class="brand-title">Manitou Wrike</span>
-      <button class="brand-theme-btn" id="shellThemeToggle" onclick="toggleShellTheme()" title="Basculer clair / sombre" aria-label="Basculer le thème">🌙</button>
     </div>
     <nav>
-      <button class="side-link active" id="nav-home" onclick="showView('home')">🏠 Accueil</button>
-      <button class="side-link" id="nav-workload" onclick="showView('workload')">📊 Workload</button>
-      <button class="side-link" id="nav-pointages" onclick="showView('pointages')">⏱️ Pointages</button>
+      <button class="side-link active" id="nav-home" onclick="showView('home')"><span class="link-icon">🏠</span><span class="link-label">Accueil</span></button>
+      <button class="side-link" id="nav-workload" onclick="showView('workload')"><span class="link-icon">📊</span><span class="link-label">Workload</span></button>
+      <button class="side-link" id="nav-pointages" onclick="showView('pointages')"><span class="link-icon">⏱️</span><span class="link-label">Pointages</span></button>
     </nav>
-    <div class="foot">Portail Dashboards — PMO</div>
+    <div class="foot">
+      <span class="foot-label">Portail Dashboards — PMO</span>
+      <button class="brand-theme-btn" id="shellThemeToggle" onclick="toggleShellTheme()" title="Basculer clair / sombre" aria-label="Basculer le thème">🌙</button>
+    </div>
   </aside>
+
+  <button class="collapse-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Réduire le menu" aria-label="Réduire le menu">◀</button>
 
   <main class="main">
 
@@ -116,14 +145,14 @@
       </div>
     </section>
 
-    <!-- ===== WORKLOAD (v13.47, isolé) ===== -->
+    <!-- ===== WORKLOAD (v13.48, isolé) ===== -->
     <section class="view" id="view-workload">
       <iframe class="app" id="frame-workload" title="Workload dashboard" srcdoc="<!doctype html>
 <html lang=&quot;fr&quot;>
   <head>
     <meta charset=&quot;UTF-8&quot; />
     <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; />
-    <title>Workload dashboard v13.47 (Reconstruction complète &amp; correctifs)</title>
+    <title>Workload dashboard v13.48 (Reconstruction complète &amp; correctifs)</title>
     <link href=&quot;https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css&quot; rel=&quot;stylesheet&quot; />
     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot; />
     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin />
@@ -165,12 +194,15 @@
       html { font-size: clamp(12px, 0.5vw + 9px, 16px); }
       .row > [class*=&quot;col-&quot;] { min-width: 0; }
       .top-bar > .d-flex { flex-wrap: wrap; row-gap: 8px; }
-      .top-bar > .d-flex > #topBarRow { min-width: 780px; flex: 1 1 780px; }
-      @media (max-width: 900px) {
-        .top-bar > .d-flex > #topBarRow { min-width: 100%; }
-        #topBarRow > [class*=&quot;col-&quot;] { flex: 0 0 100% !important; max-width: 100% !important; margin-bottom: 6px; }
-        #topBarRow > [class*=&quot;col-&quot;]:last-child { margin-bottom: 0; }
-      }
+      /* Chaque groupe de contrôles conserve sa largeur minimale réelle (au lieu du %
+         fixe imposé par la grille Bootstrap, qui ignore le contenu) et retombe à la
+         ligne suivante dès que la place manque, plutôt que de tronquer le texte. */
+      #topBarRow { display: flex; flex-wrap: wrap; row-gap: 8px; column-gap: 10px; width: auto; flex: 1 1 auto; }
+      #topBarRow > .tb-group { flex: 1 1 auto; width: auto; max-width: 100%; }
+      .tb-period   { flex-basis: 400px; flex-shrink: 0; }
+      .tb-daterange{ flex-basis: 300px; flex-shrink: 0; }
+      .tb-filters  { flex-basis: 400px; flex-shrink: 0; }
+      .tb-actions  { flex-basis: 240px; flex-shrink: 0; }
       h1,h2,h3,h4,h5,h6,.kpi-label,.nav-tabs .nav-link,.status-badge,.btn-go { font-family: 'Saira','IBM Plex Sans',sans-serif; letter-spacing:.01em; }
       .kpi-val { font-family:'IBM Plex Mono',monospace; font-variant-numeric: tabular-nums; }
       table td, table th, .num { font-variant-numeric: tabular-nums; }
@@ -278,7 +310,7 @@
     <!-- CONTENEUR IMPORTATION -->
     <div id=&quot;import-view&quot;>
       <div class=&quot;text-center mb-4&quot;>
-        <h1 class=&quot;fw-bold text-dark display-5&quot;>Workload dashboard <span class=&quot;text-primary&quot;>v13.47</span></h1>
+        <h1 class=&quot;fw-bold text-dark display-5&quot;>Workload dashboard <span class=&quot;text-primary&quot;>v13.48</span></h1>
         <p class=&quot;text-muted lead&quot;>Glissez-Déposez vos 3 fichiers Excel ou CSV Wrike</p>
       </div>
 
@@ -314,10 +346,10 @@
     <div id=&quot;dashboard-view&quot; class=&quot;app-wrapper d-none&quot;>
       <div class=&quot;panel top-bar&quot;>
         <div class=&quot;d-flex align-items-center gap-3 w-100&quot;>
-          <h5 class=&quot;fw-bold m-0 text-primary&quot;>Workload dashboard <span class=&quot;text-secondary small ms-1&quot; style=&quot;font-size: 0.7em&quot;>v13.47</span></h5>
+          <h5 class=&quot;fw-bold m-0 text-primary&quot;>Workload dashboard <span class=&quot;text-secondary small ms-1&quot; style=&quot;font-size: 0.7em&quot;>v13.48</span></h5>
           <div class=&quot;vr mx-2&quot;></div>
           <div id=&quot;topBarRow&quot; class=&quot;row g-2 w-100 align-items-center&quot;>
-            <div class=&quot;col-md-3&quot;>
+            <div class=&quot;col-md-3 tb-group tb-period&quot;>
               <div class=&quot;btn-group btn-group-sm w-100 shadow-sm&quot;>
                 <button class=&quot;btn btn-outline-primary fw-bold&quot; onclick=&quot;setPeriod('today')&quot;>Aujourd'hui</button>
                 <button class=&quot;btn btn-outline-secondary&quot; onclick=&quot;setPeriod('week')&quot;>Semaine</button>
@@ -325,14 +357,14 @@
                 <button class=&quot;btn btn-outline-secondary&quot; onclick=&quot;setPeriod('year')&quot;>Année</button>
               </div>
             </div>
-            <div class=&quot;col-md-3&quot;>
+            <div class=&quot;col-md-3 tb-group tb-daterange&quot;>
               <div class=&quot;input-group input-group-sm&quot;>
                 <input type=&quot;date&quot; id=&quot;dStart&quot; class=&quot;form-control fw-bold text-center&quot; onchange=&quot;refreshActiveTab()&quot; />
                 <span class=&quot;input-group-text px-1&quot;>➝</span>
                 <input type=&quot;date&quot; id=&quot;dEnd&quot; class=&quot;form-control fw-bold text-center&quot; onchange=&quot;refreshActiveTab()&quot; />
               </div>
             </div>
-            <div class=&quot;col-md-4 d-flex gap-1&quot;>
+            <div class=&quot;col-md-4 tb-group tb-filters d-flex gap-1&quot;>
               <select id=&quot;selTeam&quot; class=&quot;form-select form-select-sm&quot; onchange=&quot;onFilterChange()&quot; title=&quot;Filtrer par équipe&quot;>
                 <option value=&quot;ALL&quot;>Equipes</option>
               </select>
@@ -343,7 +375,7 @@
                 <option value=&quot;ALL&quot;>Collaborateurs</option>
               </select>
             </div>
-            <div class=&quot;col-md-2 text-end d-flex gap-2 justify-content-end align-items-center&quot;>
+            <div class=&quot;col-md-2 tb-group tb-actions text-end d-flex gap-2 justify-content-end align-items-center&quot;>
               <div class=&quot;btn-group btn-group-sm shadow-sm&quot;>
                 <button type=&quot;button&quot; class=&quot;btn btn-primary btn-unit&quot; id=&quot;btn-unit-h&quot; onclick=&quot;setUnit('h')&quot;>H</button>
                 <button type=&quot;button&quot; class=&quot;btn btn-outline-primary btn-unit&quot; id=&quot;btn-unit-j&quot; onclick=&quot;setUnit('j')&quot;>J</button>
@@ -621,7 +653,7 @@
         &quot;Jason Rousseau&quot;:      { team: [&quot;R&amp;D IS&quot;],    profile: [&quot;Développeur&quot;, &quot;Prestataire&quot;, &quot;Dev ext&quot;], partTime: 100 },
         &quot;Jeremy Plouzennec&quot;:   { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;], partTime: 90 },
         &quot;Julien Juhel&quot;:        { team: [&quot;R&amp;D IS&quot;],    profile: [&quot;Business Analyst&quot;], partTime: 100 },
-        &quot;Jérome Garcia&quot;:       { team: [],            profile: [],                   partTime: 100 },
+        &quot;Jérome Garcia&quot;:       { team: [&quot;Logistics&quot;], profile: [&quot;Manager&quot;],    partTime: 100 },
         &quot;Jérémie You&quot;:         { team: [&quot;Indus&quot;],     profile: [&quot;Business Analyst&quot;], partTime: 100 },
         &quot;Kévin Mathieu&quot;:       { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;, &quot;Prestataire&quot;], partTime: 100 },
         &quot;Laetitia Grosbois&quot;:   { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;], partTime: 80 },
@@ -632,7 +664,7 @@
         &quot;Mickaël Serre&quot;:       { team: [&quot;R&amp;D IS&quot;],    profile: [&quot;Développeur&quot;],      partTime: 100 },
         &quot;Nicolas Cuperly&quot;:     { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;, &quot;Prestataire&quot;], partTime: 100 },
         &quot;Olivier Guyot&quot;:       { team: [&quot;R&amp;D IS&quot;],    profile: [&quot;Business Analyst&quot;], partTime: 100 },
-        &quot;Romain Doni&quot;:         { team: [],            profile: [&quot;Manager&quot;, &quot;Prestataire&quot;], partTime: 100 },
+        &quot;Romain Doni&quot;:         { team: [],            profile: [&quot;Prestataire&quot;], partTime: 100 },
         &quot;Samir Bou Samra&quot;:     { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;, &quot;Prestataire&quot;], partTime: 100 },
         &quot;Stéphane Bechieau&quot;:   { team: [&quot;Indus&quot;],     profile: [&quot;Business Analyst&quot;], partTime: 100 },
         &quot;Sébastien Charron&quot;:   { team: [&quot;Logistics&quot;], profile: [&quot;Business Analyst&quot;], partTime: 100 },
@@ -1160,7 +1192,7 @@
         let currentAssignee = &quot;Inconnu&quot;;
 
         /*
-          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.47)
+          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.48)
           ----------------------------------------------------
           Chaque ligne est un couple (Collaborateur × Projet), Type = &quot;User&quot;. Pour chaque
           collaborateur, Wrike ajoute UNE ligne agrégée dont le &quot;Project name&quot; est VIDE :
@@ -2165,7 +2197,7 @@
 "></iframe>
     </section>
 
-    <!-- ===== POINTAGES (v1.29, isolé) ===== -->
+    <!-- ===== POINTAGES (v2.2, isolé) ===== -->
     <section class="view" id="view-pointages">
       <iframe class="app" id="frame-pointages" title="Time Tracking Manager" srcdoc="<!DOCTYPE html>
 <html lang=&quot;fr&quot;>
@@ -2173,7 +2205,7 @@
     <script>(function(){try{var t=localStorage.getItem('manitou_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
     <meta charset=&quot;UTF-8&quot;>
     <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
-    <title>Time Tracking Manager - Wrike v 1.29</title>
+    <title>Time Tracking Manager - Wrike v 2.2</title>
     
     <script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js&quot;></script>
     <script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js&quot;></script>
@@ -2359,7 +2391,7 @@
 <div class=&quot;container pb-5&quot;>
     <div class=&quot;d-flex justify-content-between align-items-center mb-4&quot;>
         <div>
-            <h2 class=&quot;fw-bold m-0&quot;><i class=&quot;bi bi-activity text-primary me-2&quot;></i>Time Tracking Manager - Wrike <span class=&quot;text-muted fs-6&quot;>v 1.29</span></h2>
+            <h2 class=&quot;fw-bold m-0&quot;><i class=&quot;bi bi-activity text-primary me-2&quot;></i>Time Tracking Manager - Wrike <span class=&quot;text-muted fs-6&quot;>v 2.2</span></h2>
             <p class=&quot;text-muted small m-0&quot;>Tableau de bord &amp; Audit</p>
         </div>
         <div class=&quot;d-flex gap-2&quot;>
@@ -2799,14 +2831,27 @@
             let finalSource = sourceType;
             const catVal = (cKey &amp;&amp; row[cKey]) ? String(row[cKey]) : &quot;&quot;;
             const projVal = (pKey &amp;&amp; row[pKey]) ? String(row[pKey]) : &quot;&quot;;
-            
-            if (catVal.includes(&quot;IT&amp;D_PM_Absences&quot;) || catVal.toLowerCase().includes(&quot;absence&quot;) || projVal.toLowerCase().includes(&quot;absence&quot;)) {
+            const nameVal = String(row[Object.keys(row).find(k => k.toLowerCase().includes(&quot;nom&quot;)) || &quot;&quot;] || &quot;&quot;);
+            const hay = (projVal + &quot; &quot; + nameVal + &quot; &quot; + catVal).toLowerCase();
+
+            // Temps partiel / activité partielle : ce sont des HEURES RÉELLES saisies (ex. 4h),
+            // à conserver telles quelles — surtout PAS à forfaitiser comme un congé.
+            const isPartial = hay.includes(&quot;partiel&quot;);
+            // Congé / absence réel : forfaitisé plus tard à une journée pleine (8h).
+            // On exclut explicitement le temps partiel de cette détection.
+            const isLeave = !isPartial &amp;&amp; (
+                catVal.includes(&quot;IT&amp;D_PM_Absences&quot;) ||
+                hay.includes(&quot;absence&quot;) || hay.includes(&quot;congé&quot;) || hay.includes(&quot;conges&quot;) ||
+                hay.includes(&quot;rtt&quot;) || hay.includes(&quot;maladie&quot;) || hay.includes(&quot;férié&quot;) || hay.includes(&quot;ferie&quot;)
+            );
+            if (isLeave) {
                 finalSource = 'absence';
             }
 
             return {
                 source: finalSource,
                 user: row[uKey],
+                taskId: String(row[Object.keys(row).find(k => k.toLowerCase().includes(&quot;id&quot;) &amp;&amp; k.toLowerCase().includes(&quot;tâche&quot;)) || &quot;&quot;] || &quot;&quot;),
                 project: (pKey &amp;&amp; row[pKey]) ? row[pKey] : &quot;Non spécifié&quot;,
                 category: (cKey &amp;&amp; row[cKey]) ? row[cKey] : &quot;Sans catégorie&quot;, 
                 dateObj: dObj, 
@@ -2814,6 +2859,82 @@
                 hours: timeToDecimal(row[tKey])
             };
         });
+    }
+
+    // Combine RUN + PROJETS en éliminant les VRAIS doublons inter-fichiers : une tâche qui
+    // satisfait les critères des deux rapports Wrike voit l'intégralité de ses saisies exportées
+    // deux fois (une fois dans chaque fichier). On regroupe donc par (utilisateur, ID de tâche,
+    // jour), puis on APPARIE les durées identiques une à une entre les deux fichiers (comptage
+    // par valeur, pas simple présence) : seules les paires strictement appariées sont réduites à
+    // un seul exemplaire. Tout surplus — plusieurs saisies réelles sur la même tâche le même jour,
+    // très fréquent dans les exports Wrike — est conservé intégralement, y compris quand deux
+    // saisies distinctes partagent par coïncidence la même durée.
+    function getCombinedData() {
+        const groupKey = d => `${d.user}|${d.taskId || ''}|${getSafeDateKey(d.dateObj)}`;
+        const groups = {};
+        store.run.forEach(d => { (groups[groupKey(d)] = groups[groupKey(d)] || { run: [], project: [] }).run.push(d); });
+        store.project.forEach(d => { (groups[groupKey(d)] = groups[groupKey(d)] || { run: [], project: [] }).project.push(d); });
+
+        const combined = [];
+        Object.values(groups).forEach(g => {
+            if (g.run.length === 0 || g.project.length === 0) {
+                // Cette tâche, ce jour-là, n'apparaît que dans un seul des deux fichiers :
+                // aucun doublon possible, on conserve toutes les saisies telles quelles.
+                combined.push(...g.run, ...g.project);
+                return;
+            }
+            const runByHours = {}, projByHours = {};
+            g.run.forEach(d => { (runByHours[d.hours] = runByHours[d.hours] || []).push(d); });
+            g.project.forEach(d => { (projByHours[d.hours] = projByHours[d.hours] || []).push(d); });
+
+            new Set([...Object.keys(runByHours), ...Object.keys(projByHours)]).forEach(hv => {
+                const runList = runByHours[hv] || [];
+                const projList = projByHours[hv] || [];
+                const dupCount = Math.min(runList.length, projList.length);
+                for (let i = 0; i < dupCount; i++) combined.push(projList[i]);      // 1 exemplaire par paire dupliquée
+                for (let i = dupCount; i < runList.length; i++) combined.push(runList[i]);   // surplus RUN non apparié
+                for (let i = dupCount; i < projList.length; i++) combined.push(projList[i]); // surplus PROJETS non apparié
+            });
+        });
+
+        return applyLeaveCompletion(combined);
+    }
+
+    // Traitement des congés : un jour comportant au moins une ligne de congé/absence doit totaliser
+    // une journée pleine (8h). Le congé ne compte donc PAS pour sa valeur brute (souvent 0h) : il
+    // COMPLÈTE le temps réellement travaillé ce jour-là jusqu'à 8h.
+    //   - Jour 100% congé            -> 8h
+    //   - Jour 4h travail + 1/2 congé -> 4h travail + 4h de complément = 8h
+    //   - Jour déjà >= 8h + congé     -> reste au réel (pas de réduction)
+    // Le temps partiel n'est PAS un congé : ses heures réelles sont conservées et ne déclenchent
+    // aucune complétion.
+    // Entrée : lignes déjà combinées/dédupliquées. Sortie : mêmes lignes de travail + une ligne
+    // de complément 'absence' par (user, jour concerné) portant les heures manquantes.
+    function applyLeaveCompletion(rows) {
+        const DAY_TARGET = 8;
+        const dayAgg = {}; // &quot;user|jour&quot; -> { worked, hasLeave, sample }
+        rows.forEach(d => {
+            const dayKey = `${d.user}|${getSafeDateKey(d.dateObj)}`;
+            if (!dayAgg[dayKey]) dayAgg[dayKey] = { worked: 0, hasLeave: false, sample: d };
+            if (d.source === 'absence') dayAgg[dayKey].hasLeave = true;
+            else dayAgg[dayKey].worked += d.hours;
+        });
+        // On repart des lignes NON-congé (le vrai travail + le temps partiel), puis on ajoute
+        // un complément pour chaque jour marqué congé.
+        const result = rows.filter(d => d.source !== 'absence');
+        Object.values(dayAgg).forEach(g => {
+            if (!g.hasLeave) return;
+            const missing = Math.max(0, DAY_TARGET - g.worked);
+            if (missing > 0) {
+                result.push(Object.assign({}, g.sample, {
+                    source: 'absence',
+                    project: 'Congés / Absence',
+                    category: 'Congés / Absence',
+                    hours: missing
+                }));
+            }
+        });
+        return result;
     }
 
     function timeToDecimal(timeStr) {
@@ -3060,7 +3181,7 @@
         }
 
         let dataset = [];
-        if (store.currentView === 'global' || store.currentView === 'user' || store.currentView === 'settings') dataset = [...store.project, ...store.run];
+        if (store.currentView === 'global' || store.currentView === 'user' || store.currentView === 'settings') dataset = getCombinedData();
         else dataset = store[store.currentView];
 
         let divisor = 1;
@@ -3253,7 +3374,7 @@
         if (granularity === 'month') targetHours = 150; 
 
         // 1. Filtrer les données
-        let allData = [...store.project, ...store.run];
+        let allData = getCombinedData();
         
         if (selectedUserOrTeam !== 'all') {
             if (TEAMS.includes(selectedUserOrTeam)) {
@@ -3700,6 +3821,21 @@
       if (btn) btn.classList.toggle('active', k===v);
     });
   }
+
+  // ====== RÉDUCTION / AGRANDISSEMENT DU MENU LATÉRAL ======
+  function toggleSidebar() {
+    const collapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+    const btn = document.getElementById('sidebarToggle');
+    btn.innerText = collapsed ? '▶' : '◀';
+    btn.title = collapsed ? 'Agrandir le menu' : 'Réduire le menu';
+    try { localStorage.setItem('manitou_sidebar_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+  }
+  (function syncSidebarButton() {
+    const collapsed = document.documentElement.classList.contains('sidebar-collapsed');
+    const btn = document.getElementById('sidebarToggle');
+    btn.innerText = collapsed ? '▶' : '◀';
+    btn.title = collapsed ? 'Agrandir le menu' : 'Réduire le menu';
+  })();
 
   // ====== THÈME CLAIR / SOMBRE — SOURCE DE VÉRITÉ DU PORTAIL ======
   function applyShellTheme(t) {
