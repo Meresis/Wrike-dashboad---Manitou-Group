@@ -93,6 +93,8 @@
   .hub-card .links-title{font-weight:700;font-size:.85rem;align-self:flex-start;margin-bottom:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;}
   .report-link{display:flex;align-items:center;gap:8px;width:100%;background:var(--surface-2);color:var(--title);text-decoration:none;font-size:.85rem;font-weight:600;padding:9px 12px;border-radius:8px;margin-bottom:8px;border:1px solid var(--border);}
   .report-link:hover{background:var(--bg);border-color:var(--accent);}
+  .card-version{font-size:.75rem;color:var(--text-muted);margin:0 0 12px;font-family:'IBM Plex Mono',monospace;}
+  .card-version span{display:inline-block;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;margin-right:6px;font-size:.72rem;}
 </style>
 </head>
 <body>
@@ -125,6 +127,7 @@
         <div class="hub-card">
           <div class="icon">📊</div>
           <h2 tabindex="0" role="button" onclick="showView('workload')" onkeydown="if(event.key==='Enter')showView('workload')">Workload</h2>
+          <p class="card-version"><span>v13.48</span>03/07/2026</p>
           <p>Visualiser la charge de travail globale des équipes.</p>
           <button class="open-btn" onclick="showView('workload')">Ouvrir</button>
           <hr>
@@ -135,6 +138,7 @@
         <div class="hub-card">
           <div class="icon">⏱️</div>
           <h2 tabindex="0" role="button" onclick="showView('pointages')" onkeydown="if(event.key==='Enter')showView('pointages')">Pointages</h2>
+          <p class="card-version"><span>v2.4</span>03/07/2026</p>
           <p>Analyse des temps passés et des saisies Wrike.</p>
           <button class="open-btn" onclick="showView('pointages')">Ouvrir</button>
           <hr>
@@ -2205,7 +2209,7 @@
     <script>(function(){try{var t=localStorage.getItem('manitou_theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
     <meta charset=&quot;UTF-8&quot;>
     <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
-    <title>Time Tracking Manager - Wrike v 2.2</title>
+    <title>Time Tracking Manager - Wrike v 2.4</title>
     
     <script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js&quot;></script>
     <script src=&quot;https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js&quot;></script>
@@ -2391,7 +2395,7 @@
 <div class=&quot;container pb-5&quot;>
     <div class=&quot;d-flex justify-content-between align-items-center mb-4&quot;>
         <div>
-            <h2 class=&quot;fw-bold m-0&quot;><i class=&quot;bi bi-activity text-primary me-2&quot;></i>Time Tracking Manager - Wrike <span class=&quot;text-muted fs-6&quot;>v 2.2</span></h2>
+            <h2 class=&quot;fw-bold m-0&quot;><i class=&quot;bi bi-activity text-primary me-2&quot;></i>Time Tracking Manager - Wrike <span class=&quot;text-muted fs-6&quot;>v 2.4</span></h2>
             <p class=&quot;text-muted small m-0&quot;>Tableau de bord &amp; Audit</p>
         </div>
         <div class=&quot;d-flex gap-2&quot;>
@@ -2480,7 +2484,7 @@
                         <label class=&quot;form-label fw-bold mb-2&quot;>Choisir une équipe à configurer</label>
                         <select id=&quot;teamConfigSelect&quot; class=&quot;form-select form-select-lg mb-4 shadow-sm&quot; onchange=&quot;renderTeamManager()&quot;>
                             <option value=&quot;SUPPLY CHAIN&quot;>SUPPLY CHAIN</option>
-                            <option value=&quot;P&amp;Q&quot;>P&amp;Q</option>
+                            <option value=&quot;LOGISTICS&quot;>LOGISTICS</option>
                             <option value=&quot;INDUS IT&quot;>INDUS IT</option>
                             <option value=&quot;R&amp;D IS&quot;>R&amp;D IS</option>
                         </select>
@@ -2689,29 +2693,43 @@
     
     // CONFIGURATION PAR DEFAUT (V1.26)
     const DEFAULT_TEAMS_CONFIG = {
-        &quot;Cyril Bernard&quot;: &quot;SUPPLY CHAIN&quot;,
-        &quot;David Sechet&quot;: &quot;SUPPLY CHAIN&quot;,
-        &quot;Jeremy Plouzennec&quot;: &quot;SUPPLY CHAIN&quot;,
-        &quot;Laetitia Grosbois&quot;: &quot;SUPPLY CHAIN&quot;,
-        &quot;Liliane Da Costa&quot;: &quot;SUPPLY CHAIN&quot;,
-        
-        &quot;Eloïse Rivery&quot;: &quot;P&amp;Q&quot;,
-        &quot;Florian Poirier&quot;: &quot;P&amp;Q&quot;,
-        &quot;Mickaël Serre&quot;: &quot;P&amp;Q&quot;,
-        &quot;Stéphane Bechieau&quot;: &quot;P&amp;Q&quot;,
-        
-        &quot;Christian Jacques&quot;: &quot;INDUS IT&quot;,
-        &quot;Guillaume Moynard&quot;: &quot;INDUS IT&quot;,
-        &quot;Hadrien Bosseau&quot;: &quot;INDUS IT&quot;,
-        &quot;Jérémie You&quot;: &quot;INDUS IT&quot;,
-        &quot;Matthieu Avis&quot;: &quot;INDUS IT&quot;,
-        &quot;Sébastien Charron&quot;: &quot;INDUS IT&quot;,
-        &quot;Thomas Joubert&quot;: &quot;INDUS IT&quot;,
-        
-        &quot;Alexandre Zemmer&quot;: &quot;R&amp;D IS&quot;,
-        &quot;Julien Juhel&quot;: &quot;R&amp;D IS&quot;,
-        &quot;Olivier Guyot&quot;: &quot;R&amp;D IS&quot;,
-        &quot;Xavier Gallard&quot;: &quot;R&amp;D IS&quot;
+        // SUPPLY CHAIN
+        &quot;Cyril Bernard&quot;:       &quot;SUPPLY CHAIN&quot;,
+        &quot;Céline Girardeau&quot;:    &quot;SUPPLY CHAIN&quot;,
+        &quot;Eloïse Rivery&quot;:       &quot;SUPPLY CHAIN&quot;,
+        &quot;Emilie Saindon&quot;:      &quot;SUPPLY CHAIN&quot;,
+        &quot;Fabien Jacques&quot;:      &quot;SUPPLY CHAIN&quot;,
+        &quot;Florian Poirier&quot;:     &quot;SUPPLY CHAIN&quot;,
+        &quot;Jeremy Plouzennec&quot;:   &quot;SUPPLY CHAIN&quot;,
+        &quot;Laetitia Grosbois&quot;:   &quot;SUPPLY CHAIN&quot;,
+        &quot;Liliane Da Costa&quot;:    &quot;SUPPLY CHAIN&quot;,
+
+        // INDUS IT
+        &quot;Christian Jacques&quot;:   &quot;INDUS IT&quot;,
+        &quot;Guillaume Moynard&quot;:   &quot;INDUS IT&quot;,
+        &quot;Hadrien Bosseau&quot;:     &quot;INDUS IT&quot;,
+        &quot;Jérémie You&quot;:         &quot;INDUS IT&quot;,
+        &quot;Matthieu Avis&quot;:       &quot;INDUS IT&quot;,
+        &quot;Stéphane Bechieau&quot;:   &quot;INDUS IT&quot;,
+
+        // R&amp;D IS
+        &quot;David Sechet&quot;:        &quot;R&amp;D IS&quot;,
+        &quot;Jason Rousseau&quot;:      &quot;R&amp;D IS&quot;,
+        &quot;Julien Juhel&quot;:        &quot;R&amp;D IS&quot;,
+        &quot;Louis Marie&quot;:         &quot;R&amp;D IS&quot;,
+        &quot;Lucie Gentils Grandin&quot;: &quot;R&amp;D IS&quot;,
+        &quot;Mickaël Serre&quot;:       &quot;R&amp;D IS&quot;,
+        &quot;Olivier Guyot&quot;:       &quot;R&amp;D IS&quot;,
+        &quot;Xavier Gallard&quot;:      &quot;R&amp;D IS&quot;,
+        &quot;Yohann Besq&quot;:         &quot;R&amp;D IS&quot;,
+
+        // LOGISTICS (ex-P&amp;Q)
+        &quot;Aurélie Thébaud&quot;:     &quot;LOGISTICS&quot;,
+        &quot;Delphine Roland&quot;:     &quot;LOGISTICS&quot;,
+        &quot;Guillaume Fazilleau&quot;: &quot;LOGISTICS&quot;,
+        &quot;Jérome Garcia&quot;:       &quot;LOGISTICS&quot;,
+        &quot;Sébastien Charron&quot;:   &quot;LOGISTICS&quot;,
+        &quot;Thomas Joubert&quot;:      &quot;LOGISTICS&quot;
     };
 
     // Chargement sécurisé du LocalStorage avec Merge
@@ -2720,6 +2738,13 @@
         const saved = localStorage.getItem('teamConfig');
         if (saved) {
             const savedMap = JSON.parse(saved);
+            // Migration P&amp;Q → LOGISTICS : si l'ancienne valeur est présente dans les données
+            // sauvegardées, on la remplace par le nouveau nom avant d'appliquer le merge.
+            let needsSave = false;
+            Object.keys(savedMap).forEach(u => {
+                if (savedMap[u] === 'P&amp;Q') { savedMap[u] = 'LOGISTICS'; needsSave = true; }
+            });
+            if (needsSave) localStorage.setItem('teamConfig', JSON.stringify(savedMap));
             // On surcharge les défauts avec les sauvegardes utilisateur
             Object.assign(userTeamMap, savedMap);
         }
@@ -2727,7 +2752,7 @@
         console.error(&quot;Erreur chargement config&quot;, e);
     }
 
-    const TEAMS = ['SUPPLY CHAIN', 'P&amp;Q', 'INDUS IT', 'R&amp;D IS'];
+    const TEAMS = ['SUPPLY CHAIN', 'LOGISTICS', 'INDUS IT', 'R&amp;D IS'];
     let datePickerInst;
     let charts = {};
     let confirmMode = false;
