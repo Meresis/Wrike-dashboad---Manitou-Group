@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Portail Manitou Wrike | Workload v13.49 | Pointages v2.4 | Mise à jour : 08/07/2026 13:03 -->
+<!-- Portail Manitou Wrike | Workload v13.51 | Pointages v2.4 | Mise à jour : 08/07/2026 14:17 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -135,7 +135,7 @@
         <div class="hub-card">
           <div class="icon">📊</div>
           <h2 tabindex="0" role="button" onclick="showView('workload')" onkeydown="if(event.key==='Enter')showView('workload')">Workload</h2>
-          <p class="card-version"><span>v13.49</span>08/07/2026</p>
+          <p class="card-version"><span>v13.51</span>08/07/2026</p>
           <p>Visualiser la charge de travail globale des équipes.</p>
           <button class="open-btn" onclick="showView('workload')">Ouvrir</button>
           <hr>
@@ -164,12 +164,12 @@
     <!-- ===== WORKLOAD (v13.48, isolé) ===== -->
     <section class="view" id="view-workload">
       <iframe class="app" id="frame-workload" title="Workload dashboard" srcdoc="<!doctype html>
-<!-- Version : v13.49 | Mise à jour : 08/07/2026 13:03 -->
+<!-- Version : v13.51 | Mise à jour : 08/07/2026 14:17 -->
 <html lang=&quot;fr&quot;>
   <head>
     <meta charset=&quot;UTF-8&quot; />
     <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; />
-    <title>Workload dashboard v13.49 (Reconstruction complète &amp; correctifs)</title>
+    <title>Workload dashboard v13.51 (Reconstruction complète &amp; correctifs)</title>
     <link href=&quot;https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css&quot; rel=&quot;stylesheet&quot; />
     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot; />
     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin />
@@ -327,7 +327,7 @@
     <!-- CONTENEUR IMPORTATION -->
     <div id=&quot;import-view&quot;>
       <div class=&quot;text-center mb-4&quot;>
-        <h1 class=&quot;fw-bold text-dark display-5&quot;>Workload dashboard <span class=&quot;text-primary&quot;>v13.49</span></h1>
+        <h1 class=&quot;fw-bold text-dark display-5&quot;>Workload dashboard <span class=&quot;text-primary&quot;>v13.51</span></h1>
         <p class=&quot;text-muted lead&quot;>Glissez-Déposez vos 3 fichiers Excel ou CSV Wrike</p>
       </div>
 
@@ -363,7 +363,7 @@
     <div id=&quot;dashboard-view&quot; class=&quot;app-wrapper d-none&quot;>
       <div class=&quot;panel top-bar&quot;>
         <div class=&quot;d-flex align-items-center gap-3 w-100&quot;>
-          <h5 class=&quot;fw-bold m-0 text-primary&quot;>Workload dashboard <span class=&quot;text-secondary small ms-1&quot; style=&quot;font-size: 0.7em&quot;>v13.49</span></h5>
+          <h5 class=&quot;fw-bold m-0 text-primary&quot;>Workload dashboard <span class=&quot;text-secondary small ms-1&quot; style=&quot;font-size: 0.7em&quot;>v13.51</span></h5>
           <div class=&quot;vr mx-2&quot;></div>
           <div id=&quot;topBarRow&quot; class=&quot;row g-2 w-100 align-items-center&quot;>
             <div class=&quot;col-md-3 tb-group tb-period&quot;>
@@ -1218,7 +1218,7 @@
         let currentAssignee = &quot;Inconnu&quot;;
 
         /*
-          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.49)
+          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.51)
           ----------------------------------------------------
           Chaque ligne est un couple (Collaborateur × Projet), Type = &quot;User&quot;. Pour chaque
           collaborateur, Wrike ajoute UNE ligne agrégée dont le &quot;Project name&quot; est VIDE :
@@ -1381,15 +1381,14 @@
       }
 
       function getLeave(user, timestamp) {
-          // Congés/Absences du jour = écart entre la capacité THÉORIQUE du collaborateur (déjà
-          // réduite selon son taux de temps partiel) et sa capacité RÉELLE du jour selon Wrike,
-          // additionné des heures des tâches &quot;Absences&quot; détectées, plafonné à la journée théorique.
-          // Un temps partiel permanent (capacité Wrike systématiquement égale à la capacité
-          // théorique réduite, jour après jour) ne génère donc AUCUN écart, et donc AUCUN congé :
-          // ce temps est déjà pris en compte via le taux de temps partiel des paramètres globaux.
-          // Seul un écart PAR RAPPORT à cette capacité théorique (jour férié, congé ponctuel...)
-          // est comptabilisé ici.
-          let dayCap = getDailyCapacity(user);
+          // Congés/Absences du jour = écart entre la Capacité Jour du collaborateur (Capacite_Jour
+          // = 8 * Taux_Activité/100, donc DÉJÀ proratisée pour le temps partiel) et sa capacité
+          // réelle du jour selon Wrike, additionné des heures des tâches &quot;Absences&quot; détectées,
+          // plafonné à la Capacité Jour. Un jour de congé complet vaut donc Capacite_Jour (ex.
+          // 6,4h pour un temps partiel à 80%), PAS 8h fixes : Heures_Congés = Jours_Congés × Capacite_Jour.
+          // Un temps partiel permanent (capacité Wrike systématiquement égale à Capacite_Jour,
+          // jour après jour) ne génère donc aucun écart, et donc aucun congé.
+          let dayCap = getDailyCapacity(user); // Capacite_Jour = 8 * (Taux_Activité% / 100)
           let cap = (CAPACITY_DATA[user] &amp;&amp; CAPACITY_DATA[user][timestamp] !== undefined) ? CAPACITY_DATA[user][timestamp] : dayCap;
           let capLeave = Math.max(0, dayCap - cap);
           let taskLeave = (USER_LEAVE_TASKS[user] &amp;&amp; USER_LEAVE_TASKS[user][timestamp]) ? USER_LEAVE_TASKS[user][timestamp] : 0;
@@ -1421,13 +1420,16 @@
               if (u === &quot;Inconnu&quot;) return;
               if (!heatmapData[u]) heatmapData[u] = { load: 0, capa: 0, leaves: 0 };
 
+              // La capacité théorique exclut les jours fériés globaux (personne n'est censé
+              // travailler ce jour-là) ; le CONGÉ, lui, est TOUJOURS cumulé même un jour férié,
+              // car réglementairement un jour férié compte comme un jour de congé.
+              let leave = getLeave(u, t);
+              totLeaves += leave;
+              heatmapData[u].leaves += leave;
               if (!window.GLOBAL_HOLIDAYS.has(t)) {
                   let dayCap = getDailyCapacity(u);
                   totCapa += dayCap;
                   heatmapData[u].capa += dayCap;
-                  let leave = getLeave(u, t);
-                  totLeaves += leave;
-                  heatmapData[u].leaves += leave;
                   dayNetCapa += (dayCap - leave);
               }
 
@@ -1554,9 +1556,10 @@
                 usersToProcess.forEach(u => {
                     if (u === &quot;Inconnu&quot;) return;
                     periods[key].capa += getDailyCapacity(u);
-                    periods[key].leaves += getLeave(u, t);
                 });
             }
+            // Congé toujours cumulé, y compris un jour férié (réglementairement compté comme congé).
+            usersToProcess.forEach(u => { if (u !== &quot;Inconnu&quot;) periods[key].leaves += getLeave(u, t); });
             usersToProcess.forEach(u => { if (u !== &quot;Inconnu&quot;) periods[key].load += getAccurateLoad(u, t); });
           }
           d.setDate(d.getDate() + 1);
@@ -1657,8 +1660,9 @@
                 let t = dLoop.getTime();
                 if (!window.GLOBAL_HOLIDAYS.has(t)) {
                   capa += getDailyCapacity(u);
-                  leaves += getLeave(u, t);
                 }
+                // Congé toujours cumulé, y compris un jour férié (réglementairement compté comme congé).
+                leaves += getLeave(u, t);
                 load += getAccurateLoad(u, t);
               }
               dLoop.setDate(dLoop.getDate() + 1);
@@ -1704,9 +1708,10 @@
                         usersToProcess.forEach(u => {
                             if (u === &quot;Inconnu&quot;) return;
                             mCapa += getDailyCapacity(u);
-                            mLeaves += getLeave(u, t);
                         });
                     }
+                    // Congé toujours cumulé, y compris un jour férié (réglementairement compté comme congé).
+                    usersToProcess.forEach(u => { if (u !== &quot;Inconnu&quot;) mLeaves += getLeave(u, t); });
                     usersToProcess.forEach(u => { if(u !== &quot;Inconnu&quot;) mLoad += getAccurateLoad(u, t); });
                 }
                 dLoop.setDate(dLoop.getDate() + 1);
@@ -1782,7 +1787,9 @@
         while (d < next) {
           if (d.getDay() !== 0 &amp;&amp; d.getDay() !== 6) {
             let t = d.getTime();
-            if (!window.GLOBAL_HOLIDAYS.has(t)) { capa += getDailyCapacity(user); leaves += getLeave(user, t); }
+            if (!window.GLOBAL_HOLIDAYS.has(t)) { capa += getDailyCapacity(user); }
+            // Congé toujours cumulé, y compris un jour férié (réglementairement compté comme congé).
+            leaves += getLeave(user, t);
             load += getAccurateLoad(user, t);
           }
           d.setDate(d.getDate() + 1);
@@ -3861,6 +3868,8 @@
   // Entrées les plus récentes en premier ; mises à jour manuellement à chaque livraison.
   const RECENT_UPDATES = {
     workload: [
+      { v: "v13.51", d: "08/07/2026", desc: "Congés/Absences : valorisation proratisée au temps partiel (Jours × Capacité Jour), au lieu de 8h fixes" },
+      { v: "v13.50", d: "08/07/2026", desc: "Congés/Absences : jours fériés désormais cumulés, valorisation à 8h fixes/jour (indépendant du temps partiel)" },
       { v: "v13.49", d: "08/07/2026", desc: "Congés/Absences : détection resserrée au mot-clé « absence(s) », exclusion stricte du temps partiel" },
       { v: "v13.48", d: "03/07/2026", desc: "Correctifs paramètres par défaut + responsivité de la barre de contrôles" },
       { v: "v13.46", d: "03/07/2026", desc: "Thème clair/sombre synchronisé avec le portail" }
