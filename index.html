@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Portail Manitou Wrike | Workload v13.52 | Pointages v2.4 | Mise à jour : 08/07/2026 14:42 -->
+<!-- Portail Manitou Wrike | Workload v13.52 | Pointages v2.4 | Mise à jour : 08/07/2026 14:52 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -3886,7 +3886,7 @@
   function renderUpdates() {
     [['workload', 'updates-workload'], ['pointages', 'updates-pointages']].forEach(([key, id]) => {
       const el = document.getElementById(id);
-      el.innerHTML = RECENT_UPDATES[key].map(u =>
+      el.innerHTML = RECENT_UPDATES[key].slice(0, 3).map(u =>
         `<div class="update-item"><span class="update-ver">${u.v}</span><span class="update-date">${u.d}</span><span class="update-desc">${u.desc}</span></div>`
       ).join("");
     });
