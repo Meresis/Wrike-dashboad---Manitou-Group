@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Portail Manitou Wrike | Workload v13.51 | Pointages v2.4 | Mise à jour : 08/07/2026 14:17 -->
+<!-- Portail Manitou Wrike | Workload v13.52 | Pointages v2.4 | Mise à jour : 08/07/2026 14:42 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -135,7 +135,7 @@
         <div class="hub-card">
           <div class="icon">📊</div>
           <h2 tabindex="0" role="button" onclick="showView('workload')" onkeydown="if(event.key==='Enter')showView('workload')">Workload</h2>
-          <p class="card-version"><span>v13.51</span>08/07/2026</p>
+          <p class="card-version"><span>v13.52</span>08/07/2026</p>
           <p>Visualiser la charge de travail globale des équipes.</p>
           <button class="open-btn" onclick="showView('workload')">Ouvrir</button>
           <hr>
@@ -164,12 +164,12 @@
     <!-- ===== WORKLOAD (v13.48, isolé) ===== -->
     <section class="view" id="view-workload">
       <iframe class="app" id="frame-workload" title="Workload dashboard" srcdoc="<!doctype html>
-<!-- Version : v13.51 | Mise à jour : 08/07/2026 14:17 -->
+<!-- Version : v13.52 | Mise à jour : 08/07/2026 14:42 -->
 <html lang=&quot;fr&quot;>
   <head>
     <meta charset=&quot;UTF-8&quot; />
     <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; />
-    <title>Workload dashboard v13.51 (Reconstruction complète &amp; correctifs)</title>
+    <title>Workload dashboard v13.52 (Reconstruction complète &amp; correctifs)</title>
     <link href=&quot;https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css&quot; rel=&quot;stylesheet&quot; />
     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot; />
     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin />
@@ -327,7 +327,7 @@
     <!-- CONTENEUR IMPORTATION -->
     <div id=&quot;import-view&quot;>
       <div class=&quot;text-center mb-4&quot;>
-        <h1 class=&quot;fw-bold text-dark display-5&quot;>Workload dashboard <span class=&quot;text-primary&quot;>v13.51</span></h1>
+        <h1 class=&quot;fw-bold text-dark display-5&quot;>Workload dashboard <span class=&quot;text-primary&quot;>v13.52</span></h1>
         <p class=&quot;text-muted lead&quot;>Glissez-Déposez vos 3 fichiers Excel ou CSV Wrike</p>
       </div>
 
@@ -363,7 +363,7 @@
     <div id=&quot;dashboard-view&quot; class=&quot;app-wrapper d-none&quot;>
       <div class=&quot;panel top-bar&quot;>
         <div class=&quot;d-flex align-items-center gap-3 w-100&quot;>
-          <h5 class=&quot;fw-bold m-0 text-primary&quot;>Workload dashboard <span class=&quot;text-secondary small ms-1&quot; style=&quot;font-size: 0.7em&quot;>v13.51</span></h5>
+          <h5 class=&quot;fw-bold m-0 text-primary&quot;>Workload dashboard <span class=&quot;text-secondary small ms-1&quot; style=&quot;font-size: 0.7em&quot;>v13.52</span></h5>
           <div class=&quot;vr mx-2&quot;></div>
           <div id=&quot;topBarRow&quot; class=&quot;row g-2 w-100 align-items-center&quot;>
             <div class=&quot;col-md-3 tb-group tb-period&quot;>
@@ -673,7 +673,7 @@
         &quot;Jérome Garcia&quot;:       { team: [&quot;Logistics&quot;], profile: [&quot;Manager&quot;],    partTime: 100 },
         &quot;Jérémie You&quot;:         { team: [&quot;Indus&quot;],     profile: [&quot;Business Analyst&quot;], partTime: 100 },
         &quot;Kévin Mathieu&quot;:       { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;, &quot;Prestataire&quot;], partTime: 100 },
-        &quot;Laetitia Grosbois&quot;:   { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;], partTime: 80 },
+        &quot;Laetitia Grosbois&quot;:   { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;], partTime: 70 },
         &quot;Liliane Da Costa&quot;:    { team: [&quot;Supply&quot;],    profile: [&quot;Business Analyst&quot;], partTime: 100 },
         &quot;Louis Marie&quot;:         { team: [&quot;R&amp;D IS&quot;],    profile: [&quot;Développeur&quot;, &quot;Prestataire&quot;, &quot;Dev ext&quot;], partTime: 100 },
         &quot;Lucie Gentils Grandin&quot;:{ team: [&quot;R&amp;D IS&quot;],   profile: [&quot;Business Analyst&quot;, &quot;Prestataire&quot;], partTime: 90 },
@@ -1218,7 +1218,7 @@
         let currentAssignee = &quot;Inconnu&quot;;
 
         /*
-          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.51)
+          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.52)
           ----------------------------------------------------
           Chaque ligne est un couple (Collaborateur × Projet), Type = &quot;User&quot;. Pour chaque
           collaborateur, Wrike ajoute UNE ligne agrégée dont le &quot;Project name&quot; est VIDE :
@@ -3868,6 +3868,7 @@
   // Entrées les plus récentes en premier ; mises à jour manuellement à chaque livraison.
   const RECENT_UPDATES = {
     workload: [
+      { v: "v13.52", d: "08/07/2026", desc: "Paramètres par défaut : temps partiel de Laetitia Grosbois corrigé à 70% (au lieu de 80%)" },
       { v: "v13.51", d: "08/07/2026", desc: "Congés/Absences : valorisation proratisée au temps partiel (Jours × Capacité Jour), au lieu de 8h fixes" },
       { v: "v13.50", d: "08/07/2026", desc: "Congés/Absences : jours fériés désormais cumulés, valorisation à 8h fixes/jour (indépendant du temps partiel)" },
       { v: "v13.49", d: "08/07/2026", desc: "Congés/Absences : détection resserrée au mot-clé « absence(s) », exclusion stricte du temps partiel" },
