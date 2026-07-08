@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Portail Manitou Wrike | Workload v13.48 | Pointages v2.4 | Mise à jour : 03/07/2026 11:56 -->
+<!-- Portail Manitou Wrike | Workload v13.49 | Pointages v2.4 | Mise à jour : 08/07/2026 13:03 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -94,6 +94,13 @@
   .hub-card .links-title{font-weight:700;font-size:.85rem;align-self:flex-start;margin-bottom:8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;}
   .report-link{display:flex;align-items:center;gap:8px;width:100%;background:var(--surface-2);color:var(--title);text-decoration:none;font-size:.85rem;font-weight:600;padding:9px 12px;border-radius:8px;margin-bottom:8px;border:1px solid var(--border);}
   .report-link:hover{background:var(--bg);border-color:var(--accent);}
+  .updates-title{font-weight:700;font-size:.85rem;align-self:flex-start;margin:14px 0 8px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;border-top:1px solid var(--border);padding-top:14px;width:100%;}
+  .updates-list{width:100%;text-align:left;}
+  .update-item{display:flex;gap:8px;align-items:baseline;padding:5px 2px;font-size:.82rem;border-bottom:1px dashed var(--border);}
+  .update-item:last-child{border-bottom:none;}
+  .update-ver{font-family:'IBM Plex Mono',monospace;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:0px 6px;font-size:.72rem;color:var(--title);flex-shrink:0;}
+  .update-date{color:var(--text-muted);font-size:.72rem;flex-shrink:0;}
+  .update-desc{color:var(--text);flex:1;}
   .card-version{font-size:.75rem;color:var(--text-muted);margin:0 0 12px;font-family:'IBM Plex Mono',monospace;}
   .card-version span{display:inline-block;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;margin-right:6px;font-size:.72rem;}
 </style>
@@ -128,12 +135,14 @@
         <div class="hub-card">
           <div class="icon">📊</div>
           <h2 tabindex="0" role="button" onclick="showView('workload')" onkeydown="if(event.key==='Enter')showView('workload')">Workload</h2>
-          <p class="card-version"><span>v13.48</span>03/07/2026</p>
+          <p class="card-version"><span>v13.49</span>08/07/2026</p>
           <p>Visualiser la charge de travail globale des équipes.</p>
           <button class="open-btn" onclick="showView('workload')">Ouvrir</button>
           <hr>
           <div class="links-title">Rapports Wrike à télécharger</div>
           <span id="links-workload"></span>
+          <div class="updates-title">Dernières mises à jour</div>
+          <div class="updates-list" id="updates-workload"></div>
         </div>
 
         <div class="hub-card">
@@ -145,6 +154,8 @@
           <hr>
           <div class="links-title">Rapports Wrike à télécharger</div>
           <span id="links-pointages"></span>
+          <div class="updates-title">Dernières mises à jour</div>
+          <div class="updates-list" id="updates-pointages"></div>
         </div>
 
       </div>
@@ -153,12 +164,12 @@
     <!-- ===== WORKLOAD (v13.48, isolé) ===== -->
     <section class="view" id="view-workload">
       <iframe class="app" id="frame-workload" title="Workload dashboard" srcdoc="<!doctype html>
-<!-- Version : v13.48 | Mise à jour : 03/07/2026 11:56 -->
+<!-- Version : v13.49 | Mise à jour : 08/07/2026 13:03 -->
 <html lang=&quot;fr&quot;>
   <head>
     <meta charset=&quot;UTF-8&quot; />
     <meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot; />
-    <title>Workload dashboard v13.48 (Reconstruction complète &amp; correctifs)</title>
+    <title>Workload dashboard v13.49 (Reconstruction complète &amp; correctifs)</title>
     <link href=&quot;https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css&quot; rel=&quot;stylesheet&quot; />
     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot; />
     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin />
@@ -316,7 +327,7 @@
     <!-- CONTENEUR IMPORTATION -->
     <div id=&quot;import-view&quot;>
       <div class=&quot;text-center mb-4&quot;>
-        <h1 class=&quot;fw-bold text-dark display-5&quot;>Workload dashboard <span class=&quot;text-primary&quot;>v13.48</span></h1>
+        <h1 class=&quot;fw-bold text-dark display-5&quot;>Workload dashboard <span class=&quot;text-primary&quot;>v13.49</span></h1>
         <p class=&quot;text-muted lead&quot;>Glissez-Déposez vos 3 fichiers Excel ou CSV Wrike</p>
       </div>
 
@@ -352,7 +363,7 @@
     <div id=&quot;dashboard-view&quot; class=&quot;app-wrapper d-none&quot;>
       <div class=&quot;panel top-bar&quot;>
         <div class=&quot;d-flex align-items-center gap-3 w-100&quot;>
-          <h5 class=&quot;fw-bold m-0 text-primary&quot;>Workload dashboard <span class=&quot;text-secondary small ms-1&quot; style=&quot;font-size: 0.7em&quot;>v13.48</span></h5>
+          <h5 class=&quot;fw-bold m-0 text-primary&quot;>Workload dashboard <span class=&quot;text-secondary small ms-1&quot; style=&quot;font-size: 0.7em&quot;>v13.49</span></h5>
           <div class=&quot;vr mx-2&quot;></div>
           <div id=&quot;topBarRow&quot; class=&quot;row g-2 w-100 align-items-center&quot;>
             <div class=&quot;col-md-3 tb-group tb-period&quot;>
@@ -1191,14 +1202,23 @@
 
         DATA = []; CAPACITY_DATA = {}; PIVOT_LOAD = {}; USER_DAILY_TASKS = {}; USER_LEAVE_TASKS = {};
         let USER_AGG = {}, USER_PROJ_SUM = {}, usersWithAgg = new Set();
-        const leaveRegex = /(ABSENCES|CONGÉS|DIVERS|RTT|VACANCE|LEAVE|MALADIE|FÉRIÉ)/i;
+        // Règle de détection &quot;Congés/Absences&quot; (mise à jour) :
+        //  - Seul le mot &quot;absence(s)&quot; (singulier/pluriel, insensible à la casse) déclenche la
+        //    détection. Recherché dans le champ &quot;Project name&quot; de l'export de capacité, qui est
+        //    l'unique intitulé textuel disponible par ligne pour ce fichier (l'export ne distingue
+        //    pas tâche / tâche parente comme dans les rapports Wrike détaillés).
+        //  - Exclusion stricte : le temps partiel / l'activité partielle ne sont JAMAIS comptés
+        //    dans cette colonne, même si l'intitulé contient aussi &quot;absence&quot; — ce temps est déjà
+        //    reflété par le taux de temps partiel défini dans les paramètres globaux (Réglages).
+        const leaveRegex = /absences?/i;
+        const partialTimeRegex = /(temps\s*partiel|activit[ée]\s*partielle)/i;
         const runRegex = /(MCO|SUPPORT|GESTION OP[EÉ]RATIONNELLE)/i;
         const noProjRegex = /(NON-PROJECT|SANS PROJET)/i;
 
         let currentAssignee = &quot;Inconnu&quot;;
 
         /*
-          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.48)
+          STRUCTURE RÉELLE DE L'EXPORT WRIKE (corrigée v13.49)
           ----------------------------------------------------
           Chaque ligne est un couple (Collaborateur × Projet), Type = &quot;User&quot;. Pour chaque
           collaborateur, Wrike ajoute UNE ligne agrégée dont le &quot;Project name&quot; est VIDE :
@@ -1258,7 +1278,7 @@
           // === LIGNE PROJET ===
           let cat = &quot;AUTRES&quot;;
           let projUpper = proj.toUpperCase();
-          if (leaveRegex.test(proj)) cat = &quot;CONGES&quot;;
+          if (leaveRegex.test(proj) &amp;&amp; !partialTimeRegex.test(proj)) cat = &quot;CONGES&quot;;
           else if (runRegex.test(proj) || REF_RUN.has(projUpper)) cat = &quot;RUN&quot;;
           else if (noProjRegex.test(proj)) cat = &quot;AUTRES&quot;;
           else if (REF_PROJ.has(projUpper) || proj) cat = &quot;PROJETS&quot;;
@@ -1361,13 +1381,17 @@
       }
 
       function getLeave(user, timestamp) {
-          // Congés/Absences du jour = part d'absence (issue de la capacité Wrike) ramenée à la
-          // capacité quotidienne réelle (temps partiel) + heures des tâches Absences/Congés,
-          // plafonné à la journée théorique du collaborateur.
+          // Congés/Absences du jour = écart entre la capacité THÉORIQUE du collaborateur (déjà
+          // réduite selon son taux de temps partiel) et sa capacité RÉELLE du jour selon Wrike,
+          // additionné des heures des tâches &quot;Absences&quot; détectées, plafonné à la journée théorique.
+          // Un temps partiel permanent (capacité Wrike systématiquement égale à la capacité
+          // théorique réduite, jour après jour) ne génère donc AUCUN écart, et donc AUCUN congé :
+          // ce temps est déjà pris en compte via le taux de temps partiel des paramètres globaux.
+          // Seul un écart PAR RAPPORT à cette capacité théorique (jour férié, congé ponctuel...)
+          // est comptabilisé ici.
           let dayCap = getDailyCapacity(user);
-          let cap = (CAPACITY_DATA[user] &amp;&amp; CAPACITY_DATA[user][timestamp] !== undefined) ? CAPACITY_DATA[user][timestamp] : HOURS_PER_DAY;
-          let offFraction = cap < HOURS_PER_DAY ? (HOURS_PER_DAY - cap) / HOURS_PER_DAY : 0;
-          let capLeave = dayCap * offFraction;
+          let cap = (CAPACITY_DATA[user] &amp;&amp; CAPACITY_DATA[user][timestamp] !== undefined) ? CAPACITY_DATA[user][timestamp] : dayCap;
+          let capLeave = Math.max(0, dayCap - cap);
           let taskLeave = (USER_LEAVE_TASKS[user] &amp;&amp; USER_LEAVE_TASKS[user][timestamp]) ? USER_LEAVE_TASKS[user][timestamp] : 0;
           return Math.min(dayCap, capLeave + taskLeave);
       }
@@ -3833,6 +3857,31 @@
     ]
   };
 
+  // ====== DERNIÈRES MISES À JOUR (résumé affiché sur l'Accueil) ======
+  // Entrées les plus récentes en premier ; mises à jour manuellement à chaque livraison.
+  const RECENT_UPDATES = {
+    workload: [
+      { v: "v13.49", d: "08/07/2026", desc: "Congés/Absences : détection resserrée au mot-clé « absence(s) », exclusion stricte du temps partiel" },
+      { v: "v13.48", d: "03/07/2026", desc: "Correctifs paramètres par défaut + responsivité de la barre de contrôles" },
+      { v: "v13.46", d: "03/07/2026", desc: "Thème clair/sombre synchronisé avec le portail" }
+    ],
+    pointages: [
+      { v: "v2.4", d: "03/07/2026", desc: "Migration automatique de l'équipe P&Q vers LOGISTICS" },
+      { v: "v2.3", d: "03/07/2026", desc: "Renommage de l'équipe P&Q en LOGISTICS + paramètres par défaut" },
+      { v: "v2.2", d: "03/07/2026", desc: "Correction de la déduplication inter-fichiers (comptage apparié)" },
+      { v: "v2.1", d: "03/07/2026", desc: "Distinction congé / temps partiel ; congé complète la journée à 8h" }
+    ]
+  };
+
+  function renderUpdates() {
+    [['workload', 'updates-workload'], ['pointages', 'updates-pointages']].forEach(([key, id]) => {
+      const el = document.getElementById(id);
+      el.innerHTML = RECENT_UPDATES[key].map(u =>
+        `<div class="update-item"><span class="update-ver">${u.v}</span><span class="update-date">${u.d}</span><span class="update-desc">${u.desc}</span></div>`
+      ).join("");
+    });
+  }
+
   function renderLinks() {
     [['workload','links-workload'],['pointages','links-pointages']].forEach(([key,id]) => {
       const el = document.getElementById(id);
@@ -3898,6 +3947,7 @@
 
   applyShellTheme(document.documentElement.getAttribute('data-theme') || 'dark');
   renderLinks();
+  renderUpdates();
 </script>
 </body>
 </html>
