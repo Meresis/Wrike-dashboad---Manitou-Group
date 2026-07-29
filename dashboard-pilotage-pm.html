@@ -769,6 +769,35 @@ function getExtensionToken(interactive){
   });
 }
 
+// Contexte Apps Script : ce fichier est servi directement par Google (HtmlService), via un
+// déploiement "Application Web". Dans ce cas, google.script.run appelle les fonctions du script
+// serveur directement, sans requête réseau externe — donc sans jamais rencontrer de blocage CORS,
+// quels que soient les réglages de partage ou les restrictions de l'entreprise. C'est la méthode
+// la plus fiable en environnement verrouillé.
+const isAppsScriptContext = (typeof google !== 'undefined' && !!google.script && !!google.script.run);
+
+function callAppsScriptRun(functionName){
+  return new Promise((resolve, reject)=>{
+    google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[functionName]();
+  });
+}
+
+async function fetchAllTabsEmbedded(){
+  const data = await callAppsScriptRun('getAllSheetData');
+  const out = {};
+  Object.keys(SHEET_TABS).forEach(k=>{
+    const grid = data[k] || [];
+    const headers = (grid[1]||[]).map(h => String(h||'').trim());
+    const dataRows = grid.slice(2);
+    out[k] = dataRows.map(r=>{
+      const obj = {};
+      headers.forEach((h,idx)=> obj[h] = (r[idx] !== undefined ? String(r[idx]).trim() : ''));
+      return obj;
+    });
+  });
+  return out;
+}
+
 // minuteurs de la revue de pilotage — session uniquement, non persistés
 const revueTimers = {
   tour:       {elapsed:0, running:false, alloc:15*60, handle:null},
@@ -1848,7 +1877,9 @@ async function syncFromGoogleSheet(sheetId, silent){
   updateSyncStatus('loading');
   try{
     let raw;
-    if(state.sheetConfig.authMode === 'appscript'){
+    if(isAppsScriptContext){
+      raw = await fetchAllTabsEmbedded();
+    } else if(state.sheetConfig.authMode === 'appscript'){
       if(!state.sheetConfig.appsScriptUrl) throw new Error("URL du script non renseignée.");
       raw = await fetchAllTabsAppScript(state.sheetConfig.appsScriptUrl);
     } else if(state.sheetConfig.authMode === 'oauth'){
@@ -1922,7 +1953,8 @@ function updateOAuthStatusUI(){
 let autoSyncInterval = null;
 function applyAutoSync(){
   if(autoSyncInterval){ clearInterval(autoSyncInterval); autoSyncInterval = null; }
-  const hasTarget = (state.sheetConfig.authMode==='appscript' && state.sheetConfig.appsScriptUrl) ||
+  const hasTarget = isAppsScriptContext ||
+                     (state.sheetConfig.authMode==='appscript' && state.sheetConfig.appsScriptUrl) ||
                      (state.sheetConfig.authMode!=='appscript' && state.sheetConfig.sheetId);
   if(state.sheetConfig.autoRefresh && hasTarget){
     autoSyncInterval = setInterval(()=>{
@@ -1961,6 +1993,37 @@ function updateSyncStatus(status){
 
 function attachSheetPanelEvents(){
   const backdrop = document.getElementById('sheet-panel-backdrop');
+
+  // Contexte Apps Script : panneau minimal, aucune méthode à choisir — on attache ses
+  // événements et on s'arrête immédiatement, sans toucher aux éléments des autres modes.
+  if(isAppsScriptContext){
+    backdrop.querySelector('.sheet-panel').innerHTML = `
+      <h3>🔗 Google Sheet</h3>
+      <p class="section-sub">Ce tableau de bord est servi directement par votre feuille Google — la connexion est automatique, il n'y a rien à configurer.</p>
+      <div class="autosync-row">
+        <input type="checkbox" id="autosync-check">
+        <label style="margin:0;text-transform:none;font-family:var(--font-body);font-size:12px;color:var(--text-secondary);">Actualiser automatiquement toutes les 5 minutes</label>
+      </div>
+      <div class="sheet-panel-actions">
+        <button class="btn btn-sm" id="manual-refresh-btn">🔄 Actualiser maintenant</button>
+        <button class="btn btn-ghost btn-sm" id="close-sheet-panel">Fermer</button>
+      </div>
+      <div class="sheet-status-line" id="sheet-status-line"></div>
+    `;
+    document.getElementById('open-sheet-panel').addEventListener('click', ()=>{
+      document.getElementById('autosync-check').checked = !!state.sheetConfig.autoRefresh;
+      backdrop.classList.add('open');
+    });
+    document.getElementById('close-sheet-panel').addEventListener('click', ()=> backdrop.classList.remove('open'));
+    backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) backdrop.classList.remove('open'); });
+    document.getElementById('autosync-check').addEventListener('change', (e)=>{
+      state.sheetConfig.autoRefresh = e.target.checked;
+      scheduleSaveSheetConfig();
+      applyAutoSync();
+    });
+    document.getElementById('manual-refresh-btn').addEventListener('click', ()=> syncFromGoogleSheet(null, false));
+    return;
+  }
 
   // Contexte extension Chrome : une seule méthode possible (chrome.identity), pas de Client ID à saisir.
   if(isExtensionContext){
@@ -2155,7 +2218,11 @@ let countdownInterval = null;
     if(document.getElementById('module-revue').classList.contains('active')) updateCountdown();
   }, 30000);
 
-  if(state.sheetConfig.authMode === 'appscript' && state.sheetConfig.appsScriptUrl){
+  if(isAppsScriptContext){
+    state.sheetConfig.autoRefresh = true;
+    applyAutoSync();
+    syncFromGoogleSheet(null, true);
+  } else if(state.sheetConfig.authMode === 'appscript' && state.sheetConfig.appsScriptUrl){
     applyAutoSync();
     syncFromGoogleSheet(null, true);
   } else if(state.sheetConfig.sheetId && state.sheetConfig.authMode === 'public'){
