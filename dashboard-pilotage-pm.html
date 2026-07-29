@@ -1,0 +1,2091 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pilotage Portefeuille — Pôle Product Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --bg-base:#14171a;
+  --bg-panel:#1b1f24;
+  --bg-elevated:#232830;
+  --bg-elevated-2:#2b313a;
+  --bg-elevated-3:#333a44;
+  --border:#333a44;
+  --border-soft:#282e36;
+  --text-primary:#e9e7e2;
+  --text-secondary:#a3aab3;
+  --text-muted:#666e78;
+
+  --accent:#2fb8c6;
+  --accent-strong:#5fd4e0;
+  --accent-dim:rgba(47,184,198,.14);
+  --accent-glow:rgba(47,184,198,.4);
+
+  --meteo-vert:#5fb77e;
+  --meteo-vert-dim:rgba(95,183,126,.15);
+  --meteo-orange:#e0954b;
+  --meteo-orange-dim:rgba(224,149,75,.15);
+  --meteo-rouge:#e2574f;
+  --meteo-rouge-dim:rgba(226,87,79,.16);
+
+  --font-display:'Barlow Condensed', sans-serif;
+  --font-body:'IBM Plex Sans', sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+
+  --radius:7px;
+  --radius-sm:4px;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at top left, rgba(47,184,198,.04), transparent 55%),
+    var(--bg-base);
+  color:var(--text-primary);
+  font-family:var(--font-body);
+  font-size:14px;
+  line-height:1.5;
+  min-height:100vh;
+}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:600;margin:0;letter-spacing:.2px;}
+button,input,select,textarea{font-family:inherit;color:inherit;}
+button{cursor:pointer;}
+::selection{background:var(--accent-dim);color:var(--accent-strong);}
+
+.eyebrow{
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  letter-spacing:1.6px;
+  text-transform:uppercase;
+  color:var(--text-muted);
+}
+
+/* ============================================================
+   LOADING OVERLAY
+   ============================================================ */
+#loading-overlay{
+  position:fixed;inset:0;background:var(--bg-base);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  z-index:999;transition:opacity .35s ease;
+}
+#loading-overlay.hidden{opacity:0;pointer-events:none;}
+.loader-ring{
+  width:34px;height:34px;border-radius:50%;
+  border:3px solid var(--bg-elevated-3);
+  border-top-color:var(--accent);
+  animation:spin 0.9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading-overlay p{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;}
+
+/* ============================================================
+   TOPBAR
+   ============================================================ */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:var(--bg-panel);
+  border-bottom:1px solid var(--border-soft);
+  display:flex;align-items:center;gap:24px;
+  padding:0 20px;height:60px;
+}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.brand-mark{
+  width:32px;height:32px;border-radius:var(--radius-sm);
+  border:1.5px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--accent);
+  box-shadow:0 0 0 1px rgba(47,184,198,.08), 0 0 14px -4px var(--accent-glow);
+}
+.brand-text h1{font-size:16px;line-height:1.1;color:var(--text-primary);}
+.brand-text .eyebrow{margin-top:1px;}
+
+.tabs{display:flex;gap:2px;background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius);padding:3px;flex:1;max-width:560px;}
+.tab-btn{
+  flex:1;border:none;background:transparent;color:var(--text-secondary);
+  font-family:var(--font-display);font-size:14.5px;letter-spacing:.3px;
+  padding:8px 10px;border-radius:5px;transition:background .18s,color .18s;
+  text-transform:uppercase;font-weight:600;
+}
+.tab-btn:hover{color:var(--text-primary);}
+.tab-btn.active{background:var(--bg-elevated-2);color:var(--accent-strong);box-shadow:inset 0 0 0 1px rgba(47,184,198,.25), 0 0 12px -4px var(--accent-glow);}
+
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:16px;flex-shrink:0;}
+.clock{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);text-align:right;line-height:1.3;}
+.clock b{color:var(--text-primary);font-size:13px;}
+.reset-btn{
+  border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-muted);
+  border-radius:var(--radius-sm);padding:7px 10px;font-size:11.5px;font-family:var(--font-mono);
+  transition:border-color .15s,color .15s;
+}
+.reset-btn:hover{border-color:var(--meteo-rouge);color:var(--meteo-rouge);}
+.sync-btn{
+  border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-secondary);
+  border-radius:var(--radius-sm);padding:7px 11px;font-size:11.5px;display:flex;align-items:center;gap:6px;
+  transition:border-color .15s,color .15s;
+}
+.sync-btn:hover{border-color:var(--accent);color:var(--accent-strong);}
+.sync-btn.connected{border-color:rgba(95,183,126,.4);color:var(--meteo-vert);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+.sync-dot.on{background:var(--meteo-vert);box-shadow:0 0 6px var(--meteo-vert);}
+.sync-dot.error{background:var(--meteo-rouge);box-shadow:0 0 6px var(--meteo-rouge);}
+
+/* ---- Panneau de connexion Google Sheet ---- */
+#sheet-panel-backdrop{
+  position:fixed;inset:0;background:rgba(10,12,14,.6);z-index:150;
+  display:none;align-items:flex-start;justify-content:center;padding-top:80px;
+}
+#sheet-panel-backdrop.open{display:flex;}
+.sheet-panel{
+  background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--radius);
+  width:100%;max-width:520px;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+.sheet-panel h3{font-size:19px;margin-bottom:4px;}
+.sheet-panel .section-sub{margin-bottom:16px;}
+.sheet-panel .form-row{margin-bottom:10px;}
+.sheet-panel-steps{font-size:11.5px;color:var(--text-muted);background:var(--bg-base);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:16px;line-height:1.6;}
+.sheet-panel-steps b{color:var(--text-secondary);}
+.sheet-panel-actions{display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:10px;flex-wrap:wrap;}
+.sheet-status-line{font-size:11.5px;color:var(--text-muted);margin-top:10px;font-family:var(--font-mono);}
+.sheet-status-line.ok{color:var(--meteo-vert);}
+.sheet-status-line.err{color:var(--meteo-rouge);}
+.autosync-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary);margin-top:12px;}
+.autosync-row input{width:auto;}
+.auth-mode-tabs{display:flex;gap:6px;margin-bottom:14px;}
+.auth-mode-tabs .chip{flex:1;text-align:center;}
+.oauth-status-line{font-size:11.5px;font-family:var(--font-mono);margin-top:10px;padding:8px 10px;border-radius:var(--radius-sm);background:var(--bg-base);border:1px solid var(--border-soft);color:var(--text-muted);}
+.oauth-status-line.connected{color:var(--meteo-vert);border-color:rgba(95,183,126,.35);}
+
+/* ============================================================
+   LAYOUT / MODULES
+   ============================================================ */
+main{max-width:1360px;margin:0 auto;padding:24px 20px 80px;}
+.module{display:none;animation:fadeIn .25s ease;}
+.module.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+/* ============================================================
+   BUTTONS / FORM ELEMENTS
+   ============================================================ */
+.btn{
+  border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-elevated-2);
+  color:var(--text-primary);padding:7px 13px;font-size:12.5px;font-weight:500;
+  transition:all .15s ease;display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{border-color:var(--bg-elevated-3);background:var(--bg-elevated-3);}
+.btn-primary{background:var(--accent-dim);border-color:rgba(47,184,198,.4);color:var(--accent-strong);}
+.btn-primary:hover{background:rgba(47,184,198,.22);border-color:var(--accent);}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text-secondary);}
+.btn-ghost:hover{background:var(--bg-elevated);color:var(--text-primary);}
+.btn-danger{color:var(--meteo-rouge);}
+.btn-danger:hover{border-color:var(--meteo-rouge);background:rgba(226,87,79,.1);}
+.btn-vert{color:var(--meteo-vert);}
+.btn-vert:hover{border-color:var(--meteo-vert);background:var(--meteo-vert-dim);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-sm{padding:4px 9px;font-size:11.5px;}
+
+input[type=text],input[type=date],input[type=datetime-local],textarea,select{
+  background:var(--bg-base);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:7px 9px;font-size:12.5px;color:var(--text-primary);width:100%;
+}
+input[type=text]:focus,textarea:focus,select:focus,input[type=date]:focus,input[type=datetime-local]:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim);
+}
+textarea{resize:vertical;min-height:52px;font-family:var(--font-body);line-height:1.45;}
+label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-mono);display:block;margin-bottom:4px;}
+
+.chip{
+  border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-secondary);
+  border-radius:20px;padding:5px 12px;font-size:11.5px;font-weight:500;transition:all .15s;
+}
+.chip:hover{border-color:var(--bg-elevated-3);}
+.chip.active{color:var(--bg-base);font-weight:600;}
+.chip.active.chip-vert{background:var(--meteo-vert);border-color:var(--meteo-vert);}
+.chip.active.chip-orange{background:var(--meteo-orange);border-color:var(--meteo-orange);}
+.chip.active.chip-rouge{background:var(--meteo-rouge);border-color:var(--meteo-rouge);}
+.chip.active.chip-accent{background:var(--accent);border-color:var(--accent);color:#0c1214;}
+
+.badge{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.4px;padding:3px 8px;border-radius:4px;text-transform:uppercase;font-weight:500;display:inline-block;}
+.badge-team{background:var(--bg-elevated-2);color:var(--text-secondary);border:1px solid var(--border-soft);}
+.badge-type{background:var(--bg-elevated-2);color:var(--accent-strong);border:1px solid rgba(47,184,198,.3);}
+.statut-chip{font-family:var(--font-mono);font-size:10.5px;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.4px;}
+.statut-attente{background:var(--meteo-orange-dim);color:var(--meteo-orange);}
+.statut-valide{background:var(--meteo-vert-dim);color:var(--meteo-vert);}
+.statut-refuse{background:var(--meteo-rouge-dim);color:var(--meteo-rouge);}
+
+/* ============================================================
+   MÉTÉO DIAL + SPARKLINE (élément signature)
+   ============================================================ */
+.meteo-dial{display:block;filter:drop-shadow(0 0 6px var(--dial-glow, transparent));}
+.dial-ring{fill:none;stroke:var(--bg-elevated-3);stroke-width:3;}
+.dial-arc{fill:none;stroke-width:3;stroke-linecap:round;transform:rotate(-90deg);transform-origin:22px 22px;}
+.dial-core{transition:r .2s;}
+.dial-pulse .dial-core{animation:pulseCore 2.2s ease-in-out infinite;}
+@keyframes pulseCore{0%,100%{opacity:1;}50%{opacity:.55;}}
+@media (prefers-reduced-motion: reduce){.dial-pulse .dial-core{animation:none;}}
+
+.meteo-row{display:flex;align-items:center;gap:10px;}
+.sparkline{display:flex;align-items:flex-end;gap:3px;height:20px;}
+.spark-bar{width:4px;border-radius:1.5px;opacity:.45;}
+.spark-bar.spark-current{opacity:1;}
+.spark-vert{background:var(--meteo-vert);}
+.spark-orange{background:var(--meteo-orange);}
+.spark-rouge{background:var(--meteo-rouge);}
+
+/* ============================================================
+   MODULE 1 — FLASH REPORT
+   ============================================================ */
+.flash-header{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:22px;}
+.stat-block{
+  flex:1;min-width:120px;background:var(--bg-panel);border:1px solid var(--border-soft);
+  border-left:3px solid var(--stat-color, var(--border));border-radius:var(--radius);
+  padding:14px 16px;
+}
+.stat-block .stat-num{font-family:var(--font-mono);font-size:28px;font-weight:600;color:var(--stat-color,var(--text-primary));line-height:1;}
+.stat-block .stat-label{margin-top:6px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-mono);}
+
+.filters-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border-soft);}
+.filters-group{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.filters-bar select{width:auto;max-width:220px;}
+.filters-sep{width:1px;height:20px;background:var(--border-soft);margin:0 4px;}
+.print-btn{margin-left:auto;}
+
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;}
+.project-card{
+  background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius);
+  padding:16px 18px;display:flex;flex-direction:column;gap:12px;
+  border-top:3px solid var(--card-color,var(--border));
+}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.card-title h3{font-size:19px;line-height:1.15;color:var(--text-primary);}
+.card-meta{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap;}
+.cdp-label{font-size:11.5px;color:var(--text-muted);}
+.cdp-label b{color:var(--text-secondary);font-weight:500;}
+
+.faits-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;}
+.faits-list li{font-size:12.5px;color:var(--text-secondary);padding-left:12px;position:relative;}
+.faits-list li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--bg-elevated-3);}
+.fait-date{font-family:var(--font-mono);font-size:10.5px;color:var(--text-muted);margin-right:6px;}
+
+.decisions-box{border-radius:var(--radius-sm);padding:10px 12px;background:var(--bg-elevated);border:1px solid var(--border-soft);}
+.decisions-box.has-pending{border-color:rgba(224,149,75,.4);background:var(--meteo-orange-dim);}
+.decisions-box h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);font-family:var(--font-mono);font-weight:500;margin-bottom:8px;}
+.decision-line{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--text-secondary);padding:4px 0;}
+.decision-line + .decision-line{border-top:1px solid var(--border-soft);}
+.decision-empty{font-size:12px;color:var(--text-muted);font-style:italic;}
+
+.copil-next{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-secondary);background:var(--bg-elevated);border-radius:var(--radius-sm);padding:9px 12px;border:1px solid var(--border-soft);}
+.copil-next .copil-date{font-family:var(--font-mono);color:var(--text-primary);}
+.badge-prepare{background:var(--accent);color:#0c1214;font-family:var(--font-mono);font-size:9.5px;padding:2px 7px;border-radius:3px;font-weight:700;letter-spacing:.5px;}
+
+.card-footer{display:flex;justify-content:space-between;align-items:center;padding-top:6px;border-top:1px solid var(--border-soft);}
+.timestamp{font-size:10.5px;font-family:var(--font-mono);color:var(--text-muted);}
+
+.edit-panel{background:var(--bg-base);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-top:4px;display:flex;flex-direction:column;gap:14px;}
+.edit-section{display:flex;flex-direction:column;gap:8px;}
+.edit-section h5{font-size:11px;color:var(--accent-strong);text-transform:uppercase;letter-spacing:.6px;font-family:var(--font-mono);font-weight:600;}
+.meteo-picker{display:flex;gap:8px;}
+.meteo-pick-btn{flex:1;border:1px solid var(--border);background:var(--bg-elevated);border-radius:var(--radius-sm);padding:8px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;color:var(--text-secondary);}
+.meteo-pick-btn.selected{border-color:var(--pick-color);background:var(--pick-color-dim);color:var(--pick-color);font-weight:600;}
+.form-row{display:flex;gap:8px;flex-wrap:wrap;}
+.form-row > *{flex:1;min-width:110px;}
+.existing-decision-row{display:flex;gap:8px;align-items:center;font-size:12px;padding:6px 0;border-top:1px solid var(--border-soft);}
+.existing-decision-row span.dtxt{flex:1;color:var(--text-secondary);}
+
+/* ============================================================
+   MODULE 2 — REVUE DE PILOTAGE
+   ============================================================ */
+.revue-header{display:flex;flex-wrap:wrap;gap:20px;align-items:stretch;margin-bottom:24px;}
+.countdown-panel{
+  background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius);
+  padding:18px 22px;flex:1;min-width:280px;position:relative;overflow:hidden;
+}
+.countdown-panel::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 0% 0%, rgba(47,184,198,.08), transparent 60%);}
+.countdown-value{font-family:var(--font-mono);font-size:38px;font-weight:600;color:var(--accent-strong);letter-spacing:1px;position:relative;text-shadow:0 0 18px var(--accent-glow);}
+.countdown-sub{font-size:11.5px;color:var(--text-muted);margin-top:4px;position:relative;}
+.countdown-edit{margin-top:12px;display:flex;gap:8px;position:relative;flex-wrap:wrap;}
+.countdown-edit input{max-width:220px;}
+
+.total-panel{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:18px 22px;flex:1;min-width:240px;}
+.total-value{font-family:var(--font-mono);font-size:22px;font-weight:600;}
+.progress-bar{height:8px;border-radius:4px;background:var(--bg-elevated-2);margin-top:10px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);transition:width .3s ease;border-radius:4px;}
+.progress-fill.over{background:var(--meteo-rouge);}
+
+.agenda-blocks{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:26px;}
+.agenda-block{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:16px 18px;display:flex;flex-direction:column;gap:12px;}
+.agenda-block-head{display:flex;justify-content:space-between;align-items:baseline;}
+.agenda-block-head h3{font-size:17px;}
+.agenda-alloc{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);}
+.timer-display{font-family:var(--font-mono);font-size:26px;text-align:center;background:var(--bg-base);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:8px;letter-spacing:1px;}
+.timer-display.over{color:var(--meteo-rouge);}
+.timer-controls{display:flex;gap:6px;}
+.timer-controls .btn{flex:1;justify-content:center;}
+.agenda-content{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;padding-right:2px;}
+.mini-meteo-row{display:flex;flex-wrap:wrap;gap:8px;}
+.mini-meteo-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary);background:var(--bg-elevated);border-radius:20px;padding:3px 10px 3px 3px;}
+.mini-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.focus-item{border-left:2px solid var(--focus-color,var(--border));padding:6px 0 6px 10px;font-size:12px;}
+.focus-item .fname{color:var(--text-primary);font-weight:500;}
+.focus-item .fdetail{color:var(--text-secondary);display:block;margin-top:2px;}
+.arbitrage-row{border-bottom:1px solid var(--border-soft);padding-bottom:10px;margin-bottom:8px;}
+.arbitrage-row:last-child{border:none;margin:0;padding:0;}
+.arbitrage-head{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:4px;}
+.arbitrage-projet{color:var(--text-muted);font-size:11px;}
+.arbitrage-actions{display:flex;gap:6px;margin-top:6px;}
+.arbitrage-actions input{font-size:11.5px;}
+.copil-prep-item{border-bottom:1px solid var(--border-soft);padding-bottom:10px;margin-bottom:8px;}
+.copil-prep-item:last-child{border:none;margin:0;padding:0;}
+.copil-prep-head{font-size:12px;color:var(--text-secondary);margin-bottom:6px;}
+.copil-prep-head b{color:var(--text-primary);}
+.empty-note{font-size:12px;color:var(--text-muted);font-style:italic;padding:12px 0;text-align:center;}
+
+.closer-row{display:flex;justify-content:center;margin:10px 0 28px;}
+.closer-row .btn{padding:11px 26px;font-size:13.5px;}
+
+.accordion{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius);overflow:hidden;}
+.accordion-head{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;}
+.accordion-head h3{font-size:16px;}
+.accordion-item{border-top:1px solid var(--border-soft);}
+.accordion-item-head{padding:12px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+.accordion-item-head:hover{background:var(--bg-elevated);}
+.accordion-item-body{padding:0 18px 16px;display:none;font-size:12.5px;color:var(--text-secondary);}
+.accordion-item.open .accordion-item-body{display:block;}
+.accordion-item-body .arb-entry{padding:6px 0;border-top:1px solid var(--border-soft);}
+.accordion-item-body .arb-entry:first-child{border:none;}
+.chevron{transition:transform .2s;color:var(--text-muted);}
+.accordion-item.open .chevron{transform:rotate(90deg);}
+
+/* ============================================================
+   MODULE 3 — PACK COPIL
+   ============================================================ */
+.copil-list{display:flex;flex-direction:column;gap:14px;}
+.copil-item{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius);padding:16px 18px;}
+.copil-item.urgent{border-color:rgba(224,149,75,.45);}
+.copil-item-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;cursor:pointer;}
+.copil-item-title{display:flex;flex-direction:column;gap:4px;}
+.copil-item-title h3{font-size:17px;}
+.copil-item-sub{font-size:11.5px;color:var(--text-muted);}
+.copil-item-date{font-family:var(--font-mono);font-size:13px;color:var(--accent-strong);white-space:nowrap;}
+.copil-body{margin-top:14px;display:none;flex-direction:column;gap:14px;}
+.copil-item.open .copil-body{display:flex;}
+.note-field label{display:flex;justify-content:space-between;}
+.note-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.sent-tag{font-family:var(--font-mono);font-size:10.5px;color:var(--meteo-vert);}
+.history-note{border-top:1px solid var(--border-soft);padding:10px 0;font-size:12px;color:var(--text-secondary);}
+.history-note b{color:var(--text-primary);}
+
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--bg-elevated-2);border:1px solid var(--border);border-left:3px solid var(--accent);color:var(--text-primary);padding:10px 16px;border-radius:var(--radius-sm);font-size:12.5px;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .2s ease;}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+.section-title{font-size:20px;margin-bottom:14px;}
+.section-sub{color:var(--text-muted);font-size:12.5px;margin-top:-8px;margin-bottom:18px;}
+
+/* ============================================================
+   PRINT
+   ============================================================ */
+@media print{
+  .topbar,.filters-bar,.reset-btn,.edit-panel,.print-btn,#toast-container,.tabs,.clock{display:none !important;}
+  body{background:#fff;color:#111;}
+  .project-card{border:1px solid #ccc !important;background:#fff !important;break-inside:avoid;padding:10px;}
+  .card-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  .stat-block,.decisions-box,.copil-next{background:#f4f4f4 !important;border-color:#ccc !important;}
+  main{padding:8px;}
+  .module:not(.active){display:none;}
+  .module.active{display:block;}
+  a{color:#111;}
+}
+
+@media (max-width:760px){
+  .topbar{flex-wrap:wrap;height:auto;padding:10px 14px;gap:10px;}
+  .tabs{order:3;max-width:100%;}
+  .topbar-right{order:2;margin-left:0;}
+  .card-grid{grid-template-columns:1fr;}
+  .revue-header{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay"><div class="loader-ring"></div><p>Chargement du portefeuille…</p></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">PM</div>
+    <div class="brand-text">
+      <h1>Pilotage Portefeuille</h1>
+      <div class="eyebrow">Pôle Product Management · Manitou</div>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab-btn active" data-tab="flash">Flash Report</button>
+    <button class="tab-btn" data-tab="revue">Revue de Pilotage</button>
+    <button class="tab-btn" data-tab="copil">Pack COPIL</button>
+  </nav>
+  <div class="topbar-right">
+    <button class="sync-btn" id="open-sheet-panel"><span class="sync-dot" id="sync-dot"></span><span id="sync-btn-label">Google Sheet</span></button>
+    <div class="clock" id="clock">--:--</div>
+    <button class="reset-btn" id="reset-demo-btn" title="Réinitialiser les données de démonstration">↺ Réinitialiser</button>
+  </div>
+</header>
+
+<div id="sheet-panel-backdrop">
+  <div class="sheet-panel">
+    <h3>🔗 Connexion Google Sheet</h3>
+    <p class="section-sub">Les données affichées proviennent alors directement de votre classeur — la saisie se fait dans la feuille, ce tableau de bord se contente de l'afficher.</p>
+
+    <div class="form-row">
+      <div style="flex:1;">
+        <label>Identifiant de la feuille Google Sheet</label>
+        <input type="text" id="sheet-id-input" placeholder="ex : 1AbCDefGhIJkLmNoPQRstuVWxyZ...">
+      </div>
+    </div>
+
+    <div class="auth-mode-tabs" id="auth-mode-tabs">
+      <button class="chip active" data-auth-mode="oauth">🔐 Connexion avec mon compte Google</button>
+      <button class="chip" data-auth-mode="public">🌐 Classeur publié publiquement</button>
+    </div>
+
+    <div id="oauth-mode-fields">
+      <div class="sheet-panel-steps" id="oauth-steps-text">
+        <b>Important :</b> Google refuse la connexion si la page est ouverte en double-clic (fichier local) —
+        l'erreur 400 vient de là. Il faut la servir depuis <code>http://localhost</code> via le petit lanceur
+        fourni à côté de ce fichier, puis autoriser <code>http://localhost:8000</code> dans votre identifiant
+        client Google Cloud. Demandez-moi « comment créer l'identifiant client Google » si besoin d'aide.
+      </div>
+      <div class="form-row" id="oauth-clientid-row">
+        <div style="flex:1;">
+          <label>Identifiant client OAuth Google</label>
+          <input type="text" id="google-client-id-input" placeholder="xxxxxxxx.apps.googleusercontent.com">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="google-signin-btn">🔐 Se connecter avec Google</button>
+      <div class="oauth-status-line" id="oauth-status-line">Non connecté.</div>
+    </div>
+
+    <div id="public-mode-fields" style="display:none;">
+      <div class="sheet-panel-steps">
+        <b>Avant de connecter :</b> Fichier &gt; Partager &gt; <i>Publier sur le web</i> &gt; publiez le classeur entier (pas seulement un partage « lecteur », insuffisant pour la lecture en direct).
+      </div>
+      <button class="btn btn-primary btn-sm" id="connect-sheet-btn">🔄 Connecter &amp; synchroniser</button>
+    </div>
+
+    <div class="autosync-row">
+      <input type="checkbox" id="autosync-check">
+      <label style="margin:0;text-transform:none;font-family:var(--font-body);font-size:12px;color:var(--text-secondary);">Actualiser automatiquement toutes les 5 minutes</label>
+    </div>
+    <div class="sheet-panel-actions">
+      <div>
+        <button class="btn btn-sm" id="manual-refresh-btn">🔄 Actualiser maintenant</button>
+        <button class="btn btn-danger btn-sm" id="disconnect-sheet-btn">Déconnecter</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="close-sheet-panel">Fermer</button>
+    </div>
+    <div class="sheet-status-line" id="sheet-status-line"></div>
+  </div>
+</div>
+
+<main>
+  <section id="module-flash" class="module active"></section>
+  <section id="module-revue" class="module"></section>
+  <section id="module-copil" class="module"></section>
+</main>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+/* ============================================================================
+   1. DONNÉES — constantes & jeu de démonstration
+   ============================================================================ */
+const STORAGE_KEY_PROJETS = 'pm-dashboard-projets';
+const STORAGE_KEY_REVUES  = 'pm-dashboard-revues';
+const STORAGE_KEY_SHEETCFG = 'pm-dashboard-sheetconfig';
+
+// Feuille Google Sheet connectée par défaut (peut être changée depuis le panneau 🔗 Google Sheet)
+const DEFAULT_SHEET_ID = '1eB-In1J4CNUQQurGsTAf3VMOKauZoxFWDBWVZOwSIBk';
+
+// Onglets attendus dans le classeur Google Sheet et leurs en-têtes exacts
+const SHEET_TABS = {
+  config:    "Config",
+  projets:   "Projets",
+  meteo:     "Historique météo",
+  faits:     "Faits marquants",
+  decisions: "Décisions & arbitrages",
+  copil:     "Agenda COPIL",
+  revues:    "Revues de pilotage"
+};
+
+// Adaptateur de stockage : utilise l'API window.storage fournie par l'environnement
+// artifact Claude quand elle existe ; sinon (fichier ouvert directement dans un
+// navigateur, hébergé en intranet, etc.) se replie sur localStorage pour que la
+// persistance et la connexion Google Sheet continuent de fonctionner.
+const storage = (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function')
+  ? window.storage
+  : {
+      async get(key){
+        const v = localStorage.getItem('pmfallback:'+key);
+        if(v===null) throw new Error('clé introuvable');
+        return {key, value:v, shared:false};
+      },
+      async set(key, value){
+        localStorage.setItem('pmfallback:'+key, value);
+        return {key, value, shared:false};
+      },
+      async delete(key){
+        localStorage.removeItem('pmfallback:'+key);
+        return {key, deleted:true, shared:false};
+      },
+      async list(prefix){
+        const keys = Object.keys(localStorage).filter(k=>k.startsWith('pmfallback:'+(prefix||''))).map(k=>k.replace('pmfallback:',''));
+        return {keys};
+      }
+    };
+
+const TEAMS = ["IT Industrielle","Supply Chain","Achats & Qualité","Logistique & Pièces de rechange","R&D IS"];
+const DECISION_TYPES = ["budget","priorité","déblocage","autre"];
+const METEO = {
+  vert:   {label:"Vert",   hex:'#5fb77e', dim:'rgba(95,183,126,.15)'},
+  orange: {label:"Orange", hex:'#e0954b', dim:'rgba(224,149,75,.15)'},
+  rouge:  {label:"Rouge",  hex:'#e2574f', dim:'rgba(226,87,79,.16)'}
+};
+const METEO_ORDER = {rouge:0, orange:1, vert:2};
+
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+function buildDemoProjets(){
+  return [
+    {
+      id:'p1', nom:"Portail Fournisseurs Pièces de Rechange", equipe:"Logistique & Pièces de rechange",
+      chefDeProjet:"Sophie Delattre", meteoGlobale:"vert", derniereMaj:"2026-07-27",
+      historiqueMeteo:[
+        {date:"2026-06-01",statut:"vert"},{date:"2026-06-15",statut:"vert"},
+        {date:"2026-06-29",statut:"orange"},{date:"2026-07-13",statut:"vert"},{date:"2026-07-27",statut:"vert"}
+      ],
+      faitsMarquants:[
+        {date:"2026-07-20",texte:"Recette utilisateur validée par les 3 filiales pilotes (FR, DE, ES)."},
+        {date:"2026-07-10",texte:"Formation des 12 premiers concessionnaires réalisée."}
+      ],
+      decisionsAttendues:[
+        {id:uid('d'),texte:"Valider le périmètre de déploiement du lot 2 (concessionnaires UK/Benelux).",typeDecision:"priorité",statut:"en attente",dateAjout:"2026-07-15",decisionActee:""}
+      ],
+      agendaCopil:[
+        {id:uid('c'),date:"2026-08-11",instance:"COPIL Direction Après-Vente",sujetsChauds:"Feu vert pour le déploiement du lot 2 et budget formation associé.",statut:"à venir",notesAlignement:"",noteEnvoyee:null}
+      ],
+      notesCopilEnvoyees:[]
+    },
+    {
+      id:'p2', nom:"Refonte MES Ligne d'assemblage MT — site d'Ancenis", equipe:"IT Industrielle",
+      chefDeProjet:"Karim Ouazani", meteoGlobale:"orange", derniereMaj:"2026-07-27",
+      historiqueMeteo:[
+        {date:"2026-06-01",statut:"vert"},{date:"2026-06-15",statut:"vert"},
+        {date:"2026-06-29",statut:"orange"},{date:"2026-07-13",statut:"orange"},{date:"2026-07-27",statut:"orange"}
+      ],
+      faitsMarquants:[
+        {date:"2026-07-22",texte:"Tests d'intégration MES/ERP concluants sur l'îlot pilote."},
+        {date:"2026-07-08",texte:"Retard fournisseur identifié sur les terminaux industriels (2 semaines)."}
+      ],
+      decisionsAttendues:[
+        {id:uid('d'),texte:"Arbitrer le maintien de la date de bascule du 15/09 ou son report.",typeDecision:"déblocage",statut:"en attente",dateAjout:"2026-07-21",decisionActee:""}
+      ],
+      agendaCopil:[
+        {id:uid('c'),date:"2026-08-04",instance:"COPIL Industrialisation MT",sujetsChauds:"Impact du retard fournisseur sur le planning global de bascule.",statut:"à venir",notesAlignement:"",noteEnvoyee:null}
+      ],
+      notesCopilEnvoyees:[]
+    },
+    {
+      id:'p3', nom:"Programme S&OP Supply Chain Groupe", equipe:"Supply Chain",
+      chefDeProjet:"Anaïs Ferreira", meteoGlobale:"vert", derniereMaj:"2026-07-26",
+      historiqueMeteo:[
+        {date:"2026-06-01",statut:"orange"},{date:"2026-06-15",statut:"vert"},
+        {date:"2026-06-29",statut:"vert"},{date:"2026-07-13",statut:"vert"},{date:"2026-07-27",statut:"vert"}
+      ],
+      faitsMarquants:[
+        {date:"2026-07-19",texte:"Déploiement du module de prévision réalisé sur la gamme MRT."},
+        {date:"2026-07-02",texte:"Atelier de cadrage S&OP mensuel avec les 5 équipes du pôle."}
+      ],
+      decisionsAttendues:[],
+      agendaCopil:[
+        {id:uid('c'),date:"2026-09-08",instance:"COPIL Supply Chain Groupe",sujetsChauds:"Bilan du premier cycle S&OP et extension à la gamme Oxeo.",statut:"à venir",notesAlignement:"",noteEnvoyee:null}
+      ],
+      notesCopilEnvoyees:[]
+    },
+    {
+      id:'p4', nom:"Cybersécurité OT — Sites de Production", equipe:"IT Industrielle",
+      chefDeProjet:"Thomas Lemercier", meteoGlobale:"rouge", derniereMaj:"2026-07-25",
+      historiqueMeteo:[
+        {date:"2026-06-01",statut:"vert"},{date:"2026-06-15",statut:"orange"},
+        {date:"2026-06-29",statut:"orange"},{date:"2026-07-13",statut:"rouge"},{date:"2026-07-27",statut:"rouge"}
+      ],
+      faitsMarquants:[
+        {date:"2026-07-24",texte:"L'audit externe confirme 4 vulnérabilités critiques sur le réseau automates."},
+        {date:"2026-07-17",texte:"Plan de remédiation priorité 1 initié sur le site de Candé."}
+      ],
+      decisionsAttendues:[
+        {id:uid('d'),texte:"Débloquer un budget exceptionnel de sécurisation réseau (hors enveloppe validée).",typeDecision:"budget",statut:"en attente",dateAjout:"2026-07-24",decisionActee:""},
+        {id:uid('d'),texte:"Valider l'arrêt temporaire de 2 automates non conformes pour remédiation.",typeDecision:"déblocage",statut:"en attente",dateAjout:"2026-07-25",decisionActee:""}
+      ],
+      agendaCopil:[
+        {id:uid('c'),date:"2026-07-31",instance:"COPIL Sécurité SI",sujetsChauds:"Présentation de l'audit et demande d'arbitrage budgétaire urgente.",statut:"à venir",notesAlignement:"",noteEnvoyee:null}
+      ],
+      notesCopilEnvoyees:[]
+    },
+    {
+      id:'p5', nom:"Migration ERP Achats — module Sourcing", equipe:"Achats & Qualité",
+      chefDeProjet:"Laurent Vasseur", meteoGlobale:"orange", derniereMaj:"2026-07-26",
+      historiqueMeteo:[
+        {date:"2026-06-01",statut:"vert"},{date:"2026-06-15",statut:"vert"},
+        {date:"2026-06-29",statut:"orange"},{date:"2026-07-13",statut:"orange"},{date:"2026-07-27",statut:"orange"}
+      ],
+      faitsMarquants:[
+        {date:"2026-07-18",texte:"Reprise des données fournisseurs terminée à 85 %."},
+        {date:"2026-07-05",texte:"Écart identifié sur la codification qualité, correctif en cours."}
+      ],
+      decisionsAttendues:[
+        {id:uid('d'),texte:"Prioriser la correction de la codification qualité avant la mise en production.",typeDecision:"priorité",statut:"en attente",dateAjout:"2026-07-19",decisionActee:""}
+      ],
+      agendaCopil:[
+        {id:uid('c'),date:"2026-08-18",instance:"COPIL Digitalisation Achats",sujetsChauds:"Point d'avancement et fiabilisation des données qualité.",statut:"à venir",notesAlignement:"",noteEnvoyee:null}
+      ],
+      notesCopilEnvoyees:[]
+    },
+    {
+      id:'p6', nom:"Plateforme R&D — Jumeau numérique nacelles", equipe:"R&D IS",
+      chefDeProjet:"Élise Grandjean", meteoGlobale:"vert", derniereMaj:"2026-07-21",
+      historiqueMeteo:[
+        {date:"2026-06-01",statut:"vert"},{date:"2026-06-15",statut:"vert"},
+        {date:"2026-06-29",statut:"vert"},{date:"2026-07-13",statut:"vert"},{date:"2026-07-27",statut:"vert"}
+      ],
+      faitsMarquants:[
+        {date:"2026-07-21",texte:"Premier prototype connecté testé avec succès sur nacelle 160ETJ."}
+      ],
+      decisionsAttendues:[],
+      agendaCopil:[
+        {id:uid('c'),date:"2026-09-01",instance:"COPIL Innovation R&D",sujetsChauds:"Feuille de route de déploiement du jumeau numérique sur les autres gammes.",statut:"à venir",notesAlignement:"",noteEnvoyee:null}
+      ],
+      notesCopilEnvoyees:[]
+    }
+  ];
+}
+
+function buildDemoRevues(){
+  return {
+    prochaineRevueDate: "2026-08-10T09:30",
+    historique:[
+      {
+        id:uid('rev'), date:"2026-07-27",
+        meteoPortefeuilleSnapshot:[
+          {nom:"Portail Fournisseurs Pièces de Rechange",statut:"vert"},
+          {nom:"Refonte MES Ligne d'assemblage MT — site d'Ancenis",statut:"orange"},
+          {nom:"Programme S&OP Supply Chain Groupe",statut:"vert"},
+          {nom:"Cybersécurité OT — Sites de Production",statut:"rouge"},
+          {nom:"Migration ERP Achats — module Sourcing",statut:"orange"},
+          {nom:"Plateforme R&D — Jumeau numérique nacelles",statut:"vert"}
+        ],
+        arbitragesTraites:[
+          {sujet:"Maintien ou report de la bascule MES", decision:"Maintien de la date sous réserve d'un plan de contingence fournisseur formalisé sous 8 jours.", projetLie:"Refonte MES Ligne d'assemblage MT — site d'Ancenis"}
+        ],
+        pointsPreparationCopil:"Aligner le message sur le risque fournisseur avant le COPIL Industrialisation MT du 04/08."
+      },
+      {
+        id:uid('rev'), date:"2026-06-29",
+        meteoPortefeuilleSnapshot:[
+          {nom:"Portail Fournisseurs Pièces de Rechange",statut:"orange"},
+          {nom:"Refonte MES Ligne d'assemblage MT — site d'Ancenis",statut:"orange"},
+          {nom:"Programme S&OP Supply Chain Groupe",statut:"vert"},
+          {nom:"Cybersécurité OT — Sites de Production",statut:"orange"},
+          {nom:"Migration ERP Achats — module Sourcing",statut:"orange"},
+          {nom:"Plateforme R&D — Jumeau numérique nacelles",statut:"vert"}
+        ],
+        arbitragesTraites:[
+          {sujet:"Périmètre lot 2 du portail fournisseurs", decision:"Validation du lot 2 sur le périmètre UK/Benelux ; budget formation à confirmer en COPIL.", projetLie:"Portail Fournisseurs Pièces de Rechange"}
+        ],
+        pointsPreparationCopil:"Préparer l'argumentaire budget formation pour le COPIL Direction Après-Vente."
+      }
+    ]
+  };
+}
+
+/* ============================================================================
+   2. ÉTAT & PERSISTANCE
+   ============================================================================ */
+const state = {
+  projets: [],
+  revues: { prochaineRevueDate:null, historique:[] },
+  ui:{
+    flashFilters:{ equipe:'toutes', meteo:[], decisionEnAttente:false, tri:'meteo' },
+    expandedCardId:null,
+    expandedCopilId:null,
+    openAccordion:false
+  },
+  sheetConfig:{ sheetId:null, autoRefresh:false, lastSync:null, lastError:null, authMode:'oauth', clientId:null }
+};
+
+// État de session OAuth Google (non persisté — un jeton expire après ~1h, la reconnexion se fait au rechargement)
+let accessToken = null;
+let tokenClient = null;
+
+// Contexte d'exécution : si ce fichier tourne comme page d'une extension Chrome (chrome-extension://...),
+// on utilise chrome.identity (connexion silencieuse via le compte déjà actif dans Chrome, sans Client ID
+// à saisir). Sinon, on retombe sur le flux web standard (Google Identity Services).
+const isExtensionContext = (typeof chrome !== 'undefined' && !!chrome.identity && !!chrome.runtime && !!chrome.runtime.id);
+
+function getExtensionToken(interactive){
+  return new Promise((resolve, reject)=>{
+    chrome.identity.getAuthToken({interactive}, (token)=>{
+      if(chrome.runtime.lastError || !token){
+        reject(new Error(chrome.runtime.lastError ? chrome.runtime.lastError.message : "Connexion Google refusée ou annulée."));
+        return;
+      }
+      resolve(token);
+    });
+  });
+}
+
+// minuteurs de la revue de pilotage — session uniquement, non persistés
+const revueTimers = {
+  tour:       {elapsed:0, running:false, alloc:15*60, handle:null},
+  arbitrages: {elapsed:0, running:false, alloc:20*60, handle:null},
+  prep:       {elapsed:0, running:false, alloc:10*60, handle:null}
+};
+let sessionArbitrages = []; // arbitrages traités pendant la session en cours
+
+let saveTimeoutProjets = null, saveTimeoutRevues = null;
+
+function scheduleSaveProjets(){
+  clearTimeout(saveTimeoutProjets);
+  saveTimeoutProjets = setTimeout(async ()=>{
+    try{
+      const res = await storage.set(STORAGE_KEY_PROJETS, JSON.stringify(state.projets), false);
+      if(!res) showToast("Échec de la sauvegarde des projets.", true);
+    }catch(e){ showToast("Erreur de sauvegarde des projets.", true); console.error(e); }
+  }, 350);
+}
+function scheduleSaveRevues(){
+  clearTimeout(saveTimeoutRevues);
+  saveTimeoutRevues = setTimeout(async ()=>{
+    try{
+      const res = await storage.set(STORAGE_KEY_REVUES, JSON.stringify(state.revues), false);
+      if(!res) showToast("Échec de la sauvegarde des revues.", true);
+    }catch(e){ showToast("Erreur de sauvegarde des revues.", true); console.error(e); }
+  }, 350);
+}
+
+async function loadData(){
+  try{
+    const r = await storage.get(STORAGE_KEY_PROJETS);
+    state.projets = r && r.value ? JSON.parse(r.value) : buildDemoProjets();
+    if(!r){ state.projets = buildDemoProjets(); scheduleSaveProjets(); }
+  }catch(e){
+    state.projets = buildDemoProjets();
+    try{ await storage.set(STORAGE_KEY_PROJETS, JSON.stringify(state.projets), false); }catch(e2){}
+  }
+  try{
+    const r = await storage.get(STORAGE_KEY_REVUES);
+    state.revues = r && r.value ? JSON.parse(r.value) : buildDemoRevues();
+    if(!r){ state.revues = buildDemoRevues(); scheduleSaveRevues(); }
+  }catch(e){
+    state.revues = buildDemoRevues();
+    try{ await storage.set(STORAGE_KEY_REVUES, JSON.stringify(state.revues), false); }catch(e2){}
+  }
+  try{
+    const r = await storage.get(STORAGE_KEY_SHEETCFG);
+    if(r && r.value) state.sheetConfig = {...state.sheetConfig, ...JSON.parse(r.value)};
+    if(!state.sheetConfig.sheetId) state.sheetConfig.sheetId = DEFAULT_SHEET_ID;
+  }catch(e){
+    state.sheetConfig.sheetId = DEFAULT_SHEET_ID;
+  }
+}
+
+function scheduleSaveSheetConfig(){
+  try{
+    storage.set(STORAGE_KEY_SHEETCFG, JSON.stringify(state.sheetConfig), false).catch(()=>{});
+  }catch(e){ console.error('Sauvegarde config Google Sheet impossible :', e); }
+}
+
+async function resetDemoData(){
+  state.projets = buildDemoProjets();
+  state.revues = buildDemoRevues();
+  sessionArbitrages = [];
+  Object.values(revueTimers).forEach(t=>{ t.elapsed=0; t.running=false; if(t.handle) clearInterval(t.handle); t.handle=null; });
+  try{
+    await storage.set(STORAGE_KEY_PROJETS, JSON.stringify(state.projets), false);
+    await storage.set(STORAGE_KEY_REVUES, JSON.stringify(state.revues), false);
+  }catch(e){ console.error(e); }
+  renderAll();
+  showToast("Données de démonstration restaurées.");
+}
+
+/* ============================================================================
+   3. UTILITAIRES
+   ============================================================================ */
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function parseISO(d){ return new Date(d + 'T00:00:00'); }
+function formatDateFR(iso){
+  if(!iso) return '—';
+  const d = parseISO(iso.slice(0,10));
+  return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function daysBetween(iso1, iso2){
+  const a = parseISO(iso1.slice(0,10)), b = parseISO(iso2.slice(0,10));
+  return Math.round((b-a)/86400000);
+}
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatMMSS(totalSeconds){
+  const m = Math.floor(totalSeconds/60), s = totalSeconds%60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+function showToast(msg, isError){
+  const el = document.createElement('div');
+  el.className = 'toast';
+  if(isError) el.style.borderLeftColor = 'var(--meteo-rouge)';
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .3s'; setTimeout(()=>el.remove(),300); }, 3200);
+}
+function findProjet(id){ return state.projets.find(p=>p.id===id); }
+
+function meteoDialSVG(statut, size){
+  size = size || 44;
+  const c = METEO[statut] || METEO.vert;
+  const pulse = statut === 'rouge' ? 'dial-pulse' : '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 44 44" class="meteo-dial ${pulse}" style="--dial-glow:${c.hex}55" aria-label="Météo ${c.label}">
+    <circle cx="22" cy="22" r="19" class="dial-ring"/>
+    <circle cx="22" cy="22" r="19" class="dial-arc" style="stroke:${c.hex}" stroke-dasharray="119.4" stroke-dashoffset="0"/>
+    <circle cx="22" cy="22" r="8.5" style="fill:${c.hex}" class="dial-core"/>
+  </svg>`;
+}
+function sparklineHTML(historique){
+  const last = (historique || []).slice(-5);
+  return `<div class="sparkline">${last.map((h,i)=>{
+    const isLast = i === last.length-1;
+    const h_px = 8 + i*3;
+    return `<span class="spark-bar spark-${h.statut} ${isLast?'spark-current':''}" style="height:${h_px}px" title="${formatDateFR(h.date)} — ${METEO[h.statut].label}"></span>`;
+  }).join('')}</div>`;
+}
+
+/* ============================================================================
+   4. RENDU — MODULE 1 : FLASH REPORT
+   ============================================================================ */
+function getFilteredSortedProjets(){
+  const f = state.ui.flashFilters;
+  let list = state.projets.filter(p=>{
+    if(f.equipe !== 'toutes' && p.equipe !== f.equipe) return false;
+    if(f.meteo.length && !f.meteo.includes(p.meteoGlobale)) return false;
+    if(f.decisionEnAttente && !p.decisionsAttendues.some(d=>d.statut==='en attente')) return false;
+    return true;
+  });
+  if(f.tri === 'meteo'){
+    list.sort((a,b)=> METEO_ORDER[a.meteoGlobale]-METEO_ORDER[b.meteoGlobale] || a.nom.localeCompare(b.nom));
+  } else if(f.tri === 'alpha'){
+    list.sort((a,b)=> a.nom.localeCompare(b.nom));
+  } else if(f.tri === 'equipe'){
+    list.sort((a,b)=> a.equipe.localeCompare(b.equipe) || a.nom.localeCompare(b.nom));
+  }
+  return list;
+}
+
+function renderFlash(){
+  const el = document.getElementById('module-flash');
+  const counts = {vert:0, orange:0, rouge:0};
+  state.projets.forEach(p=> counts[p.meteoGlobale]++);
+  const decisionsEnAttente = state.projets.reduce((n,p)=> n + p.decisionsAttendues.filter(d=>d.statut==='en attente').length, 0);
+  const f = state.ui.flashFilters;
+  const list = getFilteredSortedProjets();
+
+  el.innerHTML = `
+    <h2 class="section-title">Flash Report</h2>
+    <p class="section-sub">Photographie synthétique du portefeuille — mise à jour avant chaque revue de pilotage.</p>
+
+    <div class="flash-header">
+      <div class="stat-block" style="--stat-color:${METEO.rouge.hex}"><div class="stat-num">${counts.rouge}</div><div class="stat-label">Rouges</div></div>
+      <div class="stat-block" style="--stat-color:${METEO.orange.hex}"><div class="stat-num">${counts.orange}</div><div class="stat-label">Oranges</div></div>
+      <div class="stat-block" style="--stat-color:${METEO.vert.hex}"><div class="stat-num">${counts.vert}</div><div class="stat-label">Verts</div></div>
+      <div class="stat-block" style="--stat-color:var(--accent-strong)"><div class="stat-num">${decisionsEnAttente}</div><div class="stat-label">Décisions en attente</div></div>
+    </div>
+
+    <div class="filters-bar">
+      <div class="filters-group">
+        <select id="filter-equipe">
+          <option value="toutes">Toutes les équipes</option>
+          ${TEAMS.map(t=>`<option value="${escapeHtml(t)}" ${f.equipe===t?'selected':''}>${escapeHtml(t)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="filters-sep"></div>
+      <div class="filters-group">
+        <button class="chip chip-vert ${f.meteo.includes('vert')?'active':''}" data-meteo-filter="vert">🟢 Vert</button>
+        <button class="chip chip-orange ${f.meteo.includes('orange')?'active':''}" data-meteo-filter="orange">🟠 Orange</button>
+        <button class="chip chip-rouge ${f.meteo.includes('rouge')?'active':''}" data-meteo-filter="rouge">🔴 Rouge</button>
+      </div>
+      <div class="filters-sep"></div>
+      <div class="filters-group">
+        <button class="chip chip-accent ${f.decisionEnAttente?'active':''}" id="filter-decision">Décision en attente</button>
+      </div>
+      <div class="filters-sep"></div>
+      <div class="filters-group">
+        <select id="filter-tri">
+          <option value="meteo" ${f.tri==='meteo'?'selected':''}>Tri : météo (rouge → vert)</option>
+          <option value="alpha" ${f.tri==='alpha'?'selected':''}>Tri : alphabétique</option>
+          <option value="equipe" ${f.tri==='equipe'?'selected':''}>Tri : équipe</option>
+        </select>
+      </div>
+      <button class="btn print-btn" id="print-btn">🖨 Vue impression</button>
+    </div>
+
+    <div class="card-grid">
+      ${list.map(p=>renderProjectCard(p)).join('') || '<p class="empty-note">Aucun projet ne correspond aux filtres sélectionnés.</p>'}
+    </div>
+  `;
+  attachFlashEvents();
+}
+
+function renderProjectCard(p){
+  const c = METEO[p.meteoGlobale];
+  const isOpen = state.ui.expandedCardId === p.id;
+  const pendingDecisions = p.decisionsAttendues.filter(d=>d.statut==='en attente');
+  const nextCopil = [...p.agendaCopil].filter(c=>c.statut==='à venir').sort((a,b)=>a.date.localeCompare(b.date))[0];
+  const prepareSoon = nextCopil && daysBetween(todayISO(), nextCopil.date) <= 2;
+
+  return `
+  <article class="project-card" style="--card-color:${c.hex}" data-card-id="${p.id}">
+    <div class="card-top">
+      <div class="card-title">
+        <h3>${escapeHtml(p.nom)}</h3>
+        <div class="card-meta">
+          <span class="badge badge-team">${escapeHtml(p.equipe)}</span>
+          <span class="cdp-label">CDP : <b>${escapeHtml(p.chefDeProjet)}</b></span>
+        </div>
+      </div>
+      <div class="meteo-row">
+        ${meteoDialSVG(p.meteoGlobale)}
+        ${sparklineHTML(p.historiqueMeteo)}
+      </div>
+    </div>
+
+    <ul class="faits-list">
+      ${p.faitsMarquants.slice(-3).reverse().map(f=>`<li><span class="fait-date">${formatDateFR(f.date)}</span>${escapeHtml(f.texte)}</li>`).join('') || '<li style="color:var(--text-muted);font-style:italic;">Aucun fait marquant renseigné.</li>'}
+    </ul>
+
+    <div class="decisions-box ${pendingDecisions.length?'has-pending':''}">
+      <h4>Décisions &amp; arbitrages attendus</h4>
+      ${p.decisionsAttendues.length ? p.decisionsAttendues.map(d=>`
+        <div class="decision-line">
+          <span class="badge badge-type">${escapeHtml(d.typeDecision)}</span>
+          <span style="flex:1">${escapeHtml(d.texte)}</span>
+          <span class="statut-chip statut-${d.statut==='en attente'?'attente':(d.statut==='validé'?'valide':'refuse')}">${escapeHtml(d.statut)}</span>
+        </div>`).join('') : '<div class="decision-empty">Aucune décision en attente.</div>'}
+    </div>
+
+    <div class="copil-next">
+      ${nextCopil ? `
+        <span>${escapeHtml(nextCopil.instance)} — ${escapeHtml(nextCopil.sujetsChauds)}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+          ${prepareSoon ? '<span class="badge-prepare">À préparer</span>' : ''}
+          <span class="copil-date">${formatDateFR(nextCopil.date)}</span>
+        </span>` : '<span style="color:var(--text-muted);font-style:italic;">Aucun COPIL programmé.</span>'}
+    </div>
+
+    <div class="card-footer">
+      <span class="timestamp">Dernière mise à jour : ${formatDateFR(p.derniereMaj)}</span>
+      <button class="btn btn-sm" data-toggle-edit="${p.id}">${isOpen ? 'Fermer' : 'Modifier'}</button>
+    </div>
+
+    ${isOpen ? renderEditPanel(p) : ''}
+  </article>`;
+}
+
+function renderEditPanel(p){
+  return `
+  <div class="edit-panel" data-edit-panel="${p.id}">
+
+    <div class="edit-section">
+      <h5>Météo globale</h5>
+      <div class="meteo-picker">
+        ${['vert','orange','rouge'].map(s=>`
+          <button class="meteo-pick-btn ${p.meteoGlobale===s?'selected':''}" style="--pick-color:${METEO[s].hex};--pick-color-dim:${METEO[s].dim}" data-set-meteo="${p.id}" data-meteo-value="${s}">${METEO[s].label}</button>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="edit-section">
+      <h5>Ajouter un fait marquant</h5>
+      <div class="form-row">
+        <textarea placeholder="Décrire le fait marquant…" data-fait-input="${p.id}" rows="2"></textarea>
+      </div>
+      <div class="form-row" style="flex:0;">
+        <button class="btn btn-primary btn-sm" data-add-fait="${p.id}">+ Ajouter</button>
+      </div>
+    </div>
+
+    <div class="edit-section">
+      <h5>Décisions &amp; arbitrages</h5>
+      ${p.decisionsAttendues.map(d=>`
+        <div class="existing-decision-row">
+          <span class="badge badge-type">${escapeHtml(d.typeDecision)}</span>
+          <span class="dtxt">${escapeHtml(d.texte)}</span>
+          <select data-decision-statut="${p.id}" data-decision-id="${d.id}" style="width:auto;">
+            <option value="en attente" ${d.statut==='en attente'?'selected':''}>En attente</option>
+            <option value="validé" ${d.statut==='validé'?'selected':''}>Validé</option>
+            <option value="refusé" ${d.statut==='refusé'?'selected':''}>Refusé</option>
+          </select>
+        </div>
+      `).join('') || '<p style="font-size:12px;color:var(--text-muted);">Aucune décision enregistrée.</p>'}
+      <div class="form-row" style="margin-top:6px;">
+        <input type="text" placeholder="Nouvelle décision à ajouter…" data-new-decision-texte="${p.id}">
+        <select data-new-decision-type="${p.id}" style="max-width:140px;">
+          ${DECISION_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" data-add-decision="${p.id}" style="flex:0;">+ Ajouter</button>
+      </div>
+    </div>
+
+    <div class="edit-section">
+      <h5>Agenda COPIL</h5>
+      ${p.agendaCopil.map(c=>`<div class="existing-decision-row"><span class="dtxt">${formatDateFR(c.date)} — ${escapeHtml(c.instance)}</span><span class="badge badge-team">${escapeHtml(c.statut)}</span></div>`).join('')}
+      <div class="form-row" style="margin-top:6px;">
+        <input type="date" data-new-copil-date="${p.id}">
+        <input type="text" placeholder="Instance (ex : COPIL Direction)" data-new-copil-instance="${p.id}">
+      </div>
+      <div class="form-row">
+        <input type="text" placeholder="Sujet chaud associé…" data-new-copil-sujet="${p.id}">
+        <button class="btn btn-primary btn-sm" data-add-copil="${p.id}" style="flex:0;">+ Ajouter</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function attachFlashEvents(){
+  const root = document.getElementById('module-flash');
+  const equipeSel = root.querySelector('#filter-equipe');
+  if(equipeSel) equipeSel.addEventListener('change', e=>{ state.ui.flashFilters.equipe = e.target.value; renderFlash(); });
+  const triSel = root.querySelector('#filter-tri');
+  if(triSel) triSel.addEventListener('change', e=>{ state.ui.flashFilters.tri = e.target.value; renderFlash(); });
+  root.querySelectorAll('[data-meteo-filter]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = btn.getAttribute('data-meteo-filter');
+      const arr = state.ui.flashFilters.meteo;
+      const idx = arr.indexOf(v);
+      if(idx>-1) arr.splice(idx,1); else arr.push(v);
+      renderFlash();
+    });
+  });
+  const decBtn = root.querySelector('#filter-decision');
+  if(decBtn) decBtn.addEventListener('click', ()=>{ state.ui.flashFilters.decisionEnAttente = !state.ui.flashFilters.decisionEnAttente; renderFlash(); });
+  const printBtn = root.querySelector('#print-btn');
+  if(printBtn) printBtn.addEventListener('click', ()=> window.print());
+
+  root.querySelectorAll('[data-toggle-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-toggle-edit');
+      state.ui.expandedCardId = state.ui.expandedCardId === id ? null : id;
+      renderFlash();
+    });
+  });
+  root.querySelectorAll('[data-set-meteo]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const p = findProjet(btn.getAttribute('data-set-meteo'));
+      const val = btn.getAttribute('data-meteo-value');
+      p.meteoGlobale = val;
+      p.derniereMaj = todayISO();
+      p.historiqueMeteo.push({date: todayISO(), statut: val});
+      scheduleSaveProjets(); renderFlash();
+    });
+  });
+  root.querySelectorAll('[data-add-fait]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-add-fait');
+      const p = findProjet(id);
+      const textarea = root.querySelector(`[data-fait-input="${id}"]`);
+      const val = textarea.value.trim();
+      if(!val) return;
+      p.faitsMarquants.push({date: todayISO(), texte: val});
+      p.derniereMaj = todayISO();
+      scheduleSaveProjets(); renderFlash();
+    });
+  });
+  root.querySelectorAll('[data-decision-statut]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const p = findProjet(sel.getAttribute('data-decision-statut'));
+      const d = p.decisionsAttendues.find(dd=>dd.id===sel.getAttribute('data-decision-id'));
+      d.statut = sel.value;
+      p.derniereMaj = todayISO();
+      scheduleSaveProjets(); renderFlash();
+    });
+  });
+  root.querySelectorAll('[data-add-decision]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-add-decision');
+      const p = findProjet(id);
+      const texteInput = root.querySelector(`[data-new-decision-texte="${id}"]`);
+      const typeSel = root.querySelector(`[data-new-decision-type="${id}"]`);
+      const texte = texteInput.value.trim();
+      if(!texte) return;
+      p.decisionsAttendues.push({id:uid('d'), texte, typeDecision:typeSel.value, statut:'en attente', dateAjout:todayISO(), decisionActee:''});
+      p.derniereMaj = todayISO();
+      scheduleSaveProjets(); renderFlash();
+    });
+  });
+  root.querySelectorAll('[data-add-copil]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-add-copil');
+      const p = findProjet(id);
+      const dateInput = root.querySelector(`[data-new-copil-date="${id}"]`);
+      const instInput = root.querySelector(`[data-new-copil-instance="${id}"]`);
+      const sujetInput = root.querySelector(`[data-new-copil-sujet="${id}"]`);
+      if(!dateInput.value || !instInput.value.trim()) return;
+      p.agendaCopil.push({id:uid('c'), date:dateInput.value, instance:instInput.value.trim(), sujetsChauds:sujetInput.value.trim(), statut:'à venir', notesAlignement:'', noteEnvoyee:null});
+      p.derniereMaj = todayISO();
+      scheduleSaveProjets(); renderFlash();
+    });
+  });
+}
+
+/* ============================================================================
+   5. RENDU — MODULE 2 : REVUE DE PILOTAGE
+   ============================================================================ */
+function getUpcomingCopilsWithin(days){
+  const list = [];
+  state.projets.forEach(p=>{
+    p.agendaCopil.forEach(c=>{
+      if(c.statut==='à venir' && daysBetween(todayISO(), c.date) <= days && daysBetween(todayISO(), c.date) >= -1){
+        list.push({...c, projetNom:p.nom, projetId:p.id});
+      }
+    });
+  });
+  return list.sort((a,b)=>a.date.localeCompare(b.date));
+}
+function getAllPendingDecisions(){
+  const list = [];
+  state.projets.forEach(p=>{
+    p.decisionsAttendues.forEach(d=>{
+      if(d.statut==='en attente') list.push({...d, projetNom:p.nom, projetId:p.id, projetMeteo:p.meteoGlobale});
+    });
+  });
+  return list.sort((a,b)=> METEO_ORDER[a.projetMeteo]-METEO_ORDER[b.projetMeteo] || a.dateAjout.localeCompare(b.dateAjout));
+}
+
+function renderRevue(){
+  const el = document.getElementById('module-revue');
+  const nextDate = state.revues.prochaineRevueDate;
+  const upcomingCopils = getUpcomingCopilsWithin(15);
+  const pendingDecisions = getAllPendingDecisions();
+  const focusProjets = state.projets.filter(p=> p.meteoGlobale!=='vert');
+
+  el.innerHTML = `
+    <h2 class="section-title">Revue de Pilotage</h2>
+    <p class="section-sub">Conducteur de séance — instance bi-mensuelle de 45 minutes, en présence du sponsor.</p>
+
+    <div class="revue-header">
+      <div class="countdown-panel">
+        <div class="eyebrow">Prochaine revue</div>
+        <div class="countdown-value" id="countdown-value">—</div>
+        <div class="countdown-sub" id="countdown-sub"></div>
+        <div class="countdown-edit">
+          <input type="datetime-local" id="next-revue-input" value="${nextDate ? nextDate : ''}">
+          <button class="btn btn-sm" id="save-next-revue">Enregistrer</button>
+        </div>
+      </div>
+      <div class="total-panel">
+        <div class="eyebrow">Temps cumulé / 45 min</div>
+        <div class="total-value" id="total-value">00:00</div>
+        <div class="progress-bar"><div class="progress-fill" id="total-progress" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="agenda-blocks">
+      <div class="agenda-block">
+        <div class="agenda-block-head"><h3>1. Tour de table</h3><span class="agenda-alloc">15 min</span></div>
+        <div class="timer-display" id="timer-tour">00:00</div>
+        <div class="timer-controls">
+          <button class="btn btn-vert btn-sm" data-timer-action="start" data-timer="tour">▶ Démarrer</button>
+          <button class="btn btn-sm" data-timer-action="pause" data-timer="tour">⏸ Pause</button>
+          <button class="btn btn-ghost btn-sm" data-timer-action="reset" data-timer="tour">↺</button>
+        </div>
+        <div class="agenda-content">
+          <div class="mini-meteo-row">
+            ${state.projets.map(p=>`<span class="mini-meteo-item"><span class="mini-dot" style="background:${METEO[p.meteoGlobale].hex}"></span>${escapeHtml(p.nom.length>26?p.nom.slice(0,26)+'…':p.nom)}</span>`).join('')}
+          </div>
+          ${focusProjets.length ? focusProjets.map(p=>{
+            const lastFait = p.faitsMarquants[p.faitsMarquants.length-1];
+            const urgentDec = p.decisionsAttendues.find(d=>d.statut==='en attente');
+            return `<div class="focus-item" style="--focus-color:${METEO[p.meteoGlobale].hex}">
+              <span class="fname">${escapeHtml(p.nom)}</span>
+              <span class="fdetail">${urgentDec ? '⚠ '+escapeHtml(urgentDec.texte) : (lastFait ? escapeHtml(lastFait.texte) : 'Point de vigilance à détailler en séance.')}</span>
+            </div>`;
+          }).join('') : '<p class="empty-note">Aucun point de vigilance — portefeuille entièrement au vert.</p>'}
+        </div>
+      </div>
+
+      <div class="agenda-block">
+        <div class="agenda-block-head"><h3>2. Arbitrages &amp; points bloquants</h3><span class="agenda-alloc">20 min</span></div>
+        <div class="timer-display" id="timer-arbitrages">00:00</div>
+        <div class="timer-controls">
+          <button class="btn btn-vert btn-sm" data-timer-action="start" data-timer="arbitrages">▶ Démarrer</button>
+          <button class="btn btn-sm" data-timer-action="pause" data-timer="arbitrages">⏸ Pause</button>
+          <button class="btn btn-ghost btn-sm" data-timer-action="reset" data-timer="arbitrages">↺</button>
+        </div>
+        <div class="agenda-content">
+          ${pendingDecisions.length ? pendingDecisions.map(d=>`
+            <div class="arbitrage-row">
+              <div class="arbitrage-head">
+                <span class="badge badge-type">${escapeHtml(d.typeDecision)}</span>
+                <span class="statut-chip statut-attente">En attente</span>
+              </div>
+              <div>${escapeHtml(d.texte)}</div>
+              <div class="arbitrage-projet">${escapeHtml(d.projetNom)}</div>
+              <div class="arbitrage-actions">
+                <input type="text" placeholder="Décision actée en séance…" data-arbitrage-texte="${d.id}">
+                <button class="btn btn-vert btn-sm" data-arbitrage-valider="${d.projetId}" data-arbitrage-id="${d.id}">Valider</button>
+                <button class="btn btn-danger btn-sm" data-arbitrage-refuser="${d.projetId}" data-arbitrage-id="${d.id}">Refuser</button>
+              </div>
+            </div>
+          `).join('') : '<p class="empty-note">Aucun arbitrage en attente.</p>'}
+        </div>
+      </div>
+
+      <div class="agenda-block">
+        <div class="agenda-block-head"><h3>3. Préparation des prochains COPIL</h3><span class="agenda-alloc">10 min</span></div>
+        <div class="timer-display" id="timer-prep">00:00</div>
+        <div class="timer-controls">
+          <button class="btn btn-vert btn-sm" data-timer-action="start" data-timer="prep">▶ Démarrer</button>
+          <button class="btn btn-sm" data-timer-action="pause" data-timer="prep">⏸ Pause</button>
+          <button class="btn btn-ghost btn-sm" data-timer-action="reset" data-timer="prep">↺</button>
+        </div>
+        <div class="agenda-content">
+          ${upcomingCopils.length ? upcomingCopils.map(c=>`
+            <div class="copil-prep-item">
+              <div class="copil-prep-head"><b>${formatDateFR(c.date)}</b> — ${escapeHtml(c.instance)} <span style="color:var(--text-muted)">(${escapeHtml(c.projetNom)})</span></div>
+              <textarea placeholder="Notes d'alignement pour ce COPIL…" data-copil-notes="${c.projetId}" data-copil-id="${c.id}" rows="2">${escapeHtml(c.notesAlignement||'')}</textarea>
+            </div>
+          `).join('') : '<p class="empty-note">Aucun COPIL dans les 15 prochains jours.</p>'}
+        </div>
+      </div>
+    </div>
+
+    <div class="closer-row">
+      <button class="btn btn-primary" id="closer-revue-btn">✓ Clôturer la revue</button>
+    </div>
+
+    <div class="accordion">
+      <div class="accordion-head" id="accordion-toggle" style="cursor:pointer;">
+        <h3>Historique des revues (${state.revues.historique.length})</h3>
+        <span class="chevron" style="transform:${state.ui.openAccordion?'rotate(90deg)':'none'}">›</span>
+      </div>
+      ${state.ui.openAccordion ? state.revues.historique.map(r=>renderRevueHistoryItem(r)).join('') || '<div class="accordion-item-body" style="display:block;padding:16px 18px;">Aucune revue archivée pour le moment.</div>' : ''}
+    </div>
+  `;
+  attachRevueEvents();
+  updateCountdown();
+  syncTimerDisplays();
+}
+
+function renderRevueHistoryItem(r){
+  let counts;
+  if(r.counts){
+    counts = r.counts;
+  } else {
+    counts = {vert:0,orange:0,rouge:0};
+    (r.meteoPortefeuilleSnapshot||[]).forEach(s=>counts[s.statut]++);
+  }
+  const arbitragesHtml = Array.isArray(r.arbitragesTraites)
+    ? (r.arbitragesTraites.length
+        ? r.arbitragesTraites.map(a=>`<div class="arb-entry"><b>${escapeHtml(a.sujet)}</b> (${escapeHtml(a.projetLie)})<br>${escapeHtml(a.decision)}</div>`).join('')
+        : '<p style="font-style:italic;">Aucun arbitrage traité lors de cette revue.</p>')
+    : (r.arbitragesTraites
+        ? `<div class="arb-entry">${escapeHtml(r.arbitragesTraites)}</div>`
+        : '<p style="font-style:italic;">Aucun arbitrage traité lors de cette revue.</p>');
+  return `
+  <div class="accordion-item" data-revue-item="${r.id}">
+    <div class="accordion-item-head" data-toggle-revue="${r.id}">
+      <span>${formatDateFR(r.date)} — <span style="color:var(--meteo-rouge)">${counts.rouge} rouge(s)</span>, <span style="color:var(--meteo-orange)">${counts.orange} orange(s)</span>, <span style="color:var(--meteo-vert)">${counts.vert} vert(s)</span></span>
+      <span class="chevron">›</span>
+    </div>
+    <div class="accordion-item-body">
+      <p><b>Arbitrages traités :</b></p>
+      ${arbitragesHtml}
+      <p style="margin-top:10px;"><b>Notes de préparation COPIL :</b></p>
+      <p>${escapeHtml(r.pointsPreparationCopil) || '<i>Aucune note.</i>'}</p>
+    </div>
+  </div>`;
+}
+
+function updateCountdown(){
+  const valEl = document.getElementById('countdown-value');
+  const subEl = document.getElementById('countdown-sub');
+  if(!valEl) return;
+  const next = state.revues.prochaineRevueDate;
+  if(!next){ valEl.textContent = '—'; subEl.textContent = 'Aucune date programmée.'; return; }
+  const diffMs = new Date(next).getTime() - Date.now();
+  if(diffMs <= 0){ valEl.textContent = '00j 00h 00m'; subEl.textContent = 'La revue est due.'; return; }
+  const totalMin = Math.floor(diffMs/60000);
+  const days = Math.floor(totalMin/1440);
+  const hours = Math.floor((totalMin%1440)/60);
+  const mins = totalMin%60;
+  valEl.textContent = `${String(days).padStart(2,'0')}j ${String(hours).padStart(2,'0')}h ${String(mins).padStart(2,'0')}m`;
+  const d = new Date(next);
+  subEl.textContent = 'Le ' + d.toLocaleDateString('fr-FR',{weekday:'long', day:'2-digit', month:'long'}) + ' à ' + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function syncTimerDisplays(){
+  ['tour','arbitrages','prep'].forEach(key=>{
+    const t = revueTimers[key];
+    const disp = document.getElementById('timer-'+key);
+    if(disp){
+      disp.textContent = formatMMSS(t.elapsed);
+      disp.classList.toggle('over', t.elapsed > t.alloc);
+    }
+  });
+  const total = revueTimers.tour.elapsed + revueTimers.arbitrages.elapsed + revueTimers.prep.elapsed;
+  const totalEl = document.getElementById('total-value');
+  const progEl = document.getElementById('total-progress');
+  if(totalEl){
+    totalEl.textContent = formatMMSS(total);
+    const pct = Math.min(100, (total/2700)*100);
+    progEl.style.width = pct+'%';
+    progEl.classList.toggle('over', total>2700);
+    totalEl.style.color = total>2700 ? 'var(--meteo-rouge)' : 'var(--text-primary)';
+  }
+}
+
+function startTimer(key){
+  const t = revueTimers[key];
+  if(t.running) return;
+  t.running = true;
+  t.handle = setInterval(()=>{ t.elapsed++; syncTimerDisplays(); }, 1000);
+}
+function pauseTimer(key){
+  const t = revueTimers[key];
+  t.running = false;
+  if(t.handle){ clearInterval(t.handle); t.handle=null; }
+}
+function resetTimer(key){
+  pauseTimer(key);
+  revueTimers[key].elapsed = 0;
+  syncTimerDisplays();
+}
+
+function attachRevueEvents(){
+  const root = document.getElementById('module-revue');
+
+  root.querySelectorAll('[data-timer-action]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-timer');
+      const action = btn.getAttribute('data-timer-action');
+      if(action==='start') startTimer(key);
+      if(action==='pause') pauseTimer(key);
+      if(action==='reset') resetTimer(key);
+    });
+  });
+
+  const saveNextBtn = root.querySelector('#save-next-revue');
+  if(saveNextBtn) saveNextBtn.addEventListener('click', ()=>{
+    const input = root.querySelector('#next-revue-input');
+    if(!input.value) return;
+    state.revues.prochaineRevueDate = input.value;
+    scheduleSaveRevues();
+    updateCountdown();
+    showToast("Date de la prochaine revue enregistrée.");
+  });
+
+  root.querySelectorAll('[data-arbitrage-valider], [data-arbitrage-refuser]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const isValide = btn.hasAttribute('data-arbitrage-valider');
+      const projetId = btn.getAttribute(isValide?'data-arbitrage-valider':'data-arbitrage-refuser');
+      const decId = btn.getAttribute('data-arbitrage-id');
+      const p = findProjet(projetId);
+      const d = p.decisionsAttendues.find(dd=>dd.id===decId);
+      const texteInput = root.querySelector(`[data-arbitrage-texte="${decId}"]`);
+      const texteActe = (texteInput && texteInput.value.trim()) || (isValide ? 'Validé en séance sans précision complémentaire.' : 'Refusé en séance sans précision complémentaire.');
+      d.statut = isValide ? 'validé' : 'refusé';
+      d.decisionActee = texteActe;
+      p.derniereMaj = todayISO();
+      sessionArbitrages.push({sujet:d.texte, decision:texteActe, projetLie:p.nom});
+      scheduleSaveProjets();
+      renderRevue();
+      showToast(`Arbitrage ${isValide?'validé':'refusé'} pour « ${p.nom} ».`);
+    });
+  });
+
+  root.querySelectorAll('[data-copil-notes]').forEach(ta=>{
+    ta.addEventListener('change', ()=>{
+      const projetId = ta.getAttribute('data-copil-notes');
+      const copilId = ta.getAttribute('data-copil-id');
+      const p = findProjet(projetId);
+      const c = p.agendaCopil.find(cc=>cc.id===copilId);
+      c.notesAlignement = ta.value;
+      scheduleSaveProjets();
+    });
+  });
+
+  const closerBtn = root.querySelector('#closer-revue-btn');
+  if(closerBtn) closerBtn.addEventListener('click', cloturerRevue);
+
+  const accToggle = root.querySelector('#accordion-toggle');
+  if(accToggle) accToggle.addEventListener('click', ()=>{ state.ui.openAccordion = !state.ui.openAccordion; renderRevue(); });
+  root.querySelectorAll('[data-toggle-revue]').forEach(head=>{
+    head.addEventListener('click', ()=>{
+      head.closest('.accordion-item').classList.toggle('open');
+    });
+  });
+}
+
+function cloturerRevue(){
+  const upcoming = getUpcomingCopilsWithin(15);
+  const notes = upcoming.filter(c=>c.notesAlignement && c.notesAlignement.trim())
+    .map(c=> `${c.instance} (${formatDateFR(c.date)}) : ${c.notesAlignement.trim()}`)
+    .join(' | ');
+
+  const snapshot = {
+    id: uid('rev'),
+    date: todayISO(),
+    meteoPortefeuilleSnapshot: state.projets.map(p=>({nom:p.nom, statut:p.meteoGlobale})),
+    arbitragesTraites: [...sessionArbitrages],
+    pointsPreparationCopil: notes || 'Aucune note de préparation saisie lors de cette revue.'
+  };
+  state.revues.historique.unshift(snapshot);
+
+  // proposition automatique de la prochaine date, +14 jours, même heure
+  if(state.revues.prochaineRevueDate){
+    const base = new Date(state.revues.prochaineRevueDate);
+    base.setDate(base.getDate()+14);
+    state.revues.prochaineRevueDate = base.toISOString().slice(0,16);
+  }
+
+  sessionArbitrages = [];
+  Object.keys(revueTimers).forEach(resetTimer);
+  scheduleSaveRevues();
+  scheduleSaveProjets();
+  renderRevue();
+  showToast("Revue clôturée et archivée. Prochaine revue reprogrammée à +14 jours.");
+}
+
+/* ============================================================================
+   6. RENDU — MODULE 3 : PACK COPIL
+   ============================================================================ */
+function suggestObjectif(c){ return `Obtenir une décision du COPIL sur : ${c.sujetsChauds || 'point à préciser'}.`; }
+function suggestPosition(p){
+  const pending = p.decisionsAttendues.find(d=>d.statut==='en attente');
+  return pending ? `L'équipe projet recommande de : ${pending.texte}` : "L'équipe projet ne sollicite pas d'arbitrage particulier à ce stade ; simple point d'avancement.";
+}
+function suggestRisques(p){
+  if(p.meteoGlobale==='vert') return "Aucun point de tension majeur identifié à ce stade.";
+  const lastFait = p.faitsMarquants[p.faitsMarquants.length-1];
+  return `Point de vigilance : le projet est actuellement en météo ${METEO[p.meteoGlobale].label.toLowerCase()}${lastFait ? ' — anticiper des questions sur : ' + lastFait.texte : '.'}`;
+}
+
+function renderCopil(){
+  const el = document.getElementById('module-copil');
+  const allCopils = [];
+  state.projets.forEach(p=>{
+    p.agendaCopil.forEach(c=>{
+      if(c.statut==='à venir') allCopils.push({...c, projetId:p.id, projetNom:p.nom});
+    });
+  });
+  allCopils.sort((a,b)=>a.date.localeCompare(b.date));
+
+  const sentHistory = [];
+  state.projets.forEach(p=>{
+    p.agendaCopil.forEach(c=>{
+      if(c.noteEnvoyee) sentHistory.push({...c, projetNom:p.nom});
+    });
+  });
+  sentHistory.sort((a,b)=> (b.noteEnvoyee.date||'').localeCompare(a.noteEnvoyee.date||''));
+
+  el.innerHTML = `
+    <h2 class="section-title">Pack COPIL</h2>
+    <p class="section-sub">Préparation des interventions du sponsor — note structurée en 3 points, prête à être transmise J-2.</p>
+
+    <div class="copil-list">
+      ${allCopils.map(c=>renderCopilItem(c)).join('') || '<p class="empty-note">Aucun COPIL à venir dans le portefeuille.</p>'}
+    </div>
+
+    <div class="accordion" style="margin-top:24px;">
+      <div class="accordion-head"><h3>Historique des notes envoyées (${sentHistory.length})</h3></div>
+      ${sentHistory.length ? sentHistory.map(c=>`
+        <div class="history-note" style="padding:10px 18px;">
+          <b>${escapeHtml(c.instance)}</b> — ${escapeHtml(c.projetNom)} · envoyée le ${formatDateFR(c.noteEnvoyee.date)}
+        </div>
+      `).join('') : '<div style="padding:12px 18px;color:var(--text-muted);font-size:12.5px;font-style:italic;">Aucune note envoyée pour le moment.</div>'}
+    </div>
+  `;
+  attachCopilEvents();
+}
+
+function renderCopilItem(c){
+  const p = findProjet(c.projetId);
+  const isOpen = state.ui.expandedCopilId === c.id;
+  const urgent = daysBetween(todayISO(), c.date) <= 2;
+  const objectif = c.noteObjectif ?? suggestObjectif(c);
+  const position = c.notePosition ?? suggestPosition(p);
+  const risques = c.noteRisques ?? suggestRisques(p);
+
+  return `
+  <div class="copil-item ${urgent?'urgent':''} ${isOpen?'open':''}" data-copil-card="${c.id}">
+    <div class="copil-item-head" data-toggle-copil="${c.id}">
+      <div class="copil-item-title">
+        <h3>${escapeHtml(c.instance)} ${urgent?'<span class="badge-prepare" style="margin-left:8px;">À préparer</span>':''}</h3>
+        <span class="copil-item-sub">${escapeHtml(p.nom)} · ${escapeHtml(c.sujetsChauds||'—')}</span>
+      </div>
+      <span class="copil-item-date">${formatDateFR(c.date)}</span>
+    </div>
+    <div class="copil-body">
+      <div class="note-field">
+        <label>1. Objectif principal du COPIL</label>
+        <textarea data-note-field="objectif" data-copil-id="${c.id}" data-projet-id="${p.id}" rows="2">${escapeHtml(objectif)}</textarea>
+      </div>
+      <div class="note-field">
+        <label>2. Position / validation recommandée par l'équipe projet</label>
+        <textarea data-note-field="position" data-copil-id="${c.id}" data-projet-id="${p.id}" rows="2">${escapeHtml(position)}</textarea>
+      </div>
+      <div class="note-field">
+        <label>3. Risques potentiels ou sujets de tension</label>
+        <textarea data-note-field="risques" data-copil-id="${c.id}" data-projet-id="${p.id}" rows="2">${escapeHtml(risques)}</textarea>
+      </div>
+      <div class="note-actions">
+        <button class="btn btn-primary btn-sm" data-copy-note="${c.id}" data-projet-id="${p.id}">📋 Copier la note</button>
+        <button class="btn btn-vert btn-sm" data-mark-sent="${c.id}" data-projet-id="${p.id}">✓ Marquer comme envoyée</button>
+        ${c.noteEnvoyee ? `<span class="sent-tag">Envoyée le ${formatDateFR(c.noteEnvoyee.date)}</span>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildNoteText(p, c){
+  const objTa = document.querySelector(`[data-note-field="objectif"][data-copil-id="${c.id}"]`);
+  const posTa = document.querySelector(`[data-note-field="position"][data-copil-id="${c.id}"]`);
+  const risTa = document.querySelector(`[data-note-field="risques"][data-copil-id="${c.id}"]`);
+  return `Note de préparation — ${c.instance} du ${formatDateFR(c.date)}
+Projet : ${p.nom} (${p.equipe})
+
+1. Objectif principal
+${objTa.value}
+
+2. Position / validation recommandée
+${posTa.value}
+
+3. Risques potentiels et points de tension
+${risTa.value}`;
+}
+
+function attachCopilEvents(){
+  const root = document.getElementById('module-copil');
+  root.querySelectorAll('[data-toggle-copil]').forEach(head=>{
+    head.addEventListener('click', ()=>{
+      const id = head.getAttribute('data-toggle-copil');
+      state.ui.expandedCopilId = state.ui.expandedCopilId === id ? null : id;
+      renderCopil();
+    });
+  });
+  root.querySelectorAll('[data-note-field]').forEach(ta=>{
+    ta.addEventListener('change', ()=>{
+      const field = ta.getAttribute('data-note-field');
+      const copilId = ta.getAttribute('data-copil-id');
+      const projetId = ta.getAttribute('data-projet-id');
+      const p = findProjet(projetId);
+      const c = p.agendaCopil.find(cc=>cc.id===copilId);
+      if(field==='objectif') c.noteObjectif = ta.value;
+      if(field==='position') c.notePosition = ta.value;
+      if(field==='risques') c.noteRisques = ta.value;
+      scheduleSaveProjets();
+    });
+  });
+  root.querySelectorAll('[data-copy-note]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const copilId = btn.getAttribute('data-copy-note');
+      const projetId = btn.getAttribute('data-projet-id');
+      const p = findProjet(projetId);
+      const c = p.agendaCopil.find(cc=>cc.id===copilId);
+      const text = buildNoteText(p, c);
+      try{
+        await navigator.clipboard.writeText(text);
+        showToast("Note copiée dans le presse-papiers.");
+      }catch(e){ showToast("Impossible de copier automatiquement — sélectionnez le texte manuellement.", true); }
+    });
+  });
+  root.querySelectorAll('[data-mark-sent]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const copilId = btn.getAttribute('data-mark-sent');
+      const projetId = btn.getAttribute('data-projet-id');
+      const p = findProjet(projetId);
+      const c = p.agendaCopil.find(cc=>cc.id===copilId);
+      const text = buildNoteText(p, c);
+      c.noteEnvoyee = {date: todayISO(), texte:text};
+      scheduleSaveProjets();
+      renderCopil();
+      showToast("Note marquée comme envoyée.");
+    });
+  });
+}
+
+/* ============================================================================
+   7. SYNCHRONISATION GOOGLE SHEET (lecture seule, en direct)
+   ============================================================================ */
+function csvUrl(sheetId, tabName){
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
+}
+
+async function fetchTabRowsCSV(sheetId, tabName){
+  const res = await fetch(csvUrl(sheetId, tabName));
+  if(!res.ok) throw new Error("Impossible de lire l'onglet « " + tabName + " » (accès refusé ou onglet introuvable).");
+  const text = await res.text();
+  const parsed = Papa.parse(text.trim(), { skipEmptyLines:false });
+  const rows = parsed.data;
+  if(rows.length < 2) return [];
+  const headers = rows[1].map(h => String(h||'').trim()); // ligne 2 = en-têtes (ligne 1 = bandeau titre)
+  const dataRows = rows.slice(2);
+  return dataRows.map(r=>{
+    const obj = {};
+    headers.forEach((h,i)=> obj[h] = (r[i] !== undefined ? String(r[i]).trim() : ''));
+    return obj;
+  });
+}
+
+async function fetchAllTabsCSV(sheetId){
+  const keys = Object.keys(SHEET_TABS);
+  const results = await Promise.all(keys.map(k => fetchTabRowsCSV(sheetId, SHEET_TABS[k])));
+  const out = {};
+  keys.forEach((k,i)=> out[k] = results[i]);
+  return out;
+}
+
+// Lecture via l'API Google Sheets (v4), authentifiée par le jeton OAuth de l'utilisateur.
+// Fonctionne quel que soit le partage, tant que le compte connecté a au moins un accès lecteur.
+async function fetchAllTabsAPI(sheetId, token){
+  const params = new URLSearchParams();
+  Object.values(SHEET_TABS).forEach(t => params.append('ranges', t));
+  params.append('valueRenderOption', 'FORMATTED_VALUE');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?${params.toString()}`;
+  const res = await fetch(url, { headers:{ Authorization: 'Bearer ' + token } });
+  if(res.status === 401 || res.status === 403){
+    const e = new Error("Session Google expirée ou accès refusé à cette feuille — reconnectez-vous.");
+    e.code = res.status;
+    throw e;
+  }
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error('Erreur API Google Sheets (' + res.status + ') : ' + t.slice(0,200));
+  }
+  const data = await res.json();
+  const keys = Object.keys(SHEET_TABS);
+  const out = {};
+  keys.forEach((k,i)=>{
+    const values = (data.valueRanges[i] && data.valueRanges[i].values) || [];
+    const headers = (values[1]||[]).map(h => String(h||'').trim());
+    const dataRows = values.slice(2);
+    out[k] = dataRows.map(r=>{
+      const obj = {};
+      headers.forEach((h,idx)=> obj[h] = (r[idx] !== undefined ? String(r[idx]).trim() : ''));
+      return obj;
+    });
+  });
+  return out;
+}
+
+// Convertit "JJ/MM/AAAA[ HH:MM]" ou "AAAA-MM-JJ[THH:MM]" (selon le format renvoyé par Sheets) en ISO
+function parseFRDateToISO(txt){
+  if(!txt) return null;
+  txt = String(txt).trim();
+  const iso1 = txt.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}))?/);
+  if(iso1){
+    const [, y, mo, d, h, mi] = iso1;
+    return (h!==undefined) ? `${y}-${mo}-${d}T${h}:${mi}` : `${y}-${mo}-${d}`;
+  }
+  const m = txt.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if(!m) return null;
+  const [, d, mo, y, h, mi] = m;
+  const iso = `${y}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  return (h!==undefined) ? `${iso}T${h.padStart(2,'0')}:${mi}` : iso;
+}
+function parseFRDateOnly(txt){
+  const iso = parseFRDateToISO(txt);
+  return iso ? iso.slice(0,10) : '';
+}
+
+// Transforme les lignes brutes des 7 onglets en modèle interne (state.projets / state.revues).
+// Renvoie le nombre de projets chargés.
+function applyRawTabsToState(raw){
+  const projetRows = raw.projets, meteoRows = raw.meteo, faitsRows = raw.faits,
+        decisionRows = raw.decisions, copilRows = raw.copil, revueRows = raw.revues, configRows = raw.config;
+
+  const projetsById = {};
+  const projets = [];
+  projetRows.filter(r=>r['Nom du projet']).forEach(r=>{
+    const p = {
+      id: r['Identifiant'] || uid('p'),
+      nom: r['Nom du projet'],
+      equipe: r['Équipe'] || '',
+      chefDeProjet: r['Chef de projet'] || '',
+      meteoGlobale: (r['Météo actuelle']||'vert').toLowerCase(),
+      derniereMaj: parseFRDateOnly(r['Dernière mise à jour']) || todayISO(),
+      historiqueMeteo: [],
+      faitsMarquants: [],
+      decisionsAttendues: [],
+      agendaCopil: [],
+      notesCopilEnvoyees: []
+    };
+    projetsById[p.id] = p;
+    projets.push(p);
+  });
+
+  meteoRows.filter(r=>r['Identifiant projet'] && r['Statut météo']).forEach(r=>{
+    const p = projetsById[r['Identifiant projet']];
+    if(p) p.historiqueMeteo.push({date: parseFRDateOnly(r['Date']), statut: r['Statut météo'].toLowerCase()});
+  });
+  projets.forEach(p=> p.historiqueMeteo.sort((a,b)=> (a.date||'').localeCompare(b.date||'')));
+
+  faitsRows.filter(r=>r['Identifiant projet'] && r['Fait marquant']).forEach(r=>{
+    const p = projetsById[r['Identifiant projet']];
+    if(p) p.faitsMarquants.push({date: parseFRDateOnly(r['Date']), texte: r['Fait marquant']});
+  });
+  projets.forEach(p=> p.faitsMarquants.sort((a,b)=> (a.date||'').localeCompare(b.date||'')));
+
+  decisionRows.filter(r=>r['Identifiant projet'] && r['Texte de la décision']).forEach(r=>{
+    const p = projetsById[r['Identifiant projet']];
+    if(p) p.decisionsAttendues.push({
+      id: r['Identifiant'] || uid('d'),
+      texte: r['Texte de la décision'],
+      typeDecision: r['Type de décision'] || 'autre',
+      statut: r['Statut'] || 'en attente',
+      dateAjout: parseFRDateOnly(r["Date d'ajout"]),
+      decisionActee: r['Décision actée'] || ''
+    });
+  });
+
+  copilRows.filter(r=>r['Identifiant projet'] && r['Instance']).forEach(r=>{
+    const p = projetsById[r['Identifiant projet']];
+    if(!p) return;
+    p.agendaCopil.push({
+      id: r['Identifiant'] || uid('c'),
+      date: parseFRDateOnly(r['Date du COPIL']),
+      instance: r['Instance'],
+      sujetsChauds: r['Sujets chauds'] || '',
+      statut: (r['Statut'] || 'à venir').toLowerCase(),
+      notesAlignement:'',
+      noteObjectif: r['Note — objectif'] || undefined,
+      notePosition: r['Note — position recommandée'] || undefined,
+      noteRisques: r['Note — risques'] || undefined,
+      noteEnvoyee: r['Note envoyée le'] ? {date: parseFRDateOnly(r['Note envoyée le']), texte:''} : null
+    });
+  });
+
+  const historiqueRevues = revueRows.filter(r=>r['Date de la revue']).map(r=>({
+    id: r['Identifiant'] || uid('rev'),
+    date: parseFRDateOnly(r['Date de la revue']),
+    counts: { rouge: parseInt(r['Nb rouge'],10)||0, orange: parseInt(r['Nb orange'],10)||0, vert: parseInt(r['Nb vert'],10)||0 },
+    meteoPortefeuilleSnapshot: null,
+    arbitragesTraites: r['Arbitrages traités'] || '',
+    pointsPreparationCopil: r['Notes de préparation COPIL'] || ''
+  })).sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+
+  let prochaineRevueDate = state.revues.prochaineRevueDate;
+  const configLabelRow = (configRows||[]).find(r => Object.values(r)[0] && Object.values(r)[0].toLowerCase().includes('prochaine date de revue'));
+  if(configLabelRow){
+    const val = Object.values(configLabelRow)[1];
+    const iso = parseFRDateToISO(val);
+    if(iso) prochaineRevueDate = iso.length>10 ? iso : iso+'T09:00';
+  }
+
+  state.projets = projets;
+  state.revues = { prochaineRevueDate, historique: historiqueRevues };
+  return projets.length;
+}
+
+async function syncFromGoogleSheet(sheetId, silent){
+  updateSyncStatus('loading');
+  try{
+    if(!sheetId) throw new Error("Identifiant de feuille manquant.");
+    let raw;
+    if(state.sheetConfig.authMode === 'oauth'){
+      if(!accessToken) throw new Error("Non connecté à Google — cliquez sur « Se connecter avec Google ».");
+      raw = await fetchAllTabsAPI(sheetId, accessToken);
+    } else {
+      raw = await fetchAllTabsCSV(sheetId);
+    }
+    const n = applyRawTabsToState(raw);
+    state.sheetConfig.lastSync = new Date().toISOString();
+    state.sheetConfig.lastError = null;
+    scheduleSaveSheetConfig();
+    scheduleSaveProjets();
+    scheduleSaveRevues();
+
+    renderAll();
+    updateSyncStatus('ok');
+    if(!silent) showToast("Synchronisation réussie — " + n + " projet(s) chargé(s) depuis Google Sheet.");
+  }catch(err){
+    console.error(err);
+    let msg = err.message || String(err);
+    if(err.code===401 || err.code===403){
+      if(isExtensionContext && accessToken){
+        try{ chrome.identity.removeCachedAuthToken({token: accessToken}, ()=>{}); }catch(e2){}
+      }
+      accessToken = null;
+      updateOAuthStatusUI();
+    }
+    if(/Failed to fetch|NetworkError|Load failed/i.test(msg) && state.sheetConfig.authMode==='public'){
+      msg = "Accès refusé par Google (partage insuffisant ou feuille non publiée). Vérifiez : Fichier > Partager > Publier sur le web, pour chaque onglet ou l'ensemble du classeur.";
+    }
+    state.sheetConfig.lastError = msg;
+    scheduleSaveSheetConfig();
+    updateSyncStatus('error');
+    if(!silent) showToast("Échec de la synchronisation : " + msg, true);
+  }
+}
+
+// ---- Connexion par compte Google (OAuth via Google Identity Services) ----
+function ensureTokenClient(clientId){
+  if(tokenClient && tokenClient.__clientId === clientId) return tokenClient;
+  if(typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2){
+    throw new Error("La bibliothèque de connexion Google n'est pas encore chargée — réessayez dans un instant.");
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+    callback: (tokenResponse)=>{
+      if(!tokenResponse || tokenResponse.error){
+        updateSyncStatus('error');
+        showToast("Connexion Google refusée ou annulée.", true);
+        return;
+      }
+      accessToken = tokenResponse.access_token;
+      updateOAuthStatusUI();
+      syncFromGoogleSheet(state.sheetConfig.sheetId, false);
+    }
+  });
+  tokenClient.__clientId = clientId;
+  return tokenClient;
+}
+function updateOAuthStatusUI(){
+  const el = document.getElementById('oauth-status-line');
+  if(!el) return;
+  if(accessToken){ el.textContent = '✓ Connecté à Google — session active.'; el.classList.add('connected'); }
+  else { el.textContent = 'Non connecté.'; el.classList.remove('connected'); }
+}
+
+let autoSyncInterval = null;
+function applyAutoSync(){
+  if(autoSyncInterval){ clearInterval(autoSyncInterval); autoSyncInterval = null; }
+  if(state.sheetConfig.autoRefresh && state.sheetConfig.sheetId){
+    autoSyncInterval = setInterval(()=>{
+      if(state.sheetConfig.authMode==='oauth' && !accessToken) return; // nécessite un clic utilisateur, pas d'auto-connexion silencieuse
+      syncFromGoogleSheet(state.sheetConfig.sheetId, true);
+    }, 5*60*1000);
+  }
+}
+
+function updateSyncStatus(status){
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-btn-label');
+  const btn = document.getElementById('open-sheet-panel');
+  if(!dot) return;
+  dot.classList.remove('on','error');
+  btn.classList.remove('connected');
+  if(status==='ok'){ dot.classList.add('on'); btn.classList.add('connected'); label.textContent = 'Synchronisé'; }
+  else if(status==='error'){ dot.classList.add('error'); label.textContent = 'Erreur de synchro'; }
+  else if(status==='loading'){ label.textContent = 'Synchronisation…'; }
+  else { label.textContent = 'Google Sheet'; }
+
+  const statusLine = document.getElementById('sheet-status-line');
+  if(statusLine){
+    if(status==='ok'){
+      statusLine.className = 'sheet-status-line ok';
+      statusLine.textContent = '✓ Dernière synchronisation : ' + new Date(state.sheetConfig.lastSync).toLocaleString('fr-FR');
+    } else if(status==='error'){
+      statusLine.className = 'sheet-status-line err';
+      statusLine.textContent = '✕ ' + (state.sheetConfig.lastError || 'Erreur inconnue.');
+    } else {
+      statusLine.className = 'sheet-status-line';
+      statusLine.textContent = state.sheetConfig.sheetId ? '' : "Aucune feuille connectée — les données locales de démonstration sont utilisées.";
+    }
+  }
+}
+
+function attachSheetPanelEvents(){
+  const backdrop = document.getElementById('sheet-panel-backdrop');
+
+  // Contexte extension Chrome : une seule méthode possible (chrome.identity), pas de Client ID à saisir.
+  if(isExtensionContext){
+    state.sheetConfig.authMode = 'oauth';
+    document.getElementById('auth-mode-tabs').style.display = 'none';
+    document.getElementById('public-mode-fields').style.display = 'none';
+    document.getElementById('oauth-clientid-row').style.display = 'none';
+    document.getElementById('oauth-steps-text').innerHTML =
+      "<b>Prêt à l'emploi.</b> Cliquez simplement sur « Se connecter avec Google » : votre compte déjà connecté dans Chrome est utilisé automatiquement, aucune autre manipulation n'est nécessaire.";
+  }
+
+  function refreshModeUI(){
+    const mode = state.sheetConfig.authMode;
+    document.querySelectorAll('[data-auth-mode]').forEach(b=> b.classList.toggle('active', b.getAttribute('data-auth-mode')===mode));
+    document.getElementById('oauth-mode-fields').style.display = mode==='oauth' ? '' : 'none';
+    document.getElementById('public-mode-fields').style.display = mode==='public' ? '' : 'none';
+  }
+
+  document.getElementById('open-sheet-panel').addEventListener('click', ()=>{
+    document.getElementById('sheet-id-input').value = state.sheetConfig.sheetId || '';
+    document.getElementById('google-client-id-input').value = state.sheetConfig.clientId || '';
+    document.getElementById('autosync-check').checked = !!state.sheetConfig.autoRefresh;
+    refreshModeUI();
+    updateOAuthStatusUI();
+    backdrop.classList.add('open');
+  });  document.getElementById('close-sheet-panel').addEventListener('click', ()=> backdrop.classList.remove('open'));
+  backdrop.addEventListener('click', (e)=>{ if(e.target===backdrop) backdrop.classList.remove('open'); });
+
+  document.querySelectorAll('[data-auth-mode]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      state.sheetConfig.authMode = b.getAttribute('data-auth-mode');
+      scheduleSaveSheetConfig();
+      refreshModeUI();
+    });
+  });
+
+  document.getElementById('google-signin-btn').addEventListener('click', async ()=>{
+    const sheetId = document.getElementById('sheet-id-input').value.trim();
+    if(!sheetId){ showToast("Merci de renseigner l'identifiant de la feuille.", true); return; }
+    state.sheetConfig.sheetId = sheetId;
+    state.sheetConfig.autoRefresh = document.getElementById('autosync-check').checked;
+    state.sheetConfig.authMode = 'oauth';
+    scheduleSaveSheetConfig();
+    applyAutoSync();
+
+    const btn = document.getElementById('google-signin-btn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Connexion…';
+
+    if(isExtensionContext){
+      try{
+        accessToken = await getExtensionToken(true);
+        updateOAuthStatusUI();
+        await syncFromGoogleSheet(sheetId, false);
+      }catch(e){
+        showToast("Connexion Google échouée : " + e.message, true);
+        updateSyncStatus('error');
+      }finally{
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+      return;
+    }
+
+    // Contexte page web classique (hors extension) : flux Google Identity Services
+    const clientId = document.getElementById('google-client-id-input').value.trim();
+    if(!clientId){
+      showToast("Merci de renseigner l'identifiant client OAuth Google.", true);
+      btn.disabled = false; btn.textContent = originalLabel;
+      return;
+    }
+    state.sheetConfig.clientId = clientId;
+    scheduleSaveSheetConfig();
+    try{
+      const client = ensureTokenClient(clientId);
+      client.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
+    }catch(e){
+      showToast(e.message, true);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  });
+
+  document.getElementById('connect-sheet-btn').addEventListener('click', async ()=>{
+    const id = document.getElementById('sheet-id-input').value.trim();
+    if(!id){ showToast("Merci de renseigner l'identifiant de la feuille.", true); return; }
+    const btn = document.getElementById('connect-sheet-btn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Connexion en cours…';
+    state.sheetConfig.sheetId = id;
+    state.sheetConfig.authMode = 'public';
+    state.sheetConfig.autoRefresh = document.getElementById('autosync-check').checked;
+    scheduleSaveSheetConfig();
+    applyAutoSync();
+    try{
+      await syncFromGoogleSheet(id, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  });
+
+  document.getElementById('manual-refresh-btn').addEventListener('click', ()=>{
+    const id = document.getElementById('sheet-id-input').value.trim() || state.sheetConfig.sheetId;
+    if(!id){ showToast("Aucune feuille connectée pour le moment.", true); return; }
+    state.sheetConfig.sheetId = id;
+    syncFromGoogleSheet(id, false);
+  });
+
+  document.getElementById('disconnect-sheet-btn').addEventListener('click', ()=>{
+    state.sheetConfig = { sheetId:null, autoRefresh:false, lastSync:null, lastError:null, authMode:'oauth', clientId:null };
+    accessToken = null; tokenClient = null;
+    scheduleSaveSheetConfig();
+    applyAutoSync();
+    updateSyncStatus('idle');
+    updateOAuthStatusUI();
+    showToast("Feuille déconnectée — retour aux données locales.");
+  });
+}
+
+/* ============================================================================
+   8. NAVIGATION, HORLOGE, INITIALISATION
+   ============================================================================ */
+function renderAll(){ renderFlash(); renderRevue(); renderCopil(); }
+
+function setActiveTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b=> b.classList.toggle('active', b.getAttribute('data-tab')===tab));
+  document.querySelectorAll('.module').forEach(m=> m.classList.remove('active'));
+  document.getElementById('module-'+tab).classList.add('active');
+}
+
+document.getElementById('tabs').addEventListener('click', e=>{
+  const btn = e.target.closest('.tab-btn');
+  if(btn) setActiveTab(btn.getAttribute('data-tab'));
+});
+
+document.getElementById('reset-demo-btn').addEventListener('click', ()=>{
+  if(confirm("Réinitialiser toutes les données avec le jeu de démonstration ? Cette action efface les modifications en cours.")){
+    resetDemoData();
+  }
+});
+
+function tickClock(){
+  const el = document.getElementById('clock');
+  const now = new Date();
+  const day = now.toLocaleDateString('fr-FR', {weekday:'short', day:'2-digit', month:'short'});
+  const time = now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  el.innerHTML = `${day}<br><b>${time}</b>`;
+}
+
+let countdownInterval = null;
+
+(async function init(){
+  await loadData();
+  renderAll();
+  attachSheetPanelEvents();
+  document.getElementById('loading-overlay').classList.add('hidden');
+  tickClock();
+  setInterval(tickClock, 1000);
+  countdownInterval = setInterval(()=>{
+    if(document.getElementById('module-revue').classList.contains('active')) updateCountdown();
+  }, 30000);
+
+  if(state.sheetConfig.sheetId && state.sheetConfig.authMode === 'public'){
+    applyAutoSync();
+    syncFromGoogleSheet(state.sheetConfig.sheetId, true);
+  } else {
+    applyAutoSync();
+    updateSyncStatus('idle');
+  }
+})();
+</script>
+</body>
+</html>
