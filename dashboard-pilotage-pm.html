@@ -452,11 +452,29 @@ label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spa
     </div>
 
     <div class="auth-mode-tabs" id="auth-mode-tabs">
-      <button class="chip active" data-auth-mode="oauth">🔐 Connexion avec mon compte Google</button>
-      <button class="chip" data-auth-mode="public">🌐 Classeur publié publiquement</button>
+      <button class="chip active" data-auth-mode="appscript">📜 Via script (recommandé)</button>
+      <button class="chip" data-auth-mode="public">🌐 Classeur publié</button>
+      <button class="chip" data-auth-mode="oauth">🔐 Compte Google (avancé)</button>
     </div>
 
-    <div id="oauth-mode-fields">
+    <div id="appscript-mode-fields">
+      <div class="sheet-panel-steps">
+        <b>Aucune configuration Google Cloud, aucun droit admin nécessaire.</b> Dans votre feuille :
+        <i>Extensions &gt; Apps Script</i> (là où le script d'ergonomie est déjà installé) &gt;
+        <b>Déployer &gt; Nouveau déploiement</b> &gt; type <b>« Application Web »</b> &gt;
+        Exécuter en tant que « Moi » &gt; Qui a accès : <b>« Tout le monde »</b> &gt; Déployer &gt;
+        autoriser l'accès &gt; copiez l'URL qui se termine par <code>/exec</code>.
+      </div>
+      <div class="form-row">
+        <div style="flex:1;">
+          <label>URL du script déployé</label>
+          <input type="text" id="appscript-url-input" placeholder="https://script.google.com/macros/s/xxxxxxx/exec">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="connect-appscript-btn">🔄 Connecter &amp; synchroniser</button>
+    </div>
+
+    <div id="oauth-mode-fields" style="display:none;">
       <div class="sheet-panel-steps" id="oauth-steps-text">
         <b>Important :</b> Google refuse la connexion si la page est ouverte en double-clic (fichier local) —
         l'erreur 400 vient de là. Il faut la servir depuis <code>http://localhost</code> via le petit lanceur
@@ -727,7 +745,7 @@ const state = {
     expandedCopilId:null,
     openAccordion:false
   },
-  sheetConfig:{ sheetId:null, autoRefresh:false, lastSync:null, lastError:null, authMode:'oauth', clientId:null }
+  sheetConfig:{ sheetId:null, autoRefresh:false, lastSync:null, lastError:null, authMode:'appscript', clientId:null, appsScriptUrl:null }
 };
 
 // État de session OAuth Google (non persisté — un jeton expire après ~1h, la reconnexion se fait au rechargement)
@@ -1692,6 +1710,31 @@ async function fetchAllTabsAPI(sheetId, token){
   return out;
 }
 
+// Lecture via le script Apps Script déployé en "Application Web" — aucune configuration
+// Google Cloud ni connexion de compte nécessaire, fonctionne même en environnement verrouillé.
+async function fetchAllTabsAppScript(url){
+  const res = await fetch(url, { redirect:'follow' });
+  if(!res.ok) throw new Error("Le script a répondu une erreur (" + res.status + ").");
+  let data;
+  try{
+    data = await res.json();
+  }catch(e){
+    throw new Error("Réponse illisible — vérifiez que l'URL est bien celle du déploiement (se terminant par /exec) et que l'accès est réglé sur « Tout le monde ».");
+  }
+  const out = {};
+  Object.keys(SHEET_TABS).forEach(k=>{
+    const grid = data[k] || [];
+    const headers = (grid[1]||[]).map(h => String(h||'').trim());
+    const dataRows = grid.slice(2);
+    out[k] = dataRows.map(r=>{
+      const obj = {};
+      headers.forEach((h,idx)=> obj[h] = (r[idx] !== undefined ? String(r[idx]).trim() : ''));
+      return obj;
+    });
+  });
+  return out;
+}
+
 // Convertit "JJ/MM/AAAA[ HH:MM]" ou "AAAA-MM-JJ[THH:MM]" (selon le format renvoyé par Sheets) en ISO
 function parseFRDateToISO(txt){
   if(!txt) return null;
@@ -1804,12 +1847,16 @@ function applyRawTabsToState(raw){
 async function syncFromGoogleSheet(sheetId, silent){
   updateSyncStatus('loading');
   try{
-    if(!sheetId) throw new Error("Identifiant de feuille manquant.");
     let raw;
-    if(state.sheetConfig.authMode === 'oauth'){
+    if(state.sheetConfig.authMode === 'appscript'){
+      if(!state.sheetConfig.appsScriptUrl) throw new Error("URL du script non renseignée.");
+      raw = await fetchAllTabsAppScript(state.sheetConfig.appsScriptUrl);
+    } else if(state.sheetConfig.authMode === 'oauth'){
+      if(!sheetId) throw new Error("Identifiant de feuille manquant.");
       if(!accessToken) throw new Error("Non connecté à Google — cliquez sur « Se connecter avec Google ».");
       raw = await fetchAllTabsAPI(sheetId, accessToken);
     } else {
+      if(!sheetId) throw new Error("Identifiant de feuille manquant.");
       raw = await fetchAllTabsCSV(sheetId);
     }
     const n = applyRawTabsToState(raw);
@@ -1875,7 +1922,9 @@ function updateOAuthStatusUI(){
 let autoSyncInterval = null;
 function applyAutoSync(){
   if(autoSyncInterval){ clearInterval(autoSyncInterval); autoSyncInterval = null; }
-  if(state.sheetConfig.autoRefresh && state.sheetConfig.sheetId){
+  const hasTarget = (state.sheetConfig.authMode==='appscript' && state.sheetConfig.appsScriptUrl) ||
+                     (state.sheetConfig.authMode!=='appscript' && state.sheetConfig.sheetId);
+  if(state.sheetConfig.autoRefresh && hasTarget){
     autoSyncInterval = setInterval(()=>{
       if(state.sheetConfig.authMode==='oauth' && !accessToken) return; // nécessite un clic utilisateur, pas d'auto-connexion silencieuse
       syncFromGoogleSheet(state.sheetConfig.sheetId, true);
@@ -1918,6 +1967,7 @@ function attachSheetPanelEvents(){
     state.sheetConfig.authMode = 'oauth';
     document.getElementById('auth-mode-tabs').style.display = 'none';
     document.getElementById('public-mode-fields').style.display = 'none';
+    document.getElementById('appscript-mode-fields').style.display = 'none';
     document.getElementById('oauth-clientid-row').style.display = 'none';
     document.getElementById('oauth-steps-text').innerHTML =
       "<b>Prêt à l'emploi.</b> Cliquez simplement sur « Se connecter avec Google » : votre compte déjà connecté dans Chrome est utilisé automatiquement, aucune autre manipulation n'est nécessaire.";
@@ -1926,6 +1976,7 @@ function attachSheetPanelEvents(){
   function refreshModeUI(){
     const mode = state.sheetConfig.authMode;
     document.querySelectorAll('[data-auth-mode]').forEach(b=> b.classList.toggle('active', b.getAttribute('data-auth-mode')===mode));
+    document.getElementById('appscript-mode-fields').style.display = mode==='appscript' ? '' : 'none';
     document.getElementById('oauth-mode-fields').style.display = mode==='oauth' ? '' : 'none';
     document.getElementById('public-mode-fields').style.display = mode==='public' ? '' : 'none';
   }
@@ -1933,6 +1984,7 @@ function attachSheetPanelEvents(){
   document.getElementById('open-sheet-panel').addEventListener('click', ()=>{
     document.getElementById('sheet-id-input').value = state.sheetConfig.sheetId || '';
     document.getElementById('google-client-id-input').value = state.sheetConfig.clientId || '';
+    document.getElementById('appscript-url-input').value = state.sheetConfig.appsScriptUrl || '';
     document.getElementById('autosync-check').checked = !!state.sheetConfig.autoRefresh;
     refreshModeUI();
     updateOAuthStatusUI();
@@ -1997,6 +2049,26 @@ function attachSheetPanelEvents(){
     }
   });
 
+  document.getElementById('connect-appscript-btn').addEventListener('click', async ()=>{
+    const url = document.getElementById('appscript-url-input').value.trim();
+    if(!url){ showToast("Merci de renseigner l'URL du script déployé.", true); return; }
+    const btn = document.getElementById('connect-appscript-btn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Connexion en cours…';
+    state.sheetConfig.appsScriptUrl = url;
+    state.sheetConfig.authMode = 'appscript';
+    state.sheetConfig.autoRefresh = document.getElementById('autosync-check').checked;
+    scheduleSaveSheetConfig();
+    applyAutoSync();
+    try{
+      await syncFromGoogleSheet(null, false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  });
+
   document.getElementById('connect-sheet-btn').addEventListener('click', async ()=>{
     const id = document.getElementById('sheet-id-input').value.trim();
     if(!id){ showToast("Merci de renseigner l'identifiant de la feuille.", true); return; }
@@ -2018,6 +2090,11 @@ function attachSheetPanelEvents(){
   });
 
   document.getElementById('manual-refresh-btn').addEventListener('click', ()=>{
+    if(state.sheetConfig.authMode==='appscript'){
+      if(!state.sheetConfig.appsScriptUrl){ showToast("Aucun script connecté pour le moment.", true); return; }
+      syncFromGoogleSheet(null, false);
+      return;
+    }
     const id = document.getElementById('sheet-id-input').value.trim() || state.sheetConfig.sheetId;
     if(!id){ showToast("Aucune feuille connectée pour le moment.", true); return; }
     state.sheetConfig.sheetId = id;
@@ -2025,7 +2102,7 @@ function attachSheetPanelEvents(){
   });
 
   document.getElementById('disconnect-sheet-btn').addEventListener('click', ()=>{
-    state.sheetConfig = { sheetId:null, autoRefresh:false, lastSync:null, lastError:null, authMode:'oauth', clientId:null };
+    state.sheetConfig = { sheetId:null, autoRefresh:false, lastSync:null, lastError:null, authMode:'appscript', clientId:null, appsScriptUrl:null };
     accessToken = null; tokenClient = null;
     scheduleSaveSheetConfig();
     applyAutoSync();
@@ -2078,7 +2155,10 @@ let countdownInterval = null;
     if(document.getElementById('module-revue').classList.contains('active')) updateCountdown();
   }, 30000);
 
-  if(state.sheetConfig.sheetId && state.sheetConfig.authMode === 'public'){
+  if(state.sheetConfig.authMode === 'appscript' && state.sheetConfig.appsScriptUrl){
+    applyAutoSync();
+    syncFromGoogleSheet(null, true);
+  } else if(state.sheetConfig.sheetId && state.sheetConfig.authMode === 'public'){
     applyAutoSync();
     syncFromGoogleSheet(state.sheetConfig.sheetId, true);
   } else {
